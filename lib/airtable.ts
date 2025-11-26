@@ -58,8 +58,7 @@ export async function getAirtableRecords(tableName: string) {
   try {
     await base(tableName)
       .select({
-        // Fetch all fields
-        view: 'Grid view', // or specify a view name
+        // Fetch all fields without specifying a view
       })
       .eachPage((pageRecords, fetchNextPage) => {
         pageRecords.forEach((record) => {

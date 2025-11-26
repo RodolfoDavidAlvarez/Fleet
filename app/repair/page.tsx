@@ -189,7 +189,7 @@ export default function RepairRequestPage() {
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-gray-700">{t.driverName}</span>
                 <input
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="input"
                   name="driverName"
                   value={form.driverName}
                   onChange={(e) => setForm({ ...form, driverName: e.target.value })}
@@ -199,7 +199,7 @@ export default function RepairRequestPage() {
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-gray-700">{t.driverPhone}</span>
                 <input
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="input"
                   name="driverPhone"
                   value={form.driverPhone}
                   onChange={(e) => setForm({ ...form, driverPhone: e.target.value })}
@@ -214,7 +214,7 @@ export default function RepairRequestPage() {
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-gray-700">{t.makeModel}</span>
                 <input
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="input"
                   name="makeModel"
                   value={form.makeModel}
                   onChange={(e) => setForm({ ...form, makeModel: e.target.value })}
@@ -224,7 +224,7 @@ export default function RepairRequestPage() {
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-gray-700">{t.vehicleIdentifier}</span>
                 <input
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="input"
                   name="vehicleIdentifier"
                   value={form.vehicleIdentifier}
                   onChange={(e) => setForm({ ...form, vehicleIdentifier: e.target.value })}
@@ -238,7 +238,7 @@ export default function RepairRequestPage() {
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-gray-700">{t.vehicleType}</span>
                 <select
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                  className="input select"
                   name="vehicleType"
                   value={form.vehicleType}
                   onChange={(e) => setForm({ ...form, vehicleType: e.target.value })}
@@ -251,7 +251,7 @@ export default function RepairRequestPage() {
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-gray-700">{t.division}</span>
                 <select
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                  className="input select"
                   name="division"
                   value={form.division}
                   onChange={(e) => setForm({ ...form, division: e.target.value })}
@@ -268,7 +268,7 @@ export default function RepairRequestPage() {
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-gray-700">{t.isImmediate}</span>
                 <select
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                  className="input select"
                   name="isImmediate"
                   value={form.isImmediate}
                   onChange={(e) => setForm({ ...form, isImmediate: e.target.value })}
@@ -282,7 +282,7 @@ export default function RepairRequestPage() {
                  <span className="text-sm font-semibold text-gray-700">{t.date}</span>
                  <input
                    type="date"
-                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                   className="input"
                    name="date"
                    value={form.date}
                    onChange={(e) => setForm({ ...form, date: e.target.value })}
@@ -294,7 +294,7 @@ export default function RepairRequestPage() {
             <label className="space-y-2 block">
               <span className="text-sm font-semibold text-gray-700">{t.description}</span>
               <textarea
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="input textarea"
                 rows={4}
                 name="description"
                 value={form.description}
@@ -332,7 +332,7 @@ export default function RepairRequestPage() {
             <button 
               type="submit" 
               disabled={submitting} 
-              className="w-full bg-green-500 hover:bg-green-600 text-white py-4 rounded-lg font-semibold text-lg shadow transition-colors flex items-center justify-center gap-2"
+              className="btn btn-primary w-full btn-lg"
             >
               {submitting ? t.submitting : t.submit}
             </button>
