@@ -17,6 +17,7 @@ Create a `.env.local` file in the root directory:
 TWILIO_ACCOUNT_SID=your_twilio_account_sid
 TWILIO_AUTH_TOKEN=your_twilio_auth_token
 TWILIO_PHONE_NUMBER=+1234567890
+ENABLE_SMS=false
 
 # JWT Secret (for production)
 JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
@@ -118,4 +119,3 @@ npm run build
 3. Add error monitoring (Sentry)
 4. Set up analytics
 5. Configure backups
-

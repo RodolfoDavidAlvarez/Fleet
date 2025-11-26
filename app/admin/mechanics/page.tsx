@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import { Users, Plus, Mail, Phone, Wrench } from 'lucide-react'
-import { mechanicDB } from '@/lib/db'
 import { Mechanic } from '@/types'
 import { getStatusColor } from '@/lib/utils'
 
@@ -13,6 +12,8 @@ export default function MechanicsPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [mechanics, setMechanics] = useState<Mechanic[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -26,7 +27,24 @@ export default function MechanicsPage() {
       return
     }
     setUser(parsedUser)
-    setMechanics(mechanicDB.getAll())
+
+    const loadMechanics = async () => {
+      try {
+        setLoading(true)
+        const res = await fetch('/api/mechanics')
+        if (!res.ok) throw new Error('Failed to load mechanics')
+        const data = await res.json()
+        setMechanics(data.mechanics || [])
+        setError(null)
+      } catch (err) {
+        console.error('Error fetching mechanics:', err)
+        setError('Failed to load mechanics. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadMechanics()
   }, [router])
 
   if (!user) {
@@ -48,67 +66,81 @@ export default function MechanicsPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mechanics.map((mechanic) => (
-                <div
-                  key={mechanic.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-primary-100 p-3 rounded-full">
-                        <Users className="h-6 w-6 text-primary-600" />
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                {error}
+              </div>
+            )}
+
+            {loading ? (
+              <div className="p-8 text-center text-gray-600">Loading mechanics...</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {mechanics.map((mechanic) => (
+                  <div
+                    key={mechanic.id}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-primary-100 p-3 rounded-full">
+                          <Users className="h-6 w-6 text-primary-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{mechanic.name}</h3>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(mechanic.availability)}`}>
+                            {mechanic.availability}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{mechanic.name}</h3>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(mechanic.availability)}`}>
-                          {mechanic.availability}
-                        </span>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Mail className="h-4 w-4 mr-2" />
+                        {mechanic.email}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Phone className="h-4 w-4 mr-2" />
+                        {mechanic.phone}
                       </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Mail className="h-4 w-4 mr-2" />
-                      {mechanic.email}
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Specializations:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {mechanic.specializations.map((spec, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+                          >
+                            {spec}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Phone className="h-4 w-4 mr-2" />
-                      {mechanic.phone}
-                    </div>
-                  </div>
 
-                  <div className="mb-4">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Specializations:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {mechanic.specializations.map((spec, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
-                        >
-                          {spec}
-                        </span>
-                      ))}
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Wrench className="h-4 w-4 mr-2" />
+                        {mechanic.currentJobs.length} active jobs
+                      </div>
+                      <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
+                        View Details
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Wrench className="h-4 w-4 mr-2" />
-                      {mechanic.currentJobs.length} active jobs
-                    </div>
-                    <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                      View Details
-                    </button>
+                ))}
+                {mechanics.length === 0 && (
+                  <div className="p-6 text-center text-gray-500 col-span-full">
+                    No mechanics found.
                   </div>
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </main>
       </div>
     </div>
   )
 }
-

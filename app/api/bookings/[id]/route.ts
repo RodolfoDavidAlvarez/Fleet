@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { bookingDB } from '@/lib/db'
 import { sendStatusUpdate } from '@/lib/twilio'
+import { z } from 'zod'
+
+const bookingUpdateSchema = z.object({
+  customerName: z.string().optional(),
+  customerEmail: z.string().email().optional(),
+  customerPhone: z.string().optional(),
+  serviceType: z.string().optional(),
+  scheduledDate: z.string().optional(),
+  scheduledTime: z.string().optional(),
+  status: z.enum(['pending', 'confirmed', 'in_progress', 'completed', 'cancelled']).optional(),
+  mechanicId: z.string().optional(),
+  notes: z.string().optional(),
+})
 
 export async function GET(
   request: NextRequest,
@@ -28,7 +41,14 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const body = await request.json()
+    const json = await request.json()
+    const parsed = bookingUpdateSchema.safeParse(json)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
     
     // Get current booking to compare status
     const currentBooking = await bookingDB.getById(params.id)
@@ -39,7 +59,7 @@ export async function PATCH(
       )
     }
 
-    const booking = await bookingDB.update(params.id, body)
+    const booking = await bookingDB.update(params.id, parsed.data)
 
     if (!booking) {
       return NextResponse.json(
@@ -49,8 +69,8 @@ export async function PATCH(
     }
 
     // Send SMS if status changed
-    if (body.status && body.status !== currentBooking.status) {
-      await sendStatusUpdate(booking.customerPhone, body.status, booking.id)
+    if (parsed.data.status && parsed.data.status !== currentBooking.status) {
+      await sendStatusUpdate(booking.customerPhone, parsed.data.status, booking.id)
     }
 
     return NextResponse.json({ booking })
@@ -82,4 +102,3 @@ export async function DELETE(
     )
   }
 }
-

@@ -6,7 +6,6 @@ import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import { 
   Car, 
-  Wrench, 
   Calendar, 
   Users, 
   TrendingUp,
@@ -34,17 +33,20 @@ export default function AdminDashboard() {
     }
     setUser(parsedUser)
 
-    // Fetch stats from API
-    fetch('/api/dashboard/stats')
-      .then(res => res.json())
-      .then(data => {
+    const loadStats = async () => {
+      try {
+        const res = await fetch('/api/dashboard')
+        if (!res.ok) throw new Error('Failed to load dashboard stats')
+        const data = await res.json()
         setStats(data.stats)
+      } catch (error) {
+        console.error('Error fetching stats:', error)
+      } finally {
         setLoading(false)
-      })
-      .catch(err => {
-        console.error('Error fetching stats:', err)
-        setLoading(false)
-      })
+      }
+    }
+
+    loadStats()
   }, [router])
 
   if (!user || loading) {
@@ -158,4 +160,3 @@ export default function AdminDashboard() {
     </div>
   )
 }
-

@@ -3,14 +3,20 @@ import twilio from 'twilio'
 const accountSid = process.env.TWILIO_ACCOUNT_SID
 const authToken = process.env.TWILIO_AUTH_TOKEN
 const phoneNumber = process.env.TWILIO_PHONE_NUMBER
+const smsEnabled = process.env.ENABLE_SMS === 'true'
 
 let client: twilio.Twilio | null = null
 
-if (accountSid && authToken) {
+if (accountSid && authToken && smsEnabled) {
   client = twilio(accountSid, authToken)
 }
 
 export async function sendSMS(to: string, message: string): Promise<boolean> {
+  if (!smsEnabled) {
+    console.info('[SMS disabled] Would send to:', to, message)
+    return false
+  }
+
   if (!client || !phoneNumber) {
     console.warn('Twilio not configured. SMS would be sent to:', to, message)
     return false
@@ -74,4 +80,3 @@ export async function sendJobCompletion(
   const message = `Your service is complete!\n\nService: ${jobDetails.serviceType}\nTotal Cost: $${jobDetails.totalCost.toFixed(2)}\nBooking ID: ${jobDetails.bookingId}\n\nThank you for your business!`
   return sendSMS(phone, message)
 }
-

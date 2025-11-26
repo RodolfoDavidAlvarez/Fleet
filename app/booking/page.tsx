@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Calendar, Clock, User, Mail, Phone, Car, CheckCircle, ArrowLeft, Wrench } from 'lucide-react'
 
@@ -22,8 +21,6 @@ const timeSlots = [
 ]
 
 export default function BookingPage() {
-  const router = useRouter()
-  const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
     customerName: '',
     customerEmail: '',
@@ -36,6 +33,8 @@ export default function BookingPage() {
   })
   const [submitted, setSubmitted] = useState(false)
   const [bookingId, setBookingId] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -46,7 +45,9 @@ export default function BookingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+    setSubmitting(true)
+    setError(null)
+
     try {
       const response = await fetch('/api/bookings', {
         method: 'POST',
@@ -74,7 +75,9 @@ export default function BookingPage() {
       setSubmitted(true)
     } catch (error) {
       console.error('Error creating booking:', error)
-      alert('Failed to create booking. Please try again.')
+      setError(error instanceof Error ? error.message : 'Failed to create booking. Please try again.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -128,6 +131,12 @@ export default function BookingPage() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Book a Service</h1>
           <p className="text-gray-600 mb-8">Fill out the form below to schedule your service appointment</p>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Customer Information */}
@@ -300,9 +309,10 @@ export default function BookingPage() {
 
             <button
               type="submit"
-              className="w-full bg-primary-600 text-white py-4 rounded-lg font-semibold text-lg hover:bg-primary-700 transition-colors"
+              disabled={submitting}
+              className="w-full bg-primary-600 text-white py-4 rounded-lg font-semibold text-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
             >
-              Book Appointment
+              {submitting ? 'Booking...' : 'Book Appointment'}
             </button>
           </form>
         </div>
@@ -310,4 +320,3 @@ export default function BookingPage() {
     </div>
   )
 }
-

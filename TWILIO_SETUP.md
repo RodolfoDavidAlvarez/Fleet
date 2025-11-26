@@ -30,12 +30,14 @@ Add your Twilio credentials to your `.env.local` file:
 TWILIO_ACCOUNT_SID=your_account_sid_here
 TWILIO_AUTH_TOKEN=your_auth_token_here
 TWILIO_PHONE_NUMBER=+1234567890
+ENABLE_SMS=false
 ```
 
 **Important**: 
 - The phone number must include the country code (e.g., +1 for US)
 - Never commit your `.env.local` file to git
 - Keep your Auth Token secret
+ - Set `ENABLE_SMS=true` in non-production only after credentials are configured
 
 ## 📱 SMS Features
 
@@ -168,4 +170,3 @@ Monitor your SMS usage in Twilio Console:
 ---
 
 **Need Help?** Check the server logs for detailed error messages when SMS fails to send.
-

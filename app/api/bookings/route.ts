@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { bookingDB } from '@/lib/db'
 import { sendBookingConfirmation } from '@/lib/twilio'
+
+const bookingSchema = z.object({
+  customerName: z.string().min(1, 'customerName is required'),
+  customerEmail: z.string().email('customerEmail must be a valid email'),
+  customerPhone: z.string().min(6, 'customerPhone is required'),
+  serviceType: z.string().min(1, 'serviceType is required'),
+  scheduledDate: z.string().min(1, 'scheduledDate is required'),
+  scheduledTime: z.string().min(1, 'scheduledTime is required'),
+  notes: z.string().optional(),
+  vehicleId: z.string().optional(),
+})
 
 export async function GET() {
   try {
@@ -16,32 +28,25 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { customerName, customerEmail, customerPhone, serviceType, scheduledDate, scheduledTime, notes } = body
-
-    if (!customerName || !customerEmail || !customerPhone || !serviceType || !scheduledDate || !scheduledTime) {
+    const json = await request.json()
+    const parsed = bookingSchema.safeParse(json)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Validation failed', details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
 
     const booking = await bookingDB.create({
-      customerName,
-      customerEmail,
-      customerPhone,
-      serviceType,
-      scheduledDate,
-      scheduledTime,
+      ...parsed.data,
       status: 'pending',
-      notes: notes || '',
     })
 
     // Send SMS confirmation
-    await sendBookingConfirmation(customerPhone, {
-      serviceType,
-      date: scheduledDate,
-      time: scheduledTime,
+    await sendBookingConfirmation(parsed.data.customerPhone, {
+      serviceType: parsed.data.serviceType,
+      date: parsed.data.scheduledDate,
+      time: parsed.data.scheduledTime,
       bookingId: booking.id,
     })
 
@@ -53,4 +58,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

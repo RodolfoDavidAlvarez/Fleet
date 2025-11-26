@@ -1,19 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import { Car, Plus, Edit, Trash2, Search } from 'lucide-react'
-import { vehicleDB } from '@/lib/db'
 import { Vehicle } from '@/types'
-import { getStatusColor, formatDate } from '@/lib/utils'
+import { getStatusColor } from '@/lib/utils'
 
 export default function VehiclesPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    make: '',
+    model: '',
+    year: new Date().getFullYear().toString(),
+    vin: '',
+    licensePlate: '',
+    mileage: '',
+  })
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -27,8 +38,67 @@ export default function VehiclesPage() {
       return
     }
     setUser(parsedUser)
-    setVehicles(vehicleDB.getAll())
+
+    const loadVehicles = async () => {
+      try {
+        setLoading(true)
+        const res = await fetch('/api/vehicles')
+        if (!res.ok) throw new Error('Failed to load vehicles')
+        const data = await res.json()
+        setVehicles(data.vehicles || [])
+        setError(null)
+      } catch (err) {
+        console.error('Error fetching vehicles:', err)
+        setError('Failed to load vehicles. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadVehicles()
   }, [router])
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/vehicles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          make: form.make,
+          model: form.model,
+          year: form.year,
+          vin: form.vin,
+          licensePlate: form.licensePlate,
+          mileage: form.mileage ? Number(form.mileage) : 0,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to create vehicle')
+      }
+
+      setVehicles(prev => [data.vehicle, ...prev])
+      setForm({
+        make: '',
+        model: '',
+        year: new Date().getFullYear().toString(),
+        vin: '',
+        licensePlate: '',
+        mileage: '',
+      })
+      setFormOpen(false)
+    } catch (err) {
+      console.error('Error saving vehicle:', err)
+      setError(err instanceof Error ? err.message : 'Failed to save vehicle')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const filteredVehicles = vehicles.filter(vehicle =>
     vehicle.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -49,11 +119,79 @@ export default function VehiclesPage() {
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-3xl font-bold text-gray-900">Vehicles</h1>
-              <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
+              <button
+                onClick={() => setFormOpen(prev => !prev)}
+                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"
+              >
                 <Plus className="h-5 w-5 mr-2" />
-                Add Vehicle
+                {formOpen ? 'Close Form' : 'Add Vehicle'}
               </button>
             </div>
+
+            {formOpen && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input
+                    required
+                    placeholder="Make"
+                    value={form.make}
+                    onChange={(e) => setForm({ ...form, make: e.target.value })}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  <input
+                    required
+                    placeholder="Model"
+                    value={form.model}
+                    onChange={(e) => setForm({ ...form, model: e.target.value })}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  <input
+                    required
+                    type="number"
+                    placeholder="Year"
+                    value={form.year}
+                    onChange={(e) => setForm({ ...form, year: e.target.value })}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  <input
+                    required
+                    placeholder="VIN"
+                    value={form.vin}
+                    onChange={(e) => setForm({ ...form, vin: e.target.value })}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  <input
+                    required
+                    placeholder="License Plate"
+                    value={form.licensePlate}
+                    onChange={(e) => setForm({ ...form, licensePlate: e.target.value })}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Mileage"
+                    value={form.mileage}
+                    onChange={(e) => setForm({ ...form, mileage: e.target.value })}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  <div className="md:col-span-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                    >
+                      {saving ? 'Saving...' : 'Save Vehicle'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                {error}
+              </div>
+            )}
 
             <div className="mb-6">
               <div className="relative">
@@ -69,67 +207,74 @@ export default function VehiclesPage() {
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Vehicle
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        License Plate
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Mileage
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredVehicles.map((vehicle) => (
-                      <tr key={vehicle.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <Car className="h-5 w-5 text-gray-400 mr-3" />
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {vehicle.year} {vehicle.make} {vehicle.model}
-                              </div>
-                              <div className="text-sm text-gray-500">{vehicle.vin}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {vehicle.licensePlate}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {vehicle.mileage.toLocaleString()} mi
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(vehicle.status)}`}>
-                            {vehicle.status.replace('_', ' ')}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <button className="text-primary-600 hover:text-primary-900">
-                              <Edit className="h-5 w-5" />
-                            </button>
-                            <button className="text-red-600 hover:text-red-900">
-                              <Trash2 className="h-5 w-5" />
-                            </button>
-                          </div>
-                        </td>
+              {loading ? (
+                <div className="p-8 text-center text-gray-600">Loading vehicles...</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Vehicle
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          License Plate
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Mileage
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredVehicles.map((vehicle) => (
+                        <tr key={vehicle.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <Car className="h-5 w-5 text-gray-400 mr-3" />
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {vehicle.year} {vehicle.make} {vehicle.model}
+                                </div>
+                                <div className="text-sm text-gray-500">{vehicle.vin}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {vehicle.licensePlate}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {vehicle.mileage.toLocaleString()} mi
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(vehicle.status)}`}>
+                              {vehicle.status.replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <button className="text-primary-600 hover:text-primary-900">
+                                <Edit className="h-5 w-5" />
+                              </button>
+                              <button className="text-red-600 hover:text-red-900">
+                                <Trash2 className="h-5 w-5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filteredVehicles.length === 0 && !loading && (
+                    <div className="p-6 text-center text-gray-500">No vehicles found.</div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </main>
@@ -137,4 +282,3 @@ export default function VehiclesPage() {
     </div>
   )
 }
-

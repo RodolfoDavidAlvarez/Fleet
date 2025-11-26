@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Wrench, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { Wrench, Clock, CheckCircle } from 'lucide-react'
 
 export default function MechanicDashboard() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [jobs, setJobs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -26,16 +27,23 @@ export default function MechanicDashboard() {
     setUser(parsedUser)
 
     // Fetch jobs from API
-    fetch(`/api/jobs?mechanicId=${parsedUser.id}`)
-      .then(res => res.json())
-      .then(data => {
+    const loadJobs = async () => {
+      try {
+        setLoading(true)
+        const res = await fetch(`/api/jobs?mechanicId=${parsedUser.id}`)
+        if (!res.ok) throw new Error('Failed to load jobs')
+        const data = await res.json()
         setJobs(data.jobs || [])
-        setLoading(false)
-      })
-      .catch(err => {
+        setError(null)
+      } catch (err) {
         console.error('Error fetching jobs:', err)
+        setError('Failed to load jobs. Please try again.')
+      } finally {
         setLoading(false)
-      })
+      }
+    }
+
+    loadJobs()
   }, [router])
 
   if (!user || loading) {
@@ -87,6 +95,12 @@ export default function MechanicDashboard() {
                 <p className="text-sm text-gray-600">Completed</p>
               </div>
             </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                {error}
+              </div>
+            )}
 
             {/* Job Queue */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
@@ -145,4 +159,3 @@ export default function MechanicDashboard() {
     </div>
   )
 }
-

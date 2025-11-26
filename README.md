@@ -126,6 +126,7 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
    TWILIO_ACCOUNT_SID=your_account_sid
    TWILIO_AUTH_TOKEN=your_auth_token
    TWILIO_PHONE_NUMBER=your_twilio_phone_number
+   ENABLE_SMS=false
 
    # JWT Secret
    JWT_SECRET=your_jwt_secret_key
@@ -265,4 +266,3 @@ For technical support or questions:
 ---
 
 **Built with ❤️ for efficient fleet management**
-
