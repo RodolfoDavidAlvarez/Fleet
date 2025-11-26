@@ -39,8 +39,7 @@ export async function POST(request: NextRequest) {
       phone: parsed.data.phone,
       specializations: parsed.data.specializations || [],
       availability: parsed.data.availability || 'available',
-      currentJobs: [],
-      createdAt: new Date().toISOString(),
+      currentJobs: [], // Current jobs are loaded separately from database
     })
 
     return NextResponse.json({ mechanic }, { status: 201 })

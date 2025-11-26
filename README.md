@@ -25,6 +25,7 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
 - **Time Slot Selection**: Real-time availability checking
 - **SMS Confirmations**: Automated SMS confirmations and reminders
 - **Booking Management**: Full CRUD operations for bookings
+- **Consent-first Messaging**: Dedicated SMS compliance page with HELP/STOP guidance
 
 ### SMS Integration (Twilio)
 - **Booking Confirmations**: Automatic SMS when bookings are created
@@ -41,6 +42,7 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
 - **Language**: TypeScript
 - **Database**: Supabase (PostgreSQL)
 - **Styling**: Tailwind CSS
+- **UI**: Modern, mobile-first cards and responsive tables
 - **Icons**: Lucide React
 - **Forms**: React Hook Form + Zod validation
 - **Charts**: Recharts

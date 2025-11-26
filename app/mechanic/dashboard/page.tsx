@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Wrench, Clock, CheckCircle } from 'lucide-react'
+import { Wrench, Clock, CheckCircle, MessageSquare, Smartphone } from 'lucide-react'
 
 export default function MechanicDashboard() {
   const router = useRouter()
@@ -60,35 +60,45 @@ export default function MechanicDashboard() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} />
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">My Dashboard</h1>
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Mechanic</p>
+                <h1 className="text-3xl font-bold text-gray-900">My dashboard</h1>
+                <p className="text-gray-600">Mobile-first cards and quick status updates.</p>
+              </div>
+              <div className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-full text-sm font-semibold text-primary-700">
+                <Smartphone className="h-4 w-4" />
+                Mobile ready
+              </div>
+            </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="card-surface rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="bg-blue-500 p-3 rounded-lg">
-                    <Wrench className="h-6 w-6 text-white" />
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <Wrench className="h-6 w-6 text-blue-700" />
                   </div>
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-1">{myJobs}</h3>
                 <p className="text-sm text-gray-600">My Jobs</p>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+              <div className="card-surface rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="bg-yellow-500 p-3 rounded-lg">
-                    <Clock className="h-6 w-6 text-white" />
+                  <div className="bg-yellow-50 p-3 rounded-lg">
+                    <Clock className="h-6 w-6 text-yellow-700" />
                   </div>
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-1">{inProgress}</h3>
                 <p className="text-sm text-gray-600">In Progress</p>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+              <div className="card-surface rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="bg-green-500 p-3 rounded-lg">
-                    <CheckCircle className="h-6 w-6 text-white" />
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <CheckCircle className="h-6 w-6 text-green-700" />
                   </div>
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-1">{completed}</h3>
@@ -103,7 +113,7 @@ export default function MechanicDashboard() {
             )}
 
             {/* Job Queue */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <div className="card-surface rounded-xl p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">My Job Queue</h2>
               {jobs.length === 0 ? (
                 <div className="text-center py-12">
@@ -146,6 +156,10 @@ export default function MechanicDashboard() {
                         </span>
                         <button className="text-primary-600 hover:text-primary-700 font-medium">
                           View Details
+                        </button>
+                        <button className="text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1">
+                          <MessageSquare className="h-4 w-4" />
+                          SMS
                         </button>
                       </div>
                     </div>

@@ -14,6 +14,7 @@ export default function MechanicsPage() {
   const [mechanics, setMechanics] = useState<Mechanic[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const availableCount = mechanics.filter((m) => m.availability === 'available').length
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -57,13 +58,23 @@ export default function MechanicsPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} />
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h1 className="text-3xl font-bold text-gray-900">Mechanics</h1>
-              <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
-                <Plus className="h-5 w-5 mr-2" />
-                Add Mechanic
-              </button>
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Team</p>
+                <h1 className="text-3xl font-bold text-gray-900">Mechanics</h1>
+                <p className="text-gray-600">Mobile-friendly cards for quick assignment decisions.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="card-surface p-3 rounded-xl text-sm">
+                  <p className="text-xs text-gray-500">Available</p>
+                  <p className="text-lg font-semibold text-gray-900">{availableCount}</p>
+                </div>
+                <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
+                  <Plus className="h-5 w-5 mr-2" />
+                  Add Mechanic
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -79,7 +90,7 @@ export default function MechanicsPage() {
                 {mechanics.map((mechanic) => (
                   <div
                     key={mechanic.id}
-                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                    className="card-surface rounded-xl p-6 hover:shadow-lg transition-shadow"
                   >
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">

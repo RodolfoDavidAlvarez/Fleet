@@ -44,13 +44,14 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="card-surface rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
               <Wrench className="h-8 w-8 text-primary-600" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-            <p className="text-gray-600">Sign in to your account</p>
+            <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Fleet consoles</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back</h1>
+            <p className="text-gray-600">Admin and mechanic dashboards in one place.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -120,6 +121,11 @@ export default function LoginPage() {
             </p>
           </div>
 
+          <div className="mt-4 text-center text-xs text-gray-500">
+            By signing in you agree to our{' '}
+            <Link href="/compliance" className="text-primary-700 font-semibold">SMS compliance policy</Link>.
+          </div>
+
           <div className="mt-6 text-center">
             <Link href="/" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
               ← Back to home
@@ -130,4 +136,3 @@ export default function LoginPage() {
     </div>
   )
 }
-

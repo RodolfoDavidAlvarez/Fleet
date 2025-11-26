@@ -10,7 +10,10 @@ const bookingSchema = z.object({
   serviceType: z.string().min(1, 'serviceType is required'),
   scheduledDate: z.string().min(1, 'scheduledDate is required'),
   scheduledTime: z.string().min(1, 'scheduledTime is required'),
+  vehicleInfo: z.string().optional(),
   notes: z.string().optional(),
+  smsConsent: z.boolean().optional(),
+  complianceAccepted: z.boolean().optional(),
   vehicleId: z.string().optional(),
 })
 
@@ -37,18 +40,32 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const { smsConsent, complianceAccepted, vehicleInfo, notes, ...bookingData } = parsed.data
+
+    const complianceNote = [
+      vehicleInfo ? `Vehicle: ${vehicleInfo}` : null,
+      notes || null,
+      smsConsent !== undefined ? `SMS consent: ${smsConsent ? 'opted-in' : 'declined'}` : null,
+      complianceAccepted ? 'Compliance acknowledged' : null,
+    ]
+      .filter(Boolean)
+      .join('\n')
+
     const booking = await bookingDB.create({
-      ...parsed.data,
+      ...bookingData,
+      notes: complianceNote || undefined,
       status: 'pending',
     })
 
-    // Send SMS confirmation
-    await sendBookingConfirmation(parsed.data.customerPhone, {
-      serviceType: parsed.data.serviceType,
-      date: parsed.data.scheduledDate,
-      time: parsed.data.scheduledTime,
-      bookingId: booking.id,
-    })
+    // Send SMS confirmation if consented
+    if (parsed.data.smsConsent !== false) {
+      await sendBookingConfirmation(parsed.data.customerPhone, {
+        serviceType: parsed.data.serviceType,
+        date: parsed.data.scheduledDate,
+        time: parsed.data.scheduledTime,
+        bookingId: booking.id,
+      })
+    }
 
     return NextResponse.json({ booking }, { status: 201 })
   } catch (error) {

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Wrench, Clock, Calendar } from 'lucide-react'
+import { Wrench, Clock, Calendar, Smartphone } from 'lucide-react'
 import { Job } from '@/types'
 import { getStatusColor, formatDateTime } from '@/lib/utils'
 
@@ -57,8 +57,18 @@ export default function JobsPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} />
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">My Jobs</h1>
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Work orders</p>
+                <h1 className="text-3xl font-bold text-gray-900">My jobs</h1>
+                <p className="text-gray-600">Tap-friendly cards, live statuses, mobile-ready.</p>
+              </div>
+              <div className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-full text-sm font-semibold text-primary-700">
+                <Smartphone className="h-4 w-4" />
+                Mobile ready
+              </div>
+            </div>
 
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
@@ -71,7 +81,7 @@ export default function JobsPage() {
             ) : (
               <div className="space-y-4">
                 {jobs.length === 0 ? (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+                  <div className="card-surface rounded-xl p-12 text-center">
                     <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600">No jobs assigned yet</p>
                   </div>
@@ -79,7 +89,7 @@ export default function JobsPage() {
                   jobs.map((job) => (
                     <div
                       key={job.id}
-                      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                      className="card-surface rounded-xl p-6 hover:shadow-lg transition-shadow"
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center space-x-4">

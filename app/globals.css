@@ -3,32 +3,42 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  color-scheme: light;
+  --surface: #f8fbff;
+  --surface-strong: #eef4ff;
+  --ink: #0f172a;
+  --muted: #475569;
+  --ring: #0ea5e9;
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-strong: rgba(255, 255, 255, 0.86);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  font-family: var(--font-space-grotesk), 'Inter', system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at 20% 20%, #e0f2fe 0, transparent 25%),
+    radial-gradient(circle at 80% 0%, #dbeafe 0, transparent 25%),
+    linear-gradient(135deg, #f8fafc 0%, #e0f2fe 35%, #f8fafc 100%);
+  min-height: 100vh;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .glass {
+    @apply bg-white/80 backdrop-blur-md border border-white/60 shadow-lg;
+  }
+
+  .card-surface {
+    @apply bg-white shadow-sm border border-slate-200 rounded-2xl;
   }
 }
 
@@ -39,22 +49,14 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: #94a3b8;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #64748b;
 }
-
-/* Smooth transitions */
-* {
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-

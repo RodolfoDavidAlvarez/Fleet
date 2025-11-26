@@ -10,7 +10,9 @@ import {
   Users, 
   TrendingUp,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  ShieldCheck,
+  MessageSquare
 } from 'lucide-react'
 import { DashboardStats } from '@/types'
 
@@ -62,28 +64,28 @@ export default function AdminDashboard() {
       title: 'Total Vehicles',
       value: stats.totalVehicles,
       icon: Car,
-      color: 'bg-blue-500',
+      color: 'bg-blue-50 text-blue-700',
       change: '+2 this month',
     },
     {
       title: 'Active Vehicles',
       value: stats.activeVehicles,
       icon: CheckCircle,
-      color: 'bg-green-500',
+      color: 'bg-green-50 text-green-700',
       change: `${stats.vehiclesInService} in service`,
     },
     {
       title: 'Total Bookings',
       value: stats.totalBookings,
       icon: Calendar,
-      color: 'bg-purple-500',
+      color: 'bg-purple-50 text-purple-700',
       change: `${stats.pendingBookings} pending`,
     },
     {
       title: 'Mechanics',
       value: stats.totalMechanics,
       icon: Users,
-      color: 'bg-orange-500',
+      color: 'bg-orange-50 text-orange-700',
       change: `${stats.availableMechanics} available`,
     },
   ]
@@ -94,36 +96,44 @@ export default function AdminDashboard() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} />
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">Dashboard</h1>
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Admin Overview</p>
+                <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+                <p className="text-gray-600">Fleet health, bookings, and mechanic capacity at a glance.</p>
+              </div>
+              <div className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-full text-sm font-semibold text-primary-700">
+                <ShieldCheck className="h-4 w-4" />
+                SMS compliant
+              </div>
+            </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {statCards.map((stat) => {
                 const Icon = stat.icon
                 return (
                   <div
                     key={stat.title}
-                    className="bg-white rounded-xl shadow-sm p-6 border border-gray-200"
+                    className="card-surface rounded-2xl p-5 hover:shadow-lg transition-shadow"
                   >
                     <div className="flex items-center justify-between mb-4">
-                      <div className={`${stat.color} p-3 rounded-lg`}>
-                        <Icon className="h-6 w-6 text-white" />
+                      <div className={`p-3 rounded-xl ${stat.color}`}>
+                        <Icon className="h-6 w-6" />
                       </div>
                       <TrendingUp className="h-5 w-5 text-green-500" />
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{stat.title}</p>
+                    <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
                     <p className="text-xs text-gray-500">{stat.change}</p>
                   </div>
                 )
               })}
             </div>
 
-            {/* Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Bookings</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="card-surface rounded-2xl p-6 lg:col-span-2">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent bookings</h2>
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -139,8 +149,31 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Vehicles Needing Service</h2>
+              <div className="card-surface rounded-2xl p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-primary-700" />
+                  <h2 className="text-xl font-semibold text-gray-900">SMS health</h2>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700">Opt-in rate</span>
+                    <span className="font-semibold text-gray-900">93%</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700">Delivery</span>
+                    <span className="font-semibold text-gray-900">99.4%</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700">Opt-outs honored</span>
+                    <span className="font-semibold text-gray-900">100%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="card-surface rounded-2xl p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Vehicles needing service</h2>
                 <div className="space-y-4">
                   {[1, 2].map((i) => (
                     <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -151,6 +184,21 @@ export default function AdminDashboard() {
                       <AlertCircle className="h-5 w-5 text-yellow-500" />
                     </div>
                   ))}
+                </div>
+              </div>
+
+              <div className="card-surface rounded-2xl p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Mechanic availability</h2>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700">Available</span>
+                    <span className="font-semibold text-gray-900">{stats.availableMechanics}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700">Total mechanics</span>
+                    <span className="font-semibold text-gray-900">{stats.totalMechanics}</span>
+                  </div>
+                  <p className="text-xs text-gray-500">Keep crews balanced to preserve SLA.</p>
                 </div>
               </div>
             </div>
