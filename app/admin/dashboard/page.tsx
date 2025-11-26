@@ -13,13 +13,13 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react'
-import { getDashboardStats } from '@/lib/db'
 import { DashboardStats } from '@/types'
 
 export default function AdminDashboard() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -33,11 +33,26 @@ export default function AdminDashboard() {
       return
     }
     setUser(parsedUser)
-    setStats(getDashboardStats())
+
+    // Fetch stats from API
+    fetch('/api/dashboard/stats')
+      .then(res => res.json())
+      .then(data => {
+        setStats(data.stats)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('Error fetching stats:', err)
+        setLoading(false)
+      })
   }, [router])
 
-  if (!user || !stats) {
+  if (!user || loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
+  }
+
+  if (!stats) {
+    return <div className="flex items-center justify-center h-screen">Error loading dashboard</div>
   }
 
   const statCards = [

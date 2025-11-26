@@ -8,9 +8,9 @@ export async function GET(request: NextRequest) {
 
     let jobs
     if (mechanicId) {
-      jobs = jobDB.getByMechanic(mechanicId)
+      jobs = await jobDB.getByMechanic(mechanicId)
     } else {
-      jobs = jobDB.getAll()
+      jobs = await jobDB.getAll()
     }
 
     return NextResponse.json({ jobs })
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const job = jobDB.create({
+    const job = await jobDB.create({
       bookingId,
       vehicleId,
       mechanicId,

@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import { Wrench, Clock, CheckCircle, AlertCircle } from 'lucide-react'
-import { jobDB } from '@/lib/db'
 
 export default function MechanicDashboard() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [jobs, setJobs] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -24,11 +24,21 @@ export default function MechanicDashboard() {
       return
     }
     setUser(parsedUser)
-    // In a real app, filter by mechanic ID
-    setJobs(jobDB.getAll().slice(0, 5))
+
+    // Fetch jobs from API
+    fetch(`/api/jobs?mechanicId=${parsedUser.id}`)
+      .then(res => res.json())
+      .then(data => {
+        setJobs(data.jobs || [])
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('Error fetching jobs:', err)
+        setLoading(false)
+      })
   }, [router])
 
-  if (!user) {
+  if (!user || loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
   }
 

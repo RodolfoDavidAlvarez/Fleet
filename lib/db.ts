@@ -1,205 +1,574 @@
-// Simple in-memory database for development
-// In production, replace with actual database (PostgreSQL, MongoDB, etc.)
+// Supabase database operations
+// Replaces in-memory storage with Supabase PostgreSQL
 
-import { Vehicle, Booking, Job, Mechanic, User, DashboardStats } from '@/types'
+import { createServerClient } from './supabase'
+import { Vehicle, Booking, Job, Mechanic, User, DashboardStats, ServiceRecord, Part } from '@/types'
 
-// In-memory storage
-let vehicles: Vehicle[] = []
-let bookings: Booking[] = []
-let jobs: Job[] = []
-let mechanics: Mechanic[] = []
-let users: User[] = []
-
-// Initialize with sample data
-export function initializeDB() {
-  if (vehicles.length === 0) {
-    vehicles = [
-      {
-        id: '1',
-        make: 'Ford',
-        model: 'F-150',
-        year: 2022,
-        vin: '1FTFW1E50NFA12345',
-        licensePlate: 'ABC-1234',
-        status: 'active',
-        mileage: 15000,
-        serviceHistory: [],
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        make: 'Chevrolet',
-        model: 'Silverado',
-        year: 2021,
-        vin: '1GCVKREC1MZ123456',
-        licensePlate: 'XYZ-5678',
-        status: 'in_service',
-        mileage: 25000,
-        serviceHistory: [],
-        createdAt: new Date().toISOString(),
-      },
-    ]
+// Helper to convert database row to Vehicle
+function rowToVehicle(row: any): Vehicle {
+  return {
+    id: row.id,
+    make: row.make,
+    model: row.model,
+    year: row.year,
+    vin: row.vin,
+    licensePlate: row.license_plate,
+    status: row.status,
+    lastServiceDate: row.last_service_date,
+    nextServiceDue: row.next_service_due,
+    mileage: row.mileage || 0,
+    serviceHistory: [], // Will be loaded separately if needed
+    createdAt: row.created_at,
   }
+}
 
-  if (mechanics.length === 0) {
-    mechanics = [
-      {
-        id: '1',
-        name: 'John Smith',
-        email: 'john@fleetpro.com',
-        phone: '+1234567890',
-        specializations: ['Engine', 'Transmission'],
-        currentJobs: [],
-        availability: 'available',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        name: 'Sarah Johnson',
-        email: 'sarah@fleetpro.com',
-        phone: '+1234567891',
-        specializations: ['Brakes', 'Suspension'],
-        currentJobs: [],
-        availability: 'available',
-        createdAt: new Date().toISOString(),
-      },
-    ]
+// Helper to convert Vehicle to database row
+function vehicleToRow(vehicle: Partial<Vehicle>): any {
+  return {
+    make: vehicle.make,
+    model: vehicle.model,
+    year: vehicle.year,
+    vin: vehicle.vin,
+    license_plate: vehicle.licensePlate,
+    status: vehicle.status,
+    last_service_date: vehicle.lastServiceDate,
+    next_service_due: vehicle.nextServiceDue,
+    mileage: vehicle.mileage,
   }
+}
 
-  if (users.length === 0) {
-    users = [
-      {
-        id: '1',
-        email: 'admin@fleetpro.com',
-        name: 'Admin User',
-        role: 'admin',
-        createdAt: new Date().toISOString(),
-      },
-    ]
+// Helper to convert database row to Booking
+function rowToBooking(row: any): Booking {
+  return {
+    id: row.id,
+    vehicleId: row.vehicle_id,
+    customerName: row.customer_name,
+    customerEmail: row.customer_email,
+    customerPhone: row.customer_phone,
+    serviceType: row.service_type,
+    scheduledDate: row.scheduled_date,
+    scheduledTime: row.scheduled_time,
+    status: row.status,
+    mechanicId: row.mechanic_id,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+// Helper to convert Booking to database row
+function bookingToRow(booking: Partial<Booking>): any {
+  return {
+    vehicle_id: booking.vehicleId,
+    customer_name: booking.customerName,
+    customer_email: booking.customerEmail,
+    customer_phone: booking.customerPhone,
+    service_type: booking.serviceType,
+    scheduled_date: booking.scheduledDate,
+    scheduled_time: booking.scheduledTime,
+    status: booking.status,
+    mechanic_id: booking.mechanicId,
+    notes: booking.notes,
+  }
+}
+
+// Helper to convert database row to Job
+function rowToJob(row: any, parts: any[] = []): Job {
+  return {
+    id: row.id,
+    bookingId: row.booking_id,
+    vehicleId: row.vehicle_id,
+    mechanicId: row.mechanic_id,
+    status: row.status,
+    priority: row.priority,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    estimatedHours: row.estimated_hours ? parseFloat(row.estimated_hours) : undefined,
+    actualHours: row.actual_hours ? parseFloat(row.actual_hours) : undefined,
+    partsUsed: parts.map(p => ({
+      id: p.id,
+      name: p.name,
+      quantity: p.quantity,
+      cost: parseFloat(p.cost),
+    })),
+    laborCost: row.labor_cost ? parseFloat(row.labor_cost) : undefined,
+    totalCost: row.total_cost ? parseFloat(row.total_cost) : undefined,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+// Helper to convert database row to Mechanic
+function rowToMechanic(row: any): Mechanic {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    specializations: row.specializations || [],
+    currentJobs: [], // Will be loaded separately if needed
+    availability: row.availability,
+    createdAt: row.created_at,
   }
 }
 
 // Vehicle operations
 export const vehicleDB = {
-  getAll: (): Vehicle[] => vehicles,
-  getById: (id: string): Vehicle | undefined => vehicles.find(v => v.id === id),
-  create: (vehicle: Omit<Vehicle, 'id' | 'createdAt'>): Vehicle => {
-    const newVehicle: Vehicle = {
-      ...vehicle,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
+  getAll: async (): Promise<Vehicle[]> => {
+    const supabase = createServerClient()
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching vehicles:', error)
+      return []
     }
-    vehicles.push(newVehicle)
-    return newVehicle
+
+    return (data || []).map(rowToVehicle)
   },
-  update: (id: string, updates: Partial<Vehicle>): Vehicle | null => {
-    const index = vehicles.findIndex(v => v.id === id)
-    if (index === -1) return null
-    vehicles[index] = { ...vehicles[index], ...updates }
-    return vehicles[index]
+
+  getById: async (id: string): Promise<Vehicle | undefined> => {
+    const supabase = createServerClient()
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (error || !data) {
+      return undefined
+    }
+
+    return rowToVehicle(data)
   },
-  delete: (id: string): boolean => {
-    const index = vehicles.findIndex(v => v.id === id)
-    if (index === -1) return false
-    vehicles.splice(index, 1)
-    return true
+
+  create: async (vehicle: Omit<Vehicle, 'id' | 'createdAt'>): Promise<Vehicle> => {
+    const supabase = createServerClient()
+    const { data, error } = await supabase
+      .from('vehicles')
+      .insert(vehicleToRow(vehicle))
+      .select()
+      .single()
+
+    if (error || !data) {
+      throw new Error(error?.message || 'Failed to create vehicle')
+    }
+
+    return rowToVehicle(data)
+  },
+
+  update: async (id: string, updates: Partial<Vehicle>): Promise<Vehicle | null> => {
+    const supabase = createServerClient()
+    const { data, error } = await supabase
+      .from('vehicles')
+      .update(vehicleToRow(updates))
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error || !data) {
+      return null
+    }
+
+    return rowToVehicle(data)
+  },
+
+  delete: async (id: string): Promise<boolean> => {
+    const supabase = createServerClient()
+    const { error } = await supabase
+      .from('vehicles')
+      .delete()
+      .eq('id', id)
+
+    return !error
   },
 }
 
 // Booking operations
 export const bookingDB = {
-  getAll: (): Booking[] => bookings,
-  getById: (id: string): Booking | undefined => bookings.find(b => b.id === id),
-  create: (booking: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>): Booking => {
-    const newBooking: Booking = {
-      ...booking,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  getAll: async (): Promise<Booking[]> => {
+    const supabase = createServerClient()
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching bookings:', error)
+      return []
     }
-    bookings.push(newBooking)
-    return newBooking
+
+    return (data || []).map(rowToBooking)
   },
-  update: (id: string, updates: Partial<Booking>): Booking | null => {
-    const index = bookings.findIndex(b => b.id === id)
-    if (index === -1) return null
-    bookings[index] = {
-      ...bookings[index],
-      ...updates,
-      updatedAt: new Date().toISOString(),
+
+  getById: async (id: string): Promise<Booking | undefined> => {
+    const supabase = createServerClient()
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (error || !data) {
+      return undefined
     }
-    return bookings[index]
+
+    return rowToBooking(data)
   },
-  delete: (id: string): boolean => {
-    const index = bookings.findIndex(b => b.id === id)
-    if (index === -1) return false
-    bookings.splice(index, 1)
-    return true
+
+  create: async (booking: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>): Promise<Booking> => {
+    const supabase = createServerClient()
+    const { data, error } = await supabase
+      .from('bookings')
+      .insert(bookingToRow(booking))
+      .select()
+      .single()
+
+    if (error || !data) {
+      throw new Error(error?.message || 'Failed to create booking')
+    }
+
+    return rowToBooking(data)
+  },
+
+  update: async (id: string, updates: Partial<Booking>): Promise<Booking | null> => {
+    const supabase = createServerClient()
+    const { data, error } = await supabase
+      .from('bookings')
+      .update(bookingToRow(updates))
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error || !data) {
+      return null
+    }
+
+    return rowToBooking(data)
+  },
+
+  delete: async (id: string): Promise<boolean> => {
+    const supabase = createServerClient()
+    const { error } = await supabase
+      .from('bookings')
+      .delete()
+      .eq('id', id)
+
+    return !error
   },
 }
 
 // Job operations
 export const jobDB = {
-  getAll: (): Job[] => jobs,
-  getById: (id: string): Job | undefined => jobs.find(j => j.id === id),
-  getByMechanic: (mechanicId: string): Job[] => jobs.filter(j => j.mechanicId === mechanicId),
-  create: (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): Job => {
-    const newJob: Job = {
-      ...job,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  getAll: async (): Promise<Job[]> => {
+    const supabase = createServerClient()
+    const { data: jobs, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching jobs:', error)
+      return []
     }
-    jobs.push(newJob)
-    return newJob
+
+    // Fetch parts for each job
+    const jobsWithParts = await Promise.all(
+      (jobs || []).map(async (job) => {
+        const { data: parts } = await supabase
+          .from('job_parts')
+          .select('*')
+          .eq('job_id', job.id)
+
+        return rowToJob(job, parts || [])
+      })
+    )
+
+    return jobsWithParts
   },
-  update: (id: string, updates: Partial<Job>): Job | null => {
-    const index = jobs.findIndex(j => j.id === id)
-    if (index === -1) return null
-    jobs[index] = {
-      ...jobs[index],
-      ...updates,
-      updatedAt: new Date().toISOString(),
+
+  getById: async (id: string): Promise<Job | undefined> => {
+    const supabase = createServerClient()
+    const { data: job, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (error || !job) {
+      return undefined
     }
-    return jobs[index]
+
+    const { data: parts } = await supabase
+      .from('job_parts')
+      .select('*')
+      .eq('job_id', id)
+
+    return rowToJob(job, parts || [])
+  },
+
+  getByMechanic: async (mechanicId: string): Promise<Job[]> => {
+    const supabase = createServerClient()
+    const { data: jobs, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('mechanic_id', mechanicId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching jobs by mechanic:', error)
+      return []
+    }
+
+    const jobsWithParts = await Promise.all(
+      (jobs || []).map(async (job) => {
+        const { data: parts } = await supabase
+          .from('job_parts')
+          .select('*')
+          .eq('job_id', job.id)
+
+        return rowToJob(job, parts || [])
+      })
+    )
+
+    return jobsWithParts
+  },
+
+  create: async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): Promise<Job> => {
+    const supabase = createServerClient()
+
+    // Insert job
+    const { data: jobData, error: jobError } = await supabase
+      .from('jobs')
+      .insert({
+        booking_id: job.bookingId,
+        vehicle_id: job.vehicleId,
+        mechanic_id: job.mechanicId,
+        status: job.status,
+        priority: job.priority,
+        start_time: job.startTime,
+        end_time: job.endTime,
+        estimated_hours: job.estimatedHours,
+        actual_hours: job.actualHours,
+        labor_cost: job.laborCost,
+        total_cost: job.totalCost,
+        notes: job.notes,
+      })
+      .select()
+      .single()
+
+    if (jobError || !jobData) {
+      throw new Error(jobError?.message || 'Failed to create job')
+    }
+
+    // Insert parts if any
+    if (job.partsUsed && job.partsUsed.length > 0) {
+      const partsToInsert = job.partsUsed.map(part => ({
+        job_id: jobData.id,
+        name: part.name,
+        quantity: part.quantity,
+        cost: part.cost,
+      }))
+
+      await supabase.from('job_parts').insert(partsToInsert)
+    }
+
+    const { data: parts } = await supabase
+      .from('job_parts')
+      .select('*')
+      .eq('job_id', jobData.id)
+
+    return rowToJob(jobData, parts || [])
+  },
+
+  update: async (id: string, updates: Partial<Job>): Promise<Job | null> => {
+    const supabase = createServerClient()
+
+    const updateData: any = {}
+    if (updates.status !== undefined) updateData.status = updates.status
+    if (updates.priority !== undefined) updateData.priority = updates.priority
+    if (updates.startTime !== undefined) updateData.start_time = updates.startTime
+    if (updates.endTime !== undefined) updateData.end_time = updates.endTime
+    if (updates.estimatedHours !== undefined) updateData.estimated_hours = updates.estimatedHours
+    if (updates.actualHours !== undefined) updateData.actual_hours = updates.actualHours
+    if (updates.laborCost !== undefined) updateData.labor_cost = updates.laborCost
+    if (updates.totalCost !== undefined) updateData.total_cost = updates.totalCost
+    if (updates.notes !== undefined) updateData.notes = updates.notes
+
+    const { data, error } = await supabase
+      .from('jobs')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error || !data) {
+      return null
+    }
+
+    // Update parts if provided
+    if (updates.partsUsed) {
+      // Delete existing parts
+      await supabase.from('job_parts').delete().eq('job_id', id)
+
+      // Insert new parts
+      if (updates.partsUsed.length > 0) {
+        const partsToInsert = updates.partsUsed.map(part => ({
+          job_id: id,
+          name: part.name,
+          quantity: part.quantity,
+          cost: part.cost,
+        }))
+        await supabase.from('job_parts').insert(partsToInsert)
+      }
+    }
+
+    const { data: parts } = await supabase
+      .from('job_parts')
+      .select('*')
+      .eq('job_id', id)
+
+    return rowToJob(data, parts || [])
   },
 }
 
 // Mechanic operations
 export const mechanicDB = {
-  getAll: (): Mechanic[] => mechanics,
-  getById: (id: string): Mechanic | undefined => mechanics.find(m => m.id === id),
-  create: (mechanic: Omit<Mechanic, 'id' | 'createdAt'>): Mechanic => {
-    const newMechanic: Mechanic = {
-      ...mechanic,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
+  getAll: async (): Promise<Mechanic[]> => {
+    const supabase = createServerClient()
+    const { data, error } = await supabase
+      .from('mechanics')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching mechanics:', error)
+      return []
     }
-    mechanics.push(newMechanic)
-    return newMechanic
+
+    // Load current jobs for each mechanic
+    const mechanicsWithJobs = await Promise.all(
+      (data || []).map(async (mechanic) => {
+        const { data: jobs } = await supabase
+          .from('jobs')
+          .select('id')
+          .eq('mechanic_id', mechanic.id)
+          .in('status', ['assigned', 'in_progress'])
+
+        return {
+          ...rowToMechanic(mechanic),
+          currentJobs: (jobs || []).map(j => j.id),
+        }
+      })
+    )
+
+    return mechanicsWithJobs
   },
-  update: (id: string, updates: Partial<Mechanic>): Mechanic | null => {
-    const index = mechanics.findIndex(m => m.id === id)
-    if (index === -1) return null
-    mechanics[index] = { ...mechanics[index], ...updates }
-    return mechanics[index]
+
+  getById: async (id: string): Promise<Mechanic | undefined> => {
+    const supabase = createServerClient()
+    const { data, error } = await supabase
+      .from('mechanics')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (error || !data) {
+      return undefined
+    }
+
+    const { data: jobs } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('mechanic_id', id)
+      .in('status', ['assigned', 'in_progress'])
+
+    return {
+      ...rowToMechanic(data),
+      currentJobs: (jobs || []).map(j => j.id),
+    }
+  },
+
+  create: async (mechanic: Omit<Mechanic, 'id' | 'createdAt'>): Promise<Mechanic> => {
+    const supabase = createServerClient()
+    const { data, error } = await supabase
+      .from('mechanics')
+      .insert({
+        name: mechanic.name,
+        email: mechanic.email,
+        phone: mechanic.phone,
+        specializations: mechanic.specializations,
+        availability: mechanic.availability,
+      })
+      .select()
+      .single()
+
+    if (error || !data) {
+      throw new Error(error?.message || 'Failed to create mechanic')
+    }
+
+    return rowToMechanic(data)
+  },
+
+  update: async (id: string, updates: Partial<Mechanic>): Promise<Mechanic | null> => {
+    const supabase = createServerClient()
+    const updateData: any = {}
+    if (updates.name !== undefined) updateData.name = updates.name
+    if (updates.email !== undefined) updateData.email = updates.email
+    if (updates.phone !== undefined) updateData.phone = updates.phone
+    if (updates.specializations !== undefined) updateData.specializations = updates.specializations
+    if (updates.availability !== undefined) updateData.availability = updates.availability
+
+    const { data, error } = await supabase
+      .from('mechanics')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error || !data) {
+      return null
+    }
+
+    return rowToMechanic(data)
   },
 }
 
 // Dashboard stats
-export function getDashboardStats(): DashboardStats {
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const supabase = createServerClient()
+
+  const [
+    { count: totalVehicles },
+    { count: activeVehicles },
+    { count: vehiclesInService },
+    { count: totalBookings },
+    { count: pendingBookings },
+    { count: completedJobs },
+    { count: totalMechanics },
+    { count: availableMechanics },
+  ] = await Promise.all([
+    supabase.from('vehicles').select('*', { count: 'exact', head: true }),
+    supabase.from('vehicles').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+    supabase.from('vehicles').select('*', { count: 'exact', head: true }).eq('status', 'in_service'),
+    supabase.from('bookings').select('*', { count: 'exact', head: true }),
+    supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('jobs').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+    supabase.from('mechanics').select('*', { count: 'exact', head: true }),
+    supabase.from('mechanics').select('*', { count: 'exact', head: true }).eq('availability', 'available'),
+  ])
+
   return {
-    totalVehicles: vehicles.length,
-    activeVehicles: vehicles.filter(v => v.status === 'active').length,
-    vehiclesInService: vehicles.filter(v => v.status === 'in_service').length,
-    totalBookings: bookings.length,
-    pendingBookings: bookings.filter(b => b.status === 'pending').length,
-    completedJobs: jobs.filter(j => j.status === 'completed').length,
-    totalMechanics: mechanics.length,
-    availableMechanics: mechanics.filter(m => m.availability === 'available').length,
+    totalVehicles: totalVehicles || 0,
+    activeVehicles: activeVehicles || 0,
+    vehiclesInService: vehiclesInService || 0,
+    totalBookings: totalBookings || 0,
+    pendingBookings: pendingBookings || 0,
+    completedJobs: completedJobs || 0,
+    totalMechanics: totalMechanics || 0,
+    availableMechanics: availableMechanics || 0,
   }
 }
-
-// Initialize on import
-initializeDB()
-

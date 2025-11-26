@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const booking = bookingDB.getById(params.id)
+    const booking = await bookingDB.getById(params.id)
     if (!booking) {
       return NextResponse.json(
         { error: 'Booking not found' },
@@ -29,7 +29,17 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json()
-    const booking = bookingDB.update(params.id, body)
+    
+    // Get current booking to compare status
+    const currentBooking = await bookingDB.getById(params.id)
+    if (!currentBooking) {
+      return NextResponse.json(
+        { error: 'Booking not found' },
+        { status: 404 }
+      )
+    }
+
+    const booking = await bookingDB.update(params.id, body)
 
     if (!booking) {
       return NextResponse.json(
@@ -39,7 +49,7 @@ export async function PATCH(
     }
 
     // Send SMS if status changed
-    if (body.status && body.status !== booking.status) {
+    if (body.status && body.status !== currentBooking.status) {
       await sendStatusUpdate(booking.customerPhone, body.status, booking.id)
     }
 
@@ -57,7 +67,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const success = bookingDB.delete(params.id)
+    const success = await bookingDB.delete(params.id)
     if (!success) {
       return NextResponse.json(
         { error: 'Booking not found' },

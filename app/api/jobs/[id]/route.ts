@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const job = jobDB.getById(params.id)
+    const job = await jobDB.getById(params.id)
     if (!job) {
       return NextResponse.json(
         { error: 'Job not found' },
@@ -30,7 +30,7 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json()
-    const job = jobDB.update(params.id, body)
+    const job = await jobDB.update(params.id, body)
 
     if (!job) {
       return NextResponse.json(
@@ -41,7 +41,7 @@ export async function PATCH(
 
     // Send SMS if job is completed
     if (body.status === 'completed' && job.totalCost) {
-      const booking = bookingDB.getById(job.bookingId)
+      const booking = await bookingDB.getById(job.bookingId)
       if (booking) {
         await sendJobCompletion(booking.customerPhone, {
           serviceType: booking.serviceType,

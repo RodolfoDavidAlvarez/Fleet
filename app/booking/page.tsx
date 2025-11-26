@@ -4,8 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Calendar, Clock, User, Mail, Phone, Car, CheckCircle, ArrowLeft, Wrench } from 'lucide-react'
-import { bookingDB } from '@/lib/db'
-import { sendBookingConfirmation } from '@/lib/twilio'
 
 const serviceTypes = [
   'Oil Change',
@@ -49,27 +47,35 @@ export default function BookingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    const booking = bookingDB.create({
-      customerName: formData.customerName,
-      customerEmail: formData.customerEmail,
-      customerPhone: formData.customerPhone,
-      serviceType: formData.serviceType,
-      scheduledDate: formData.scheduledDate,
-      scheduledTime: formData.scheduledTime,
-      status: 'pending',
-      notes: formData.notes,
-    })
+    try {
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerName: formData.customerName,
+          customerEmail: formData.customerEmail,
+          customerPhone: formData.customerPhone,
+          serviceType: formData.serviceType,
+          scheduledDate: formData.scheduledDate,
+          scheduledTime: formData.scheduledTime,
+          notes: formData.notes,
+        }),
+      })
 
-    setBookingId(booking.id)
-    setSubmitted(true)
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create booking')
+      }
 
-    // Send SMS confirmation
-    await sendBookingConfirmation(formData.customerPhone, {
-      serviceType: formData.serviceType,
-      date: formData.scheduledDate,
-      time: formData.scheduledTime,
-      bookingId: booking.id,
-    })
+      setBookingId(data.booking.id)
+      setSubmitted(true)
+    } catch (error) {
+      console.error('Error creating booking:', error)
+      alert('Failed to create booking. Please try again.')
+    }
   }
 
   if (submitted) {

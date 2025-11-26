@@ -4,7 +4,7 @@ import { sendBookingConfirmation } from '@/lib/twilio'
 
 export async function GET() {
   try {
-    const bookings = bookingDB.getAll()
+    const bookings = await bookingDB.getAll()
     return NextResponse.json({ bookings })
   } catch (error) {
     return NextResponse.json(
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const booking = bookingDB.create({
+    const booking = await bookingDB.create({
       customerName,
       customerEmail,
       customerPhone,

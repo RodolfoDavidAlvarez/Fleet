@@ -3,7 +3,7 @@ import { vehicleDB } from '@/lib/db'
 
 export async function GET() {
   try {
-    const vehicles = vehicleDB.getAll()
+    const vehicles = await vehicleDB.getAll()
     return NextResponse.json({ vehicles })
   } catch (error) {
     return NextResponse.json(
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const vehicle = vehicleDB.create({
+    const vehicle = await vehicleDB.create({
       make,
       model,
       year: parseInt(year),

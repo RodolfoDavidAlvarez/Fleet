@@ -28,14 +28,18 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
 
 ### SMS Integration (Twilio)
 - **Booking Confirmations**: Automatic SMS when bookings are created
-- **Reminders**: SMS reminders before scheduled appointments
 - **Status Updates**: Notify customers of job status changes
-- **Two-Way Communication**: Receive and respond to customer messages
+- **Job Completion**: SMS notifications when service is completed
+- **Reminders**: SMS reminders before scheduled appointments (coming soon)
+- **Two-Way Communication**: Receive and respond to customer messages (coming soon)
+
+📖 **See [TWILIO_SETUP.md](./TWILIO_SETUP.md) for detailed setup instructions**
 
 ## 📋 Tech Stack
 
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
+- **Database**: Supabase (PostgreSQL)
 - **Styling**: Tailwind CSS
 - **Icons**: Lucide React
 - **Forms**: React Hook Form + Zod validation
@@ -89,6 +93,7 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
 ### Prerequisites
 - Node.js 18+ 
 - npm or yarn
+- Supabase account (for database)
 - Twilio account (for SMS features)
 
 ### Installation
@@ -103,9 +108,20 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
    npm install
    ```
 
-3. **Set up environment variables**
+3. **Set up Supabase database**
+   - Go to your Supabase project dashboard: https://kxcixjiafdohbpwijfmd.supabase.co
+   - Navigate to the SQL Editor
+   - Run the SQL script from `supabase/schema.sql` to create all necessary tables
+   - This will create tables for: users, vehicles, bookings, jobs, mechanics, service_records, and parts
+
+4. **Set up environment variables**
    Create a `.env.local` file:
    ```env
+   # Supabase Configuration
+   NEXT_PUBLIC_SUPABASE_URL=https://kxcixjiafdohbpwijfmd.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+
    # Twilio Configuration
    TWILIO_ACCOUNT_SID=your_account_sid
    TWILIO_AUTH_TOKEN=your_auth_token
@@ -117,13 +133,18 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
    # App Configuration
    NEXTAUTH_URL=http://localhost:3000
    ```
+   
+   **Getting Supabase Keys:**
+   - Go to your Supabase project settings
+   - Under "API Settings", find your "anon/public" key (already provided)
+   - For production, you'll also need the "service_role" key (keep this secret!)
 
-4. **Run the development server**
+5. **Run the development server**
    ```bash
    npm run dev
    ```
 
-5. **Open your browser**
+6. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
 ## 📱 User Roles
@@ -152,6 +173,21 @@ The system uses JWT-based authentication:
 - Role-based access control
 - Protected API routes
 - Session management
+
+## 🗄️ Database Setup
+
+This project uses **Supabase** (PostgreSQL) as the database. The schema includes:
+
+- **users**: System users (admin, mechanic, customer)
+- **vehicles**: Fleet vehicles with status and maintenance info
+- **bookings**: Service appointments and customer bookings
+- **jobs**: Work orders assigned to mechanics
+- **mechanics**: Mechanic profiles and availability
+- **service_records**: Vehicle service history
+- **parts**: Parts used in services and jobs
+- **job_parts**: Parts inventory for jobs
+
+All tables include proper foreign key relationships, indexes for performance, and automatic timestamp updates.
 
 ## 📊 Database Schema
 
