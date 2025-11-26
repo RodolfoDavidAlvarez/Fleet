@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('admin', 'mechanic', 'customer')),
+  role TEXT NOT NULL CHECK (role IN ('admin', 'mechanic', 'customer', 'driver')),
   phone TEXT,
   password_hash TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -27,8 +27,89 @@ CREATE TABLE IF NOT EXISTS vehicles (
   last_service_date DATE,
   next_service_due DATE,
   mileage INTEGER DEFAULT 0,
+  driver_id UUID REFERENCES users(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Many-to-many driver mapping (optional if multiple drivers per vehicle)
+CREATE TABLE IF NOT EXISTS vehicle_drivers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  vehicle_id UUID REFERENCES vehicles(id) ON DELETE CASCADE,
+  driver_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  is_primary BOOLEAN DEFAULT true,
+  assigned_date DATE DEFAULT CURRENT_DATE,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(vehicle_id, driver_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vehicles_driver_id ON vehicles(driver_id);
+CREATE INDEX IF NOT EXISTS idx_vehicle_drivers_vehicle_id ON vehicle_drivers(vehicle_id);
+CREATE INDEX IF NOT EXISTS idx_vehicle_drivers_driver_id ON vehicle_drivers(driver_id);
+CREATE INDEX IF NOT EXISTS idx_vehicle_drivers_primary ON vehicle_drivers(vehicle_id, is_primary) WHERE is_primary = true;
+
+CREATE OR REPLACE VIEW vehicles_with_drivers AS
+SELECT 
+  v.id,
+  v.make,
+  v.model,
+  v.year,
+  v.vin,
+  v.license_plate,
+  v.status,
+  v.mileage,
+  v.created_at,
+  v.last_service_date,
+  v.next_service_due,
+  v.driver_id,
+  u.name as driver_name,
+  u.phone as driver_phone,
+  u.email as driver_email,
+  vd.is_primary,
+  vd.assigned_date
+FROM vehicles v
+LEFT JOIN vehicle_drivers vd ON v.id = vd.vehicle_id AND vd.is_primary = true
+LEFT JOIN users u ON vd.driver_id = u.id;
+
+CREATE OR REPLACE FUNCTION get_vehicle_driver_phone(vehicle_uuid UUID)
+RETURNS TEXT AS $$
+  SELECT u.phone
+  FROM vehicle_drivers vd
+  JOIN users u ON vd.driver_id = u.id
+  WHERE vd.vehicle_id = vehicle_uuid
+    AND vd.is_primary = true
+  LIMIT 1;
+$$ LANGUAGE SQL;
+
+CREATE OR REPLACE FUNCTION assign_driver_to_vehicle(
+  p_vehicle_id UUID,
+  p_driver_id UUID,
+  p_is_primary BOOLEAN DEFAULT true
+)
+RETURNS UUID AS $$
+DECLARE
+  v_assignment_id UUID;
+BEGIN
+  IF p_is_primary THEN
+    UPDATE vehicle_drivers 
+    SET is_primary = false 
+    WHERE vehicle_id = p_vehicle_id;
+  END IF;
+  
+  INSERT INTO vehicle_drivers (vehicle_id, driver_id, is_primary)
+  VALUES (p_vehicle_id, p_driver_id, p_is_primary)
+  ON CONFLICT (vehicle_id, driver_id) 
+  DO UPDATE SET is_primary = p_is_primary, assigned_date = CURRENT_DATE
+  RETURNING id INTO v_assignment_id;
+  
+  RETURN v_assignment_id;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON TABLE vehicle_drivers IS 'Junction table for many-to-many relationship between vehicles and drivers';
+COMMENT ON COLUMN vehicle_drivers.is_primary IS 'True if this is the primary driver for the vehicle';
+COMMENT ON FUNCTION get_vehicle_driver_phone IS 'Returns the phone number of the primary driver for a vehicle';
+COMMENT ON FUNCTION assign_driver_to_vehicle IS 'Assigns a driver to a vehicle, optionally as primary driver';
 
 -- Service Records table (for vehicle service history)
 CREATE TABLE IF NOT EXISTS service_records (
@@ -76,6 +157,9 @@ CREATE TABLE IF NOT EXISTS bookings (
   scheduled_time TIME NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'in_progress', 'completed', 'cancelled')) DEFAULT 'pending',
   mechanic_id UUID REFERENCES mechanics(id),
+  vehicle_info TEXT,
+  sms_consent BOOLEAN DEFAULT true,
+  compliance_accepted BOOLEAN DEFAULT false,
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -156,4 +240,3 @@ INSERT INTO vehicles (id, make, model, year, vin, license_plate, status, mileage
   ('00000000-0000-0000-0000-000000000004', 'Ford', 'F-150', 2022, '1FTFW1E50NFA12345', 'ABC-1234', 'active', 15000),
   ('00000000-0000-0000-0000-000000000005', 'Chevrolet', 'Silverado', 2021, '1GCVKREC1MZ123456', 'XYZ-5678', 'in_service', 25000);
 */
-

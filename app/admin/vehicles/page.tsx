@@ -4,20 +4,23 @@ import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Car, Plus, Edit, Trash2, Search, Info } from 'lucide-react'
-import { Vehicle } from '@/types'
+import { Car, Plus, Edit, Trash2, Search, Info, UserPlus } from 'lucide-react'
+import { Vehicle, User } from '@/types'
 import { getStatusColor } from '@/lib/utils'
 
 export default function VehiclesPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [drivers, setDrivers] = useState<User[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
+  const [driverSaving, setDriverSaving] = useState(false)
+  const [driverForm, setDriverForm] = useState({ name: '', email: '', phone: '' })
   const [form, setForm] = useState({
     make: '',
     model: '',
@@ -25,6 +28,7 @@ export default function VehiclesPage() {
     vin: '',
     licensePlate: '',
     mileage: '',
+    driverId: '',
   })
 
   useEffect(() => {
@@ -40,24 +44,36 @@ export default function VehiclesPage() {
     }
     setUser(parsedUser)
 
-    const loadVehicles = async () => {
-      try {
-        setLoading(true)
-        const res = await fetch('/api/vehicles')
-        if (!res.ok) throw new Error('Failed to load vehicles')
-        const data = await res.json()
-        setVehicles(data.vehicles || [])
-        setError(null)
-      } catch (err) {
-        console.error('Error fetching vehicles:', err)
-        setError('Failed to load vehicles. Please try again.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
     loadVehicles()
+    loadDrivers()
   }, [router])
+
+  const loadVehicles = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/vehicles')
+      if (!res.ok) throw new Error('Failed to load vehicles')
+      const data = await res.json()
+      setVehicles(data.vehicles || [])
+      setError(null)
+    } catch (err) {
+      console.error('Error fetching vehicles:', err)
+      setError('Failed to load vehicles. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadDrivers = async () => {
+    try {
+      const res = await fetch('/api/drivers')
+      if (!res.ok) throw new Error('Failed to load drivers')
+      const data = await res.json()
+      setDrivers(data.drivers || [])
+    } catch (err) {
+      console.error('Error fetching drivers:', err)
+    }
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -75,6 +91,7 @@ export default function VehiclesPage() {
           vin: form.vin,
           licensePlate: form.licensePlate,
           mileage: form.mileage ? Number(form.mileage) : 0,
+          driverId: form.driverId || undefined,
         }),
       })
 
@@ -91,6 +108,7 @@ export default function VehiclesPage() {
         vin: '',
         licensePlate: '',
         mileage: '',
+        driverId: '',
       })
       setFormOpen(false)
     } catch (err) {
@@ -98,6 +116,29 @@ export default function VehiclesPage() {
       setError(err instanceof Error ? err.message : 'Failed to save vehicle')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleCreateDriver = async (e: FormEvent) => {
+    e.preventDefault()
+    setDriverSaving(true)
+    try {
+      const res = await fetch('/api/drivers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(driverForm),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to create driver')
+      }
+      setDrivers((prev) => [data.driver, ...prev])
+      setDriverForm({ name: '', email: '', phone: '' })
+    } catch (err) {
+      console.error('Error creating driver:', err)
+      setError(err instanceof Error ? err.message : 'Failed to create driver')
+    } finally {
+      setDriverSaving(false)
     }
   }
 
@@ -222,6 +263,21 @@ export default function VehiclesPage() {
                       className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
                     />
                   </label>
+                  <label className="space-y-2 text-sm text-gray-700">
+                    Driver
+                    <select
+                      value={form.driverId}
+                      onChange={(e) => setForm({ ...form, driverId: e.target.value })}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                    >
+                      <option value="">Unassigned</option>
+                      {drivers.map((driver) => (
+                        <option key={driver.id} value={driver.id}>
+                          {driver.name} • {driver.phone || driver.email}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <div className="md:col-span-2 flex justify-end">
                     <button
                       type="submit"
@@ -229,6 +285,44 @@ export default function VehiclesPage() {
                       className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
                     >
                       {saving ? 'Saving...' : 'Save Vehicle'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+              <div className="card-surface p-4 rounded-2xl mt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <UserPlus className="h-5 w-5 text-primary-700" />
+                  <p className="text-sm font-semibold text-gray-900">Quick add driver</p>
+                </div>
+                <form onSubmit={handleCreateDriver} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <input
+                    required
+                    placeholder="Name"
+                    value={driverForm.name}
+                    onChange={(e) => setDriverForm({ ...driverForm, name: e.target.value })}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  <input
+                    required
+                    type="email"
+                    placeholder="Email"
+                    value={driverForm.email}
+                    onChange={(e) => setDriverForm({ ...driverForm, email: e.target.value })}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  <input
+                    placeholder="Phone"
+                    value={driverForm.phone}
+                    onChange={(e) => setDriverForm({ ...driverForm, phone: e.target.value })}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  <div className="md:col-span-3 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={driverSaving}
+                      className="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                    >
+                      {driverSaving ? 'Saving...' : 'Save driver'}
                     </button>
                   </div>
                 </form>
@@ -272,16 +366,19 @@ export default function VehiclesPage() {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Mileage
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredVehicles.map((vehicle) => (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Driver
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredVehicles.map((vehicle) => (
                           <tr
                             key={vehicle.id}
                             className="hover:bg-gray-50 cursor-pointer"
@@ -304,16 +401,26 @@ export default function VehiclesPage() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {vehicle.mileage.toLocaleString()} mi
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(vehicle.status)}`}>
-                                {vehicle.status.replace('_', ' ')}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button className="text-primary-600 hover:text-primary-900">
-                                  <Edit className="h-5 w-5" />
-                                </button>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(vehicle.status)}`}>
+                              {vehicle.status.replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {vehicle.driverName ? (
+                              <div>
+                                <p className="font-semibold">{vehicle.driverName}</p>
+                                <p className="text-xs text-gray-500">{vehicle.driverPhone || vehicle.driverEmail}</p>
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 text-xs">Unassigned</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <button className="text-primary-600 hover:text-primary-900">
+                                <Edit className="h-5 w-5" />
+                              </button>
                                 <button className="text-red-600 hover:text-red-900">
                                   <Trash2 className="h-5 w-5" />
                                 </button>
@@ -342,6 +449,9 @@ export default function VehiclesPage() {
                         </div>
                         <p className="text-xs text-gray-500 mt-1">VIN: {vehicle.vin}</p>
                         <p className="text-xs text-gray-500">Mileage: {vehicle.mileage.toLocaleString()} mi</p>
+                        <p className="text-xs text-gray-500">
+                          Driver: {vehicle.driverName || 'Unassigned'}
+                        </p>
                       </button>
                     ))}
                     {filteredVehicles.length === 0 && !loading && (
@@ -375,6 +485,7 @@ export default function VehiclesPage() {
                     </span></div>
                     <div>Last service: <span className="font-semibold text-gray-900">{selectedVehicle.lastServiceDate || 'N/A'}</span></div>
                     <div>Next due: <span className="font-semibold text-gray-900">{selectedVehicle.nextServiceDue || 'N/A'}</span></div>
+                    <div className="col-span-2">Driver: <span className="font-semibold text-gray-900">{selectedVehicle.driverName || 'Unassigned'}</span></div>
                   </div>
                 </div>
                 <div className="md:w-64 space-y-3 bg-gray-50 border border-gray-200 rounded-xl p-4">

@@ -13,6 +13,7 @@ This guide will help you set up Twilio SMS integration for the Fleet Management 
 1. **Log in to Twilio Console**: https://console.twilio.com/
 
 2. **Find Your Account SID and Auth Token**:
+
    - Go to the Dashboard
    - Your Account SID and Auth Token are displayed on the main dashboard
    - Click "Show" to reveal your Auth Token
@@ -33,29 +34,34 @@ TWILIO_PHONE_NUMBER=+1234567890
 ENABLE_SMS=false
 ```
 
-**Important**: 
+**Important**:
+
 - The phone number must include the country code (e.g., +1 for US)
 - Never commit your `.env.local` file to git
 - Keep your Auth Token secret
- - Set `ENABLE_SMS=true` in non-production only after credentials are configured
+- Set `ENABLE_SMS=true` in non-production only after credentials are configured
 
 ## 📱 SMS Features
 
 The system automatically sends SMS notifications for:
 
 ### 1. Booking Confirmation
+
 - **When**: Immediately after a customer creates a booking
 - **Message**: Confirms booking details, date, time, and booking ID
 
 ### 2. Status Updates
+
 - **When**: When a booking status changes (confirmed, in progress, completed, cancelled)
 - **Message**: Notifies customer of status change with booking ID
 
 ### 3. Job Completion
+
 - **When**: When a mechanic marks a job as completed
 - **Message**: Service completion notification with total cost
 
 ### 4. Booking Reminders (Future Feature)
+
 - **When**: 24 hours before scheduled appointment
 - **Message**: Reminder with appointment details
 
@@ -74,7 +80,8 @@ curl -X POST http://localhost:3000/api/sms/send \
   }'
 ```
 
-**Note**: 
+**Note**:
+
 - In trial mode, you can only send SMS to verified phone numbers
 - Add verified numbers in Twilio Console → Phone Numbers → Verified Caller IDs
 
@@ -88,21 +95,25 @@ curl -X POST http://localhost:3000/api/sms/send \
 ## 🔒 Production Considerations
 
 ### 1. Upgrade from Trial
+
 - Twilio trial accounts have limitations
 - Upgrade to a paid account for production use
 - Set up billing and payment method
 
 ### 2. Phone Number Formatting
+
 - Always format phone numbers with country code
 - Use E.164 format: `+[country code][number]`
 - Example: `+14155552671` for US number
 
 ### 3. Error Handling
+
 - The system logs errors if SMS fails to send
 - Check server logs for Twilio errors
 - Failed SMS won't break the booking flow
 
 ### 4. Rate Limits
+
 - Twilio has rate limits based on your account type
 - Monitor usage in Twilio Console
 - Implement retry logic for production
@@ -110,6 +121,7 @@ curl -X POST http://localhost:3000/api/sms/send \
 ## 📊 Monitoring
 
 Monitor your SMS usage in Twilio Console:
+
 - **Logs**: View all sent messages
 - **Usage**: Track SMS count and costs
 - **Errors**: Check for delivery failures
@@ -119,6 +131,7 @@ Monitor your SMS usage in Twilio Console:
 ### SMS Not Sending
 
 1. **Check Environment Variables**:
+
    ```bash
    # Verify variables are set
    echo $TWILIO_ACCOUNT_SID
@@ -127,11 +140,13 @@ Monitor your SMS usage in Twilio Console:
    ```
 
 2. **Check Twilio Console**:
+
    - Verify account is active
    - Check for account suspensions
    - Review error logs
 
 3. **Verify Phone Number Format**:
+
    - Must include country code
    - No spaces or dashes
    - Example: `+1234567890` ✅

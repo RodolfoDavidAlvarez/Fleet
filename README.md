@@ -5,14 +5,17 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
 ## 🚀 Features
 
 ### Admin Dashboard
+
 - **Fleet Overview**: Complete view of all vehicles with status, maintenance schedules, and history
 - **Vehicle Management**: Add, edit, and manage fleet vehicles
+- **Driver Assignment**: Attach primary drivers to vehicles and manage assignments
 - **Booking Management**: View and manage all service bookings
 - **Mechanic Management**: Assign mechanics to jobs and track their workload
 - **Analytics & Reports**: Dashboard with key metrics, charts, and insights
 - **SMS Integration**: Send automated SMS notifications via Twilio
 
 ### Mechanic Dashboard
+
 - **Job Queue**: View assigned jobs and their priorities
 - **Job Details**: Complete job information with vehicle history
 - **Status Updates**: Update job status and add notes
@@ -20,6 +23,7 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
 - **Parts & Inventory**: Track parts needed and used
 
 ### Booking System
+
 - **Public Booking Form**: Beautiful, user-friendly booking interface
 - **Service Selection**: Choose from available services
 - **Time Slot Selection**: Real-time availability checking
@@ -28,6 +32,7 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
 - **Consent-first Messaging**: Dedicated SMS compliance page with HELP/STOP guidance
 
 ### SMS Integration (Twilio)
+
 - **Booking Confirmations**: Automatic SMS when bookings are created
 - **Status Updates**: Notify customers of job status changes
 - **Job Completion**: SMS notifications when service is completed
@@ -93,7 +98,8 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
 ## 🚦 Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - npm or yarn
 - Supabase account (for database)
 - Twilio account (for SMS features)
@@ -101,16 +107,19 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    cd "Fleet Magement System APP"
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up Supabase database**
+
    - Go to your Supabase project dashboard: https://kxcixjiafdohbpwijfmd.supabase.co
    - Navigate to the SQL Editor
    - Run the SQL script from `supabase/schema.sql` to create all necessary tables
@@ -118,6 +127,7 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
 
 4. **Set up environment variables**
    Create a `.env.local` file:
+
    ```env
    # Supabase Configuration
    NEXT_PUBLIC_SUPABASE_URL=https://kxcixjiafdohbpwijfmd.supabase.co
@@ -136,13 +146,15 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
    # App Configuration
    NEXTAUTH_URL=http://localhost:3000
    ```
-   
+
    **Getting Supabase Keys:**
+
    - Go to your Supabase project settings
    - Under "API Settings", find your "anon/public" key (already provided)
    - For production, you'll also need the "service_role" key (keep this secret!)
 
 5. **Run the development server**
+
    ```bash
    npm run dev
    ```
@@ -153,18 +165,21 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
 ## 📱 User Roles
 
 ### Admin
+
 - Full system access
 - Manage vehicles, bookings, and mechanics
 - View analytics and reports
 - Configure system settings
 
 ### Mechanic
+
 - View assigned jobs
 - Update job status
 - Add job notes and parts used
 - View schedule
 
 ### Customer
+
 - Book service appointments
 - Receive SMS notifications
 - View booking status
@@ -172,6 +187,7 @@ A modern, full-featured fleet management system built with Next.js, TypeScript, 
 ## 🔐 Authentication
 
 The system uses JWT-based authentication:
+
 - Secure login/logout
 - Role-based access control
 - Protected API routes
@@ -195,6 +211,7 @@ All tables include proper foreign key relationships, indexes for performance, an
 ## 📊 Database Schema
 
 ### Vehicles
+
 - Vehicle ID, Make, Model, Year
 - VIN, License Plate
 - Status (Active, In Service, Retired)
@@ -202,6 +219,7 @@ All tables include proper foreign key relationships, indexes for performance, an
 - Mileage, Service History
 
 ### Bookings
+
 - Booking ID, Vehicle ID
 - Customer Information
 - Service Type, Date/Time
@@ -210,12 +228,14 @@ All tables include proper foreign key relationships, indexes for performance, an
 - Notes
 
 ### Mechanics
+
 - Mechanic ID, Name, Email
 - Specializations
 - Current Jobs
 - Availability
 
 ### Jobs
+
 - Job ID, Booking ID
 - Vehicle ID, Mechanic ID
 - Status, Priority
@@ -261,6 +281,7 @@ Proprietary - All rights reserved
 ## 🆘 Support
 
 For technical support or questions:
+
 - Check the documentation
 - Review the code comments
 - Contact the development team

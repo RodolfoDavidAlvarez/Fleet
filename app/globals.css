@@ -11,6 +11,8 @@
   --ring: #0ea5e9;
   --glass: rgba(255, 255, 255, 0.72);
   --glass-strong: rgba(255, 255, 255, 0.86);
+  --border: #e2e8f0;
+  --panel: #ffffff;
 }
 
 * {
@@ -22,9 +24,10 @@
 body {
   font-family: var(--font-space-grotesk), 'Inter', system-ui, -apple-system, sans-serif;
   color: var(--ink);
-  background: radial-gradient(circle at 20% 20%, #e0f2fe 0, transparent 25%),
-    radial-gradient(circle at 80% 0%, #dbeafe 0, transparent 25%),
-    linear-gradient(135deg, #f8fafc 0%, #e0f2fe 35%, #f8fafc 100%);
+  background:
+    radial-gradient(circle at 25% 20%, rgba(14, 165, 233, 0.12), transparent 28%),
+    radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.12), transparent 26%),
+    linear-gradient(135deg, #f8fafc 0%, #e4f2ff 36%, #f9fbff 100%);
   min-height: 100vh;
 }
 
@@ -34,11 +37,26 @@ body {
   }
 
   .glass {
-    @apply bg-white/80 backdrop-blur-md border border-white/60 shadow-lg;
+    @apply bg-white/85 backdrop-blur-xl border border-white/70 shadow-lg;
   }
 
   .card-surface {
     @apply bg-white shadow-sm border border-slate-200 rounded-2xl;
+  }
+
+  .tile {
+    @apply rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm backdrop-blur;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-2 px-3 py-1 text-xs font-semibold rounded-full border border-slate-200 bg-white text-slate-700;
+  }
+
+  .soft-grid {
+    background-image:
+      linear-gradient(to right, rgba(226, 232, 240, 0.5) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(226, 232, 240, 0.5) 1px, transparent 1px);
+    background-size: 56px 56px;
   }
 }
 

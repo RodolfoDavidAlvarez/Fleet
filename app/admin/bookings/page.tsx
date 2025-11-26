@@ -113,7 +113,7 @@ export default function BookingsPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
               <div className="card-surface rounded-2xl p-4">
                 <p className="text-xs text-gray-500">Pending</p>
                 <p className="text-xl font-semibold text-gray-900">{pendingCount}</p>

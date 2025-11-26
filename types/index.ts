@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'mechanic' | 'customer'
+export type UserRole = 'admin' | 'mechanic' | 'customer' | 'driver'
 
 export interface User {
   id: string
@@ -21,6 +21,11 @@ export interface Vehicle {
   nextServiceDue?: string
   mileage: number
   serviceHistory: ServiceRecord[]
+  driverId?: string
+  driverName?: string
+  driverPhone?: string
+  driverEmail?: string
+  driverAssignedDate?: string
   createdAt: string
 }
 
@@ -53,6 +58,10 @@ export interface Booking {
   scheduledTime: string
   status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
   mechanicId?: string
+  vehicleId?: string
+  vehicleInfo?: string
+  smsConsent?: boolean
+  complianceAccepted?: boolean
   notes?: string
   createdAt: string
   updatedAt: string
@@ -98,4 +107,3 @@ export interface DashboardStats {
   totalMechanics: number
   availableMechanics: number
 }
-
