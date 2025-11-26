@@ -983,3 +983,67 @@ body {
     transform: none;
   }
 }
+
+/* Pill/Badge component styles */
+.pill {
+  @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border;
+  background: var(--surface);
+  color: var(--text-secondary);
+  border-color: var(--border);
+  transition: all var(--transition-fast);
+}
+
+.pill:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-focus);
+}
+
+/* Performance optimizations for smooth animations */
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* Hardware acceleration for smooth performance */
+.gpu-accelerated {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Optimized scroll behavior */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Image loading optimization */
+.fade-in-image {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.fade-in-image.loaded {
+  opacity: 1;
+}
+
+/* Shimmer animation for skeletons */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}

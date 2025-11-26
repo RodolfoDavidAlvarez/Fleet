@@ -135,6 +135,39 @@ export default function RepairsPage() {
     return requests.filter((r) => r.status === filter);
   }, [filter, requests]);
 
+  const statusCounts = useMemo(() => {
+    const counts = {
+      pending: 0,
+      confirmed: 0,
+      completed: 0,
+      submitted: 0,
+      waiting_booking: 0,
+      scheduled: 0,
+      in_progress: 0,
+      triaged: 0,
+      cancelled: 0
+    };
+    
+    requests.forEach((req) => {
+      if (req.status === 'submitted' || req.status === 'triaged') {
+        counts.pending++;
+      } else if (req.status === 'waiting_booking' || req.status === 'scheduled') {
+        counts.confirmed++;
+      } else if (req.status === 'in_progress') {
+        counts.confirmed++;
+      } else if (req.status === 'completed') {
+        counts.completed++;
+      }
+      
+      // Also track individual status counts
+      if (counts.hasOwnProperty(req.status)) {
+        counts[req.status as keyof typeof counts]++;
+      }
+    });
+    
+    return counts;
+  }, [requests]);
+
   if (!user) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
@@ -148,31 +181,53 @@ export default function RepairsPage() {
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Repairs</p>
-                <h1 className="text-3xl font-bold text-gray-900">Repair requests</h1>
-                <p className="text-gray-600">Mobile cards with AI tags, photos, and quick booking links.</p>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold text-gray-900">Service requests</h1>
+                  <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm font-medium">{requests.length} total</span>
+                </div>
+                <p className="text-gray-600">Compact tables with actions always in view.</p>
               </div>
               <div className="flex items-center gap-3">
-                <a
-                  href="/repair"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-primary flex items-center gap-2"
-                >
-                  <Wrench className="h-4 w-4" />
-                  Submit Repair Request
-                </a>
                 <button
                   onClick={loadRequests}
-                  className="flex items-center text-sm text-primary-600 hover:text-primary-700 gap-2 pill"
+                  className="flex items-center text-sm text-primary-600 hover:text-primary-700 gap-2"
                 >
-                  <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
                   Refresh
                 </button>
               </div>
             </div>
 
             {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{error}</div>}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-white rounded-xl p-4 border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">PENDING</p>
+                    <p className="text-2xl font-bold text-gray-900">{statusCounts.pending}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">CONFIRMED</p>
+                    <p className="text-2xl font-bold text-gray-900">{statusCounts.confirmed}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">COMPLETED</p>
+                    <p className="text-2xl font-bold text-gray-900">{statusCounts.completed}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <div className="flex flex-wrap gap-2">
               {["all", "submitted", "waiting_booking", "scheduled", "in_progress", "completed"].map((status) => (
