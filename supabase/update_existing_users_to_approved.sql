@@ -13,3 +13,4 @@
 -- WHERE role IN ('admin', 'mechanic') 
 --   AND (approval_status IS NULL OR approval_status = 'pending_approval');
 
+

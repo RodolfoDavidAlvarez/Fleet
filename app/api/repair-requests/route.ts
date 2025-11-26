@@ -5,6 +5,7 @@ import { analyzeRepairRequest } from "@/lib/ai";
 import { optimizeAndStoreImages } from "@/lib/media";
 import { notifyAdminOfRepair, sendRepairSubmissionNotice } from "@/lib/twilio";
 import { sendRepairSubmissionEmail, notifyAdminNewRepairRequest } from "@/lib/email";
+import { createServerClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB per image
@@ -138,29 +139,72 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Notify admin via SMS
-    asyncNotifications.push(
-      notifyAdminOfRepair({
-        requestId: record.id,
-        driverName: record.driverName,
-        driverPhone: record.driverPhone,
-        urgency: record.urgency,
-      })
-    );
+    // Notify admins and mechanics who have opted in
+    const supabase = createServerClient();
+    let subscribedUsers: any[] | null = null;
+    
+    try {
+      const { data } = await supabase
+        .from("users")
+        .select("phone, email")
+        .eq("notify_on_repair", true);
+      subscribedUsers = data;
+    } catch (err) {
+      console.warn("Failed to fetch subscribed users for notifications (column might be missing)", err);
+    }
 
-    // Notify admin via email
-    const adminEmail = process.env.ADMIN_EMAIL || 'ralvarez@bettersystems.ai';
-    asyncNotifications.push(
-      notifyAdminNewRepairRequest(adminEmail, {
-        requestId: record.id,
-        driverName: record.driverName,
-        driverPhone: record.driverPhone,
-        driverEmail: record.driverEmail,
-        urgency: record.urgency,
-        summary: ai.summary,
-        vehicleIdentifier: record.vehicleIdentifier,
-      })
-    );
+    if (subscribedUsers && subscribedUsers.length > 0) {
+      subscribedUsers.forEach((user) => {
+        // SMS
+        if (user.phone) {
+          asyncNotifications.push(
+            notifyAdminOfRepair({
+              requestId: record.id,
+              driverName: record.driverName,
+              driverPhone: record.driverPhone,
+              urgency: record.urgency,
+            }, user.phone)
+          );
+        }
+        // Email
+        if (user.email) {
+          asyncNotifications.push(
+            notifyAdminNewRepairRequest(user.email, {
+              requestId: record.id,
+              driverName: record.driverName,
+              driverPhone: record.driverPhone,
+              driverEmail: record.driverEmail,
+              urgency: record.urgency,
+              summary: ai.summary,
+              vehicleIdentifier: record.vehicleIdentifier,
+            })
+          );
+        }
+      });
+    } else {
+        // Fallback to env var if no users subscribed (legacy behavior)
+        asyncNotifications.push(
+        notifyAdminOfRepair({
+            requestId: record.id,
+            driverName: record.driverName,
+            driverPhone: record.driverPhone,
+            urgency: record.urgency,
+        })
+        );
+
+        const adminEmail = process.env.ADMIN_EMAIL || 'ralvarez@bettersystems.ai';
+        asyncNotifications.push(
+        notifyAdminNewRepairRequest(adminEmail, {
+            requestId: record.id,
+            driverName: record.driverName,
+            driverPhone: record.driverPhone,
+            driverEmail: record.driverEmail,
+            urgency: record.urgency,
+            summary: ai.summary,
+            vehicleIdentifier: record.vehicleIdentifier,
+        })
+        );
+    }
 
     Promise.allSettled(asyncNotifications).catch((err) => {
       console.error("Background repair notifications failed", err);

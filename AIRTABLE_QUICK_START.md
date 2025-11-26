@@ -97,3 +97,4 @@ After you've explored your tables and identified the field names, we can create 
 
 **Start now**: Run `npm run dev` and visit `http://localhost:3000/api/airtable/explore?action=tables`
 
+

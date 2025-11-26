@@ -19,3 +19,4 @@ ON CONFLICT (id) DO NOTHING;
 -- Verify the table was created
 SELECT * FROM calendar_settings;
 
+

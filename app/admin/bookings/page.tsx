@@ -148,7 +148,7 @@ export default function BookingsPage() {
                   placeholder="Search bookings..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
               <div className="relative">
@@ -156,7 +156,7 @@ export default function BookingsPage() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="pl-10 pr-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
@@ -230,7 +230,7 @@ export default function BookingsPage() {
                                 <select
                                   value={booking.status}
                                   onChange={(e) => updateStatus(booking.id, e.target.value as Booking['status'])}
-                                  className="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                  className="w-full text-xs bg-white text-gray-900 border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                   disabled={updatingId === booking.id}
                                 >
                                   <option value="pending">Pending</option>
@@ -323,7 +323,7 @@ export default function BookingsPage() {
                     value={selectedBooking.status}
                     onChange={(e) => updateStatus(selectedBooking.id, e.target.value as Booking['status'])}
                     disabled={updatingId === selectedBooking.id}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+                    className="w-full bg-white text-gray-900 border border-gray-300 rounded-lg px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
                   >
                     <option value="pending">Pending</option>
                     <option value="confirmed">Confirmed</option>

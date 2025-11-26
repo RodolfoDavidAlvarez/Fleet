@@ -703,3 +703,99 @@ export async function sendPasswordResetEmail(
   return sendEmail(email, 'Password Reset Request - FleetPro', html)
 }
 
+// Invitation Email
+export async function sendInvitationEmail(
+  email: string,
+  role: string
+): Promise<boolean> {
+  const registerLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/register?email=${encodeURIComponent(email)}`
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 5px 5px; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0; }
+        .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>You've been invited!</h1>
+        </div>
+        <div class="content">
+          <p>Hello,</p>
+          <p>You have been invited to join FleetPro Management System as a <strong>${role}</strong>.</p>
+          <p>Please click the button below to create your account:</p>
+          
+          <p style="text-align: center;">
+            <a href="${registerLink}" class="button">Create Account</a>
+          </p>
+          
+          <p style="text-align: center; margin-top: 15px;">
+            Or copy and paste this link into your browser:<br>
+            <span style="word-break: break-all; color: #2563eb; font-size: 12px;">${registerLink}</span>
+          </p>
+        </div>
+        <div class="footer">
+          <p>FleetPro Management System</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  return sendEmail(email, 'Invitation to join FleetPro', html)
+}
+
+// Account Approved Email
+export async function sendAccountApprovedEmail(
+  email: string,
+  name: string,
+  role: string
+): Promise<boolean> {
+  const loginLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #10b981; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 5px 5px; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #10b981; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0; }
+        .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Account Approved!</h1>
+        </div>
+        <div class="content">
+          <p>Hello ${name},</p>
+          <p>Your account has been approved! You can now access the FleetPro Management System as a <strong>${role}</strong>.</p>
+          
+          <p style="text-align: center;">
+            <a href="${loginLink}" class="button">Log In</a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>FleetPro Management System</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  return sendEmail(email, 'Account Approved - FleetPro', html)
+}

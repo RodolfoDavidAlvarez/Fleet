@@ -187,3 +187,4 @@ While the application is now fully-fledged, here are some optional improvements:
 - ✅ Enhanced error handling
 - ✅ Security best practices
 
+

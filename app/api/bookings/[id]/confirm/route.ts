@@ -9,13 +9,25 @@ export async function POST(
 ) {
   try {
     const json = await request.json()
-    const booking = await bookingDB.getById(params.id)
+    let booking = await bookingDB.getById(params.id)
 
     if (!booking) {
       return NextResponse.json(
         { error: 'Booking not found' },
         { status: 404 }
       )
+    }
+
+    // Mark booking as confirmed when this endpoint is hit from the self-scheduling flow
+    if (booking.status !== 'confirmed') {
+      const updated = await bookingDB.update(params.id, {
+        status: 'confirmed',
+        scheduledDate: json.scheduledDate || booking.scheduledDate,
+        scheduledTime: json.scheduledTime || booking.scheduledTime,
+      })
+      if (updated) {
+        booking = updated
+      }
     }
 
     // Send confirmation SMS to driver

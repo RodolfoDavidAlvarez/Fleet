@@ -24,18 +24,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXTAUTH_URL ||
       process.env.BOOKING_BASE_URL ||
       process.env.NEXT_PUBLIC_SITE_URL ||
       request.headers.get("origin") ||
       "http://localhost:3000";
-    const link = new URL("/booking", baseUrl);
-    link.searchParams.set("repairRequestId", existing.id);
-    link.searchParams.set("driverName", existing.driverName);
-    if (existing.driverPhone) link.searchParams.set("driverPhone", existing.driverPhone);
-    if (existing.vehicleIdentifier) link.searchParams.set("vehicleInfo", existing.vehicleIdentifier);
-    if (parsed.data.serviceType || existing.aiCategory) {
-      link.searchParams.set("serviceType", parsed.data.serviceType || existing.aiCategory || "Repair booking");
-    }
+    
+    // Use the specialized booking link page
+    const bookingLink = `${baseUrl}/booking-link/${existing.id}?name=${encodeURIComponent(existing.driverName)}&phone=${encodeURIComponent(existing.driverPhone || '')}`;
 
     const suggestedSlot =
       parsed.data.suggestedDate && parsed.data.suggestedTime
@@ -44,7 +41,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     const updated = await repairRequestDB.update(existing.id, {
       status: "waiting_booking",
-      bookingLink: link.toString(),
+      bookingLink: bookingLink,
       scheduledDate: parsed.data.suggestedDate,
       scheduledTime: parsed.data.suggestedTime,
     });
@@ -52,7 +49,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (existing.driverPhone) {
       await sendRepairBookingLink(existing.driverPhone, {
         requestId: existing.id,
-        link: link.toString(),
+        link: bookingLink,
         issueSummary: existing.description.slice(0, 120),
         language: existing.preferredLanguage,
         suggestedSlot,
@@ -64,21 +61,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       await sendRepairBookingLinkEmail(existing.driverEmail, {
         driverName: existing.driverName,
         requestId: existing.id,
-        link: link.toString(),
+        link: bookingLink,
         issueSummary: existing.description.slice(0, 120),
         language: existing.preferredLanguage,
         suggestedSlot,
       });
     }
 
-    await notifyAdminOfRepair({
-      requestId: existing.id,
-      driverName: existing.driverName,
-      driverPhone: existing.driverPhone,
-      urgency: existing.urgency,
-    });
+    // We don't need to notify admin again that they sent the link, but we could log it
+    // await notifyAdminOfRepair(...) 
 
-    return NextResponse.json({ request: updated || existing, link: link.toString() });
+    return NextResponse.json({ request: updated || existing, link: bookingLink });
   } catch (error) {
     console.error("Failed to send booking link", error);
     return NextResponse.json({ error: "Failed to send booking link" }, { status: 500 });

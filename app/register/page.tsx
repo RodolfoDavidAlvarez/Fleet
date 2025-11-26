@@ -5,26 +5,28 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import Footer from '@/components/Footer'
-import { Wrench, Mail, Lock, LogIn, Eye, EyeOff, UserPlus } from 'lucide-react'
+import { User, Mail, Lock, Phone, UserPlus, Eye, EyeOff } from 'lucide-react'
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const defaultEmail = process.env.NODE_ENV === 'production' ? '' : 'admin@fleetpro.com'
-  const defaultPassword = process.env.NODE_ENV === 'production' ? '' : 'admin123'
+  const emailParam = searchParams.get('email')
 
-  const [email, setEmail] = useState(defaultEmail)
-  const [password, setPassword] = useState(defaultPassword)
+  const [formData, setFormData] = useState({
+    name: '',
+    email: emailParam || '',
+    password: '',
+    phone: '',
+  })
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
-    if (searchParams.get('registered')) {
-      setSuccess('Account created successfully. Please log in.')
+    if (emailParam) {
+      setFormData(prev => ({ ...prev, email: emailParam }))
     }
-  }, [searchParams])
+  }, [emailParam])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,28 +34,23 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(formData),
       })
 
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'Login failed')
+        throw new Error(data.error || 'Registration failed')
       }
 
-      localStorage.setItem('user', JSON.stringify(data.user))
-      
-      if (data.user.role === 'admin' || data.user.role === 'mechanic') {
-        router.push('/dashboard')
-      } else {
-        // For drivers/customers, maybe redirect to a different page or home for now
-        router.push('/dashboard') 
-      }
+      // Redirect to login with success message
+      // We can pass a query param to login page to show the success message
+      router.push('/login?registered=true')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      setError(err instanceof Error ? err.message : 'Registration failed')
     } finally {
       setLoading(false)
     }
@@ -67,7 +64,7 @@ export default function LoginPage() {
             <div className="text-center mb-8 animate-slide-down">
               <div className="flex flex-col items-center mb-6">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-600)] flex items-center justify-center shadow-xl mb-4">
-                  <Wrench className="h-10 w-10 text-white" />
+                  <UserPlus className="h-10 w-10 text-white" />
                 </div>
                 <div className="relative h-12 w-auto mb-2">
                   <Image
@@ -81,8 +78,8 @@ export default function LoginPage() {
                 </div>
                 <p className="text-sm font-bold uppercase tracking-wide text-[var(--primary-600)]">Fleet Management</p>
               </div>
-              <h1 className="text-3xl font-bold text-gradient">Welcome Back</h1>
-              <p className="text-muted mt-2">Sign in to access your dashboard</p>
+              <h1 className="text-3xl font-bold text-gradient">Create Account</h1>
+              <p className="text-muted mt-2">Join the fleet management system</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in">
@@ -91,11 +88,26 @@ export default function LoginPage() {
                   {error}
                 </div>
               )}
-              {success && (
-                <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg animate-slide-up">
-                  {success}
+
+              <div className="space-y-2">
+                <label htmlFor="name" className="block text-sm font-semibold">
+                  Full Name
+                </label>
+                <div className="input-group">
+                  <span className="input-group-icon input-group-icon-left">
+                    <User className="h-5 w-5" />
+                  </span>
+                  <input
+                    id="name"
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                    className="input input-with-icon-left"
+                    placeholder="John Doe"
+                  />
                 </div>
-              )}
+              </div>
 
               <div className="space-y-2">
                 <label htmlFor="email" className="block text-sm font-semibold">
@@ -108,11 +120,30 @@ export default function LoginPage() {
                   <input
                     id="email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
                     className="input input-with-icon-left"
-                    placeholder="admin@fleetpro.com"
+                    placeholder="john@example.com"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="phone" className="block text-sm font-semibold">
+                  Phone Number
+                </label>
+                <div className="input-group">
+                  <span className="input-group-icon input-group-icon-left">
+                    <Phone className="h-5 w-5" />
+                  </span>
+                  <input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="input input-with-icon-left"
+                    placeholder="+1 (555) 000-0000"
                   />
                 </div>
               </div>
@@ -128,11 +159,12 @@ export default function LoginPage() {
                   <input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
+                    minLength={6}
                     className="input input-with-icon-left input-with-icon-right"
-                    placeholder="Enter your password"
+                    placeholder="Create a password"
                   />
                   <button
                     type="button"
@@ -149,16 +181,6 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-[var(--primary-600)] focus:ring-[var(--primary-500)]" />
-                  <span>Remember me</span>
-                </label>
-                <Link href="/forgot-password" className="text-sm text-[var(--primary-600)] hover:text-[var(--primary-700)] font-medium">
-                  Forgot password?
-                </Link>
-              </div>
-
               <button
                 type="submit"
                 disabled={loading}
@@ -167,46 +189,23 @@ export default function LoginPage() {
                 {loading ? (
                   <>
                     <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Signing in...</span>
+                    <span>Creating Account...</span>
                   </>
                 ) : (
                   <>
-                    <LogIn className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
-                    <span>Sign In</span>
+                    <UserPlus className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+                    <span>Register</span>
                   </>
                 )}
               </button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
-                <Link href="/register" className="font-medium text-[var(--primary-600)] hover:text-[var(--primary-700)]">
-                  Create an account
-                </Link>
-              </p>
-            </div>
-
             <div className="mt-8 pt-6 border-t border-[var(--border)]">
-              <div className="card p-4 mb-4">
-                <p className="text-sm font-semibold mb-3">Demo Credentials</p>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted">Admin:</span>
-                    <code className="px-2 py-1 bg-[var(--bg-tertiary)] rounded">admin@fleetpro.com / admin123</code>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted">Mechanic:</span>
-                    <code className="px-2 py-1 bg-[var(--bg-tertiary)] rounded">mechanic@fleetpro.com / mechanic123</code>
-                  </div>
-                </div>
-              </div>
-
               <div className="text-center space-y-3">
-                <p className="text-xs text-muted">
-                  By signing in you agree to our{' '}
-                  <Link href="/compliance" className="text-[var(--primary-600)] hover:text-[var(--primary-700)] font-medium underline underline-offset-2">
-                    SMS compliance policy
+                <p className="text-sm text-muted">
+                  Already have an account?{' '}
+                  <Link href="/login" className="text-[var(--primary-600)] hover:text-[var(--primary-700)] font-medium underline underline-offset-2">
+                    Sign in
                   </Link>
                 </p>
 
@@ -223,3 +222,4 @@ export default function LoginPage() {
     </div>
   )
 }
+
