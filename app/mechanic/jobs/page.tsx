@@ -1,0 +1,134 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Sidebar from '@/components/Sidebar'
+import Header from '@/components/Header'
+import { Wrench, Clock, CheckCircle, AlertCircle, Calendar } from 'lucide-react'
+import { jobDB } from '@/lib/db'
+import { Job } from '@/types'
+import { getStatusColor, formatDateTime } from '@/lib/utils'
+
+export default function JobsPage() {
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [jobs, setJobs] = useState<Job[]>([])
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user')
+    if (!userData) {
+      router.push('/login')
+      return
+    }
+    const parsedUser = JSON.parse(userData)
+    if (parsedUser.role !== 'mechanic') {
+      router.push('/login')
+      return
+    }
+    setUser(parsedUser)
+    // In a real app, filter by mechanic ID
+    setJobs(jobDB.getAll())
+  }, [router])
+
+  if (!user) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar role="mechanic" />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header userName={user.name} userRole={user.role} />
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-3xl font-bold text-gray-900 mb-6">My Jobs</h1>
+
+            <div className="space-y-4">
+              {jobs.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+                  <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">No jobs assigned yet</p>
+                </div>
+              ) : (
+                jobs.map((job) => (
+                  <div
+                    key={job.id}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-4">
+                        <div className={`p-3 rounded-lg ${
+                          job.status === 'completed' ? 'bg-green-100' :
+                          job.status === 'in_progress' ? 'bg-yellow-100' :
+                          'bg-blue-100'
+                        }`}>
+                          <Wrench className={`h-6 w-6 ${
+                            job.status === 'completed' ? 'text-green-600' :
+                            job.status === 'in_progress' ? 'text-yellow-600' :
+                            'text-blue-600'
+                          }`} />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">Job #{job.id.slice(-6)}</h3>
+                          <p className="text-sm text-gray-500">Booking ID: {job.bookingId}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(job.status)}`}>
+                          {job.status.replace('_', ' ')}
+                        </span>
+                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                          job.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                          job.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                          job.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {job.priority}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        {job.startTime ? formatDateTime(job.startTime) : 'Not started'}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Clock className="h-4 w-4 mr-2" />
+                        {job.estimatedHours || 0} hours estimated
+                      </div>
+                      {job.totalCost && (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <span className="mr-2">$</span>
+                          {job.totalCost.toFixed(2)} total
+                        </div>
+                      )}
+                    </div>
+
+                    {job.notes && (
+                      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                        <p className="text-sm text-gray-700">{job.notes}</p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end space-x-2">
+                      <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        View Details
+                      </button>
+                      {job.status !== 'completed' && (
+                        <button className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">
+                          Update Status
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  )
+}
+
