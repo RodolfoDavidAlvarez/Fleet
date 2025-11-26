@@ -9,7 +9,6 @@ import {
   Users,
   BarChart3,
   Wrench,
-  Settings,
   LogOut,
   Zap,
 } from 'lucide-react'
