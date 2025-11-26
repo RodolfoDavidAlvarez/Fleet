@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
-import { Download, Database, Users, Calendar, Wrench, Building, CheckCircle, AlertCircle } from 'lucide-react'
+import { Download, Database, Users, Calendar, Wrench, Building, CheckCircle, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react'
 
 export default function AirtableImportPage() {
   const [isImporting, setIsImporting] = useState(false)
@@ -14,6 +14,9 @@ export default function AirtableImportPage() {
   const [error, setError] = useState<string>('')
   const [selectedTypes, setSelectedTypes] = useState(['all'])
   const [dryRun, setDryRun] = useState(true)
+  const [statusData, setStatusData] = useState<any>(null)
+  const [statusError, setStatusError] = useState<string>('')
+  const [statusLoading, setStatusLoading] = useState(false)
 
   const dataTypes = [
     { id: 'all', label: 'All Data Types', icon: Database, description: 'Import everything' },
@@ -22,7 +25,51 @@ export default function AirtableImportPage() {
     { id: 'serviceRecords', label: 'Service Records', icon: Wrench, description: 'Historical service and maintenance data' },
     { id: 'members', label: 'Staff/Members', icon: Users, description: 'Drivers, mechanics, and administrative staff' },
     { id: 'appointments', label: 'Appointments', icon: Calendar, description: 'Scheduled services and bookings' },
+    { id: 'repairRequests', label: 'Repair Requests', icon: AlertTriangle, description: 'Issue reports, triage status, and urgency' },
   ]
+
+  const summaryCards = [
+    { key: 'vehicles', label: 'Vehicles', icon: Database },
+    { key: 'serviceRecords', label: 'Service Records', icon: Wrench },
+    { key: 'bookings', label: 'Bookings', icon: Calendar },
+    { key: 'repairRequests', label: 'Repair Requests', icon: AlertTriangle },
+    { key: 'users', label: 'Members/Users', icon: Users },
+    { key: 'mechanics', label: 'Mechanics', icon: Wrench },
+    { key: 'departments', label: 'Departments', icon: Building },
+  ]
+
+  const sampleSections = [
+    { key: 'vehicles', title: 'Vehicles', description: 'Department, tag expiry, photos, and supervisors' },
+    { key: 'serviceRecords', title: 'Service Records', description: 'Service type, mileage, and next service due' },
+    { key: 'bookings', title: 'Bookings/Appointments', description: 'Customer, service type, date/time, and status' },
+    { key: 'repairRequests', title: 'Repair Requests', description: 'Vehicle identifiers, urgency, and triage status' },
+    { key: 'users', title: 'Members / Staff', description: 'Roles, contacts, and Airtable linkage' },
+    { key: 'departments', title: 'Departments', description: 'Managers and vehicle counts' },
+  ]
+
+  const loadStatus = async () => {
+    setStatusLoading(true)
+    setStatusError('')
+
+    try {
+      const response = await fetch('/api/airtable/status')
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load database snapshot')
+      }
+
+      setStatusData(data)
+    } catch (err: any) {
+      setStatusError(err.message)
+    } finally {
+      setStatusLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadStatus()
+  }, [])
 
   const handleImport = async () => {
     setIsImporting(true)
@@ -72,12 +119,180 @@ export default function AirtableImportPage() {
     return total > 0 ? (imported / total) * 100 : 0
   }
 
+  const renderSample = (sectionKey: string, item: any) => {
+    switch (sectionKey) {
+      case 'vehicles':
+        return (
+          <div className="space-y-1">
+            <div className="font-medium">{[item.make, item.model, item.year].filter(Boolean).join(' ') || 'Unnamed vehicle'}</div>
+            <div className="text-xs text-muted-foreground">
+              {(item.department || 'No department')} • {item.status || '—'} • {item.mileage ? `${item.mileage} mi` : 'Mileage —'}
+            </div>
+            <div className="text-[11px] text-muted-foreground/80">
+              {`Vehicle #: ${item.vehicle_number || '—'} | Tag: ${item.tag_expiry || '—'} | Airtable: ${item.airtable_id || '—'}`}
+            </div>
+          </div>
+        )
+      case 'serviceRecords':
+        return (
+          <div className="space-y-1">
+            <div className="font-medium">{item.service_type || 'Service record'}</div>
+            <div className="text-xs text-muted-foreground">
+              {(item.date || 'No date')} • {item.mileage ? `${item.mileage} mi` : 'Mileage —'} • {item.status || 'Status —'}
+            </div>
+            <div className="text-[11px] text-muted-foreground/80">
+              {`Next due: ${item.next_service_due || '—'} | Airtable: ${item.airtable_id || '—'}`}
+            </div>
+          </div>
+        )
+      case 'bookings':
+        return (
+          <div className="space-y-1">
+            <div className="font-medium">{item.customer_name || 'Booking'}</div>
+            <div className="text-xs text-muted-foreground">
+              {(item.service_type || 'Service')} • {(item.scheduled_date || 'Date —')} {item.scheduled_time ? `@ ${item.scheduled_time}` : ''}
+            </div>
+            <div className="text-[11px] text-muted-foreground/80">
+              {`Status: ${item.status || 'pending'} | Airtable: ${item.airtable_id || '—'}`}
+            </div>
+          </div>
+        )
+      case 'repairRequests':
+        return (
+          <div className="space-y-1">
+            <div className="font-medium">{item.vehicle_identifier || 'Repair request'}</div>
+            <div className="text-xs text-muted-foreground">
+              {(item.driver_name || 'Unknown driver')} • {(item.urgency || 'urgency —')} • {(item.status || 'status —')}
+            </div>
+            <div className="text-[11px] text-muted-foreground/80">
+              {`Airtable: ${item.airtable_id || '—'}`}
+            </div>
+          </div>
+        )
+      case 'users':
+        return (
+          <div className="space-y-1">
+            <div className="font-medium">{item.name || 'Member'}</div>
+            <div className="text-xs text-muted-foreground">{item.email || 'No email'} • {item.role || 'No role'}</div>
+            <div className="text-[11px] text-muted-foreground/80">Airtable: {item.airtable_id || '—'}</div>
+          </div>
+        )
+      case 'departments':
+        return (
+          <div className="space-y-1">
+            <div className="font-medium">{item.name || 'Department'}</div>
+            <div className="text-xs text-muted-foreground">
+              {(item.manager || 'No manager')} • {item.vehicle_count ? `${item.vehicle_count} vehicles` : '0 vehicles'}
+            </div>
+            <div className="text-[11px] text-muted-foreground/80">Airtable: {item.airtable_id || '—'}</div>
+          </div>
+        )
+      default:
+        return <pre className="text-xs text-muted-foreground whitespace-pre-wrap">{JSON.stringify(item, null, 2)}</pre>
+    }
+  }
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center gap-2 mb-8">
         <Download className="h-6 w-6" />
         <h1 className="text-2xl font-bold">Enhanced Airtable Import</h1>
       </div>
+
+      {/* Data Snapshot Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Current Database Snapshot</CardTitle>
+          <CardDescription>See what Airtable data is already in Supabase so you can surface it in the UI.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <p className="text-sm text-muted-foreground">
+              Refresh this after imports to understand which tables/fields you can display (vehicles, members, repairs, bookings, etc.).
+            </p>
+            <Button variant="outline" size="sm" onClick={loadStatus} disabled={statusLoading}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${statusLoading ? 'animate-spin' : ''}`} />
+              Refresh snapshot
+            </Button>
+          </div>
+
+          {statusError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{statusError}</AlertDescription>
+            </Alert>
+          )}
+
+          {statusLoading && (
+            <div className="text-sm text-muted-foreground">Loading snapshot from Supabase...</div>
+          )}
+
+          {statusData && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {summaryCards.map((card) => {
+                  const Icon = card.icon
+                  const summary = statusData?.summary?.[card.key] || {}
+                  return (
+                    <div key={card.key} className="rounded-lg border p-3 bg-muted/50">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{card.label}</span>
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="text-2xl font-bold mt-1">{summary.total ?? 0}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Airtable: {summary.fromAirtable ?? 0} • Other: {summary.legacy ?? 0}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {(statusData?.duplicates?.emails?.length > 0 || statusData?.duplicates?.vins?.length > 0) && (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    Possible duplicates detected — Emails: {statusData?.duplicates?.emails?.length || 0}, VINs:{' '}
+                    {statusData?.duplicates?.vins?.length || 0}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {sampleSections.map((section) => (
+                  <div key={section.key} className="rounded-lg border p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{section.title}</div>
+                        <p className="text-xs text-muted-foreground">{section.description}</p>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {(statusData?.samples?.[section.key] || []).length} rows
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {(statusData?.samples?.[section.key] || []).slice(0, 3).map((item: any, idx: number) => (
+                        <div key={idx} className="rounded bg-muted p-2">
+                          {renderSample(section.key, item)}
+                        </div>
+                      ))}
+                      {(statusData?.samples?.[section.key] || []).length === 0 && (
+                        <div className="text-sm text-muted-foreground">No rows yet.</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!statusLoading && !statusData && !statusError && (
+            <div className="text-sm text-muted-foreground">
+              No snapshot yet. Click "Refresh snapshot" to load the current counts from Supabase.
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Configuration Card */}
       <Card>
@@ -238,7 +453,10 @@ export default function AirtableImportPage() {
           <div className="space-y-2">
             <h3 className="font-medium">2. Run Database Migration</h3>
             <p className="text-sm text-muted-foreground">
-              Apply the enhanced schema: Run <code className="bg-muted px-1 rounded">supabase/migration_enhanced_data.sql</code> in your Supabase SQL editor
+              Apply the enhanced schema: run <code className="bg-muted px-1 rounded">supabase/migration_enhanced_data_fixed.sql</code> in your Supabase SQL editor
+            </p>
+            <p className="text-sm text-muted-foreground">
+              For repair request Airtable IDs, also run <code className="bg-muted px-1 rounded">supabase/migration_final_columns.sql</code>
             </p>
           </div>
           
@@ -250,6 +468,7 @@ export default function AirtableImportPage() {
               <li>• Complete service and maintenance history</li>
               <li>• Staff members with roles and specializations</li>
               <li>• Appointments and scheduling data</li>
+              <li>• Repair requests with urgency/triage info and AI categories</li>
             </ul>
           </div>
         </CardContent>
