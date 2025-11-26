@@ -14,6 +14,7 @@ import {
   Settings,
   X,
   ChevronRight,
+  MessageSquare,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
@@ -35,6 +36,10 @@ const unifiedLinks = [
   { href: '/mechanic/schedule', label: 'Schedule', icon: Calendar },
 ]
 
+const mechanicOnlyLinks = [
+  { href: '/mechanic/notifications', label: 'Send SMS', icon: MessageSquare },
+]
+
 const adminOnlyLinks = [
   { href: '/admin/settings', label: 'Admin Settings', icon: Settings },
 ]
@@ -44,7 +49,7 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
   const [collapsed, setCollapsed] = useState(false)
   const links = role === 'admin' 
     ? [...unifiedLinks, ...adminOnlyLinks]
-    : unifiedLinks
+    : [...unifiedLinks, ...mechanicOnlyLinks]
 
   const handleLogout = () => {
     localStorage.removeItem('user')
