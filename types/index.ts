@@ -58,7 +58,6 @@ export interface Booking {
   scheduledTime: string
   status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
   mechanicId?: string
-  vehicleId?: string
   vehicleInfo?: string
   smsConsent?: boolean
   complianceAccepted?: boolean

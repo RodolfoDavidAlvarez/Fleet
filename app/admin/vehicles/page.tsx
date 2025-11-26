@@ -200,133 +200,135 @@ export default function VehiclesPage() {
             </div>
 
             {formOpen && (
-              <div className="card-surface p-4 rounded-2xl">
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className="space-y-2 text-sm text-gray-700">
-                    Make *
-                    <input
-                      required
-                      placeholder="Make"
-                      value={form.make}
-                      onChange={(e) => setForm({ ...form, make: e.target.value })}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
-                    />
-                  </label>
-                  <label className="space-y-2 text-sm text-gray-700">
-                    Model *
-                    <input
-                      required
-                      placeholder="Model"
-                      value={form.model}
-                      onChange={(e) => setForm({ ...form, model: e.target.value })}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
-                    />
-                  </label>
-                  <label className="space-y-2 text-sm text-gray-700">
-                    Year *
-                    <input
-                      required
-                      type="number"
-                      placeholder="Year"
-                      value={form.year}
-                      onChange={(e) => setForm({ ...form, year: e.target.value })}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
-                    />
-                  </label>
-                  <label className="space-y-2 text-sm text-gray-700">
-                    VIN *
-                    <input
-                      required
-                      placeholder="VIN"
-                      value={form.vin}
-                      onChange={(e) => setForm({ ...form, vin: e.target.value })}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
-                    />
-                  </label>
-                  <label className="space-y-2 text-sm text-gray-700">
-                    License Plate *
-                    <input
-                      required
-                      placeholder="License Plate"
-                      value={form.licensePlate}
-                      onChange={(e) => setForm({ ...form, licensePlate: e.target.value })}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
-                    />
-                  </label>
-                  <label className="space-y-2 text-sm text-gray-700">
-                    Mileage
-                    <input
-                      type="number"
-                      placeholder="Mileage"
-                      value={form.mileage}
-                      onChange={(e) => setForm({ ...form, mileage: e.target.value })}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
-                    />
-                  </label>
-                  <label className="space-y-2 text-sm text-gray-700">
-                    Driver
-                    <select
-                      value={form.driverId}
-                      onChange={(e) => setForm({ ...form, driverId: e.target.value })}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
-                    >
-                      <option value="">Unassigned</option>
-                      {drivers.map((driver) => (
-                        <option key={driver.id} value={driver.id}>
-                          {driver.name} • {driver.phone || driver.email}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <div className="md:col-span-2 flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
-                    >
-                      {saving ? 'Saving...' : 'Save Vehicle'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-              <div className="card-surface p-4 rounded-2xl mt-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <UserPlus className="h-5 w-5 text-primary-700" />
-                  <p className="text-sm font-semibold text-gray-900">Quick add driver</p>
+              <>
+                <div className="card-surface p-4 rounded-2xl">
+                  <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="space-y-2 text-sm text-gray-700">
+                      Make *
+                      <input
+                        required
+                        placeholder="Make"
+                        value={form.make}
+                        onChange={(e) => setForm({ ...form, make: e.target.value })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm text-gray-700">
+                      Model *
+                      <input
+                        required
+                        placeholder="Model"
+                        value={form.model}
+                        onChange={(e) => setForm({ ...form, model: e.target.value })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm text-gray-700">
+                      Year *
+                      <input
+                        required
+                        type="number"
+                        placeholder="Year"
+                        value={form.year}
+                        onChange={(e) => setForm({ ...form, year: e.target.value })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm text-gray-700">
+                      VIN *
+                      <input
+                        required
+                        placeholder="VIN"
+                        value={form.vin}
+                        onChange={(e) => setForm({ ...form, vin: e.target.value })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm text-gray-700">
+                      License Plate *
+                      <input
+                        required
+                        placeholder="License Plate"
+                        value={form.licensePlate}
+                        onChange={(e) => setForm({ ...form, licensePlate: e.target.value })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm text-gray-700">
+                      Mileage
+                      <input
+                        type="number"
+                        placeholder="Mileage"
+                        value={form.mileage}
+                        onChange={(e) => setForm({ ...form, mileage: e.target.value })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm text-gray-700">
+                      Driver
+                      <select
+                        value={form.driverId}
+                        onChange={(e) => setForm({ ...form, driverId: e.target.value })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                      >
+                        <option value="">Unassigned</option>
+                        {drivers.map((driver) => (
+                          <option key={driver.id} value={driver.id}>
+                            {driver.name} • {driver.phone || driver.email}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="md:col-span-2 flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                      >
+                        {saving ? 'Saving...' : 'Save Vehicle'}
+                      </button>
+                    </div>
+                  </form>
                 </div>
-                <form onSubmit={handleCreateDriver} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input
-                    required
-                    placeholder="Name"
-                    value={driverForm.name}
-                    onChange={(e) => setDriverForm({ ...driverForm, name: e.target.value })}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  />
-                  <input
-                    required
-                    type="email"
-                    placeholder="Email"
-                    value={driverForm.email}
-                    onChange={(e) => setDriverForm({ ...driverForm, email: e.target.value })}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  />
-                  <input
-                    placeholder="Phone"
-                    value={driverForm.phone}
-                    onChange={(e) => setDriverForm({ ...driverForm, phone: e.target.value })}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  />
-                  <div className="md:col-span-3 flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={driverSaving}
-                      className="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 disabled:opacity-50"
-                    >
-                      {driverSaving ? 'Saving...' : 'Save driver'}
-                    </button>
+                <div className="card-surface p-4 rounded-2xl mt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <UserPlus className="h-5 w-5 text-primary-700" />
+                    <p className="text-sm font-semibold text-gray-900">Quick add driver</p>
                   </div>
-                </form>
-              </div>
+                  <form onSubmit={handleCreateDriver} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input
+                      required
+                      placeholder="Name"
+                      value={driverForm.name}
+                      onChange={(e) => setDriverForm({ ...driverForm, name: e.target.value })}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    <input
+                      required
+                      type="email"
+                      placeholder="Email"
+                      value={driverForm.email}
+                      onChange={(e) => setDriverForm({ ...driverForm, email: e.target.value })}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    <input
+                      placeholder="Phone"
+                      value={driverForm.phone}
+                      onChange={(e) => setDriverForm({ ...driverForm, phone: e.target.value })}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    <div className="md:col-span-3 flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={driverSaving}
+                        className="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                      >
+                        {driverSaving ? 'Saving...' : 'Save driver'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </>
             )}
 
             {error && (

@@ -4,6 +4,8 @@ const nextConfig = {
   images: {
     domains: [],
   },
+  // Exclude fleet-app directory from build
+  pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
 }
 
 module.exports = nextConfig

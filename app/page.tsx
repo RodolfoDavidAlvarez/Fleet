@@ -51,7 +51,7 @@ const consoles = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 soft-grid">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 soft-grid" style={{ minHeight: '100vh' }}>
       <nav className="sticky top-0 z-50 bg-white/75 backdrop-blur-xl border-b border-primary-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
