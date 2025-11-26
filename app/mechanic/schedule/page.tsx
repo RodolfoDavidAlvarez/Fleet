@@ -14,6 +14,18 @@ export default function SchedulePage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
 
+  const loadBookings = async (mechanicId: string) => {
+    try {
+      const res = await fetch(`/api/bookings?mechanicId=${encodeURIComponent(mechanicId)}`)
+      const data = await res.json()
+      if (res.ok) {
+        setBookings(data.bookings || [])
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     const userData = localStorage.getItem('user')
     if (!userData) {
@@ -26,20 +38,8 @@ export default function SchedulePage() {
       return
     }
     setUser(parsedUser)
-    loadBookings()
+    loadBookings(parsedUser.id)
   }, [router])
-
-  const loadBookings = async () => {
-    try {
-      const res = await fetch('/api/bookings')
-      const data = await res.json()
-      if (res.ok) {
-        setBookings(data.bookings || [])
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const grouped = useMemo(() => {
     return bookings.reduce<Record<string, Booking[]>>((acc, booking) => {

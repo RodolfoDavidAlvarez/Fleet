@@ -2,18 +2,7 @@
 // Replaces in-memory storage with Supabase PostgreSQL
 
 import { createServerClient } from "./supabase";
-import {
-  Vehicle,
-  Booking,
-  Job,
-  Mechanic,
-  User,
-  DashboardStats,
-  ServiceRecord,
-  Part,
-  RepairRequest,
-  RepairReport,
-} from "@/types";
+import { Vehicle, Booking, Job, Mechanic, User, DashboardStats, ServiceRecord, Part, RepairRequest, RepairReport } from "@/types";
 
 // Helper to convert database row to Vehicle
 function rowToVehicle(row: any): Vehicle {
@@ -269,6 +258,7 @@ export const driverDB = {
         email: user.email,
         phone: user.phone,
         role: "driver",
+        approval_status: "pending_approval",
       })
       .select()
       .single();
@@ -347,9 +337,13 @@ export const vehicleDB = {
 
 // Booking operations
 export const bookingDB = {
-  getAll: async (): Promise<Booking[]> => {
+  getAll: async (filter?: { mechanicId?: string }): Promise<Booking[]> => {
     const supabase = createServerClient();
-    const { data, error } = await supabase.from("bookings").select("*").order("created_at", { ascending: false });
+    let query = supabase.from("bookings").select("*").order("created_at", { ascending: false });
+    if (filter?.mechanicId) {
+      query = query.eq("mechanic_id", filter.mechanicId);
+    }
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching bookings:", error);

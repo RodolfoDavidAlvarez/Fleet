@@ -1,0 +1,275 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@/lib/supabase'
+
+// Get all notifications
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = createServerClient()
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+
+    // If userId is provided, get notifications for that user
+    if (userId) {
+      // Get notification IDs where user is a recipient
+      const { data: recipientData, error: recipientError } = await supabase
+        .from('notification_recipients')
+        .select('notification_id')
+        .eq('user_id', userId)
+
+      if (recipientError) {
+        console.error('Error fetching notification recipients:', recipientError)
+        return NextResponse.json(
+          { error: 'Failed to fetch notifications' },
+          { status: 500 }
+        )
+      }
+
+      const notificationIds = recipientData?.map((r) => r.notification_id) || []
+
+      if (notificationIds.length === 0) {
+        return NextResponse.json({ notifications: [] })
+      }
+
+      const { data: notifications, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .in('id', notificationIds)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching notifications:', error)
+        return NextResponse.json(
+          { error: 'Failed to fetch notifications' },
+          { status: 500 }
+        )
+      }
+
+      // Get recipients for each notification
+      const notificationsWithRecipients = await Promise.all(
+        (notifications || []).map(async (notification) => {
+          const { data: recipients } = await supabase
+            .from('notification_recipients')
+            .select('*')
+            .eq('notification_id', notification.id)
+
+          return {
+            ...notification,
+            recipients: recipients || [],
+          }
+        })
+      )
+
+      return NextResponse.json({ notifications: notificationsWithRecipients })
+    }
+
+    // Get all notifications
+    const { data: notifications, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching notifications:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch notifications' },
+        { status: 500 }
+      )
+    }
+
+    // Get recipients for each notification
+    const notificationsWithRecipients = await Promise.all(
+      (notifications || []).map(async (notification) => {
+        const { data: recipients } = await supabase
+          .from('notification_recipients')
+          .select('*')
+          .eq('notification_id', notification.id)
+
+        return {
+          ...notification,
+          recipients: recipients || [],
+        }
+      })
+    )
+
+    return NextResponse.json({ notifications: notificationsWithRecipients })
+  } catch (error) {
+    console.error('Error in GET /api/admin/notifications:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// Create a new notification
+export async function POST(request: NextRequest) {
+  try {
+    const { title, message, type, recipientIds, recipientRoles } = await request.json()
+
+    if (!title || !message) {
+      return NextResponse.json(
+        { error: 'Title and message are required' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = createServerClient()
+
+    // Create notification
+    const { data: notification, error: notificationError } = await supabase
+      .from('notifications')
+      .insert({
+        title,
+        message,
+        type: type || 'info',
+        recipient_ids: recipientIds || [],
+        recipient_roles: recipientRoles || [],
+      })
+      .select()
+      .single()
+
+    if (notificationError) {
+      console.error('Error creating notification:', notificationError)
+      return NextResponse.json(
+        { error: 'Failed to create notification' },
+        { status: 500 }
+      )
+    }
+
+    // If recipientIds are provided, create notification_recipients entries
+    if (recipientIds && recipientIds.length > 0) {
+      const recipients = recipientIds.map((userId: string) => ({
+        notification_id: notification.id,
+        user_id: userId,
+      }))
+
+      const { error: recipientsError } = await supabase
+        .from('notification_recipients')
+        .insert(recipients)
+
+      if (recipientsError) {
+        console.error('Error creating notification recipients:', recipientsError)
+        // Don't fail the request, just log the error
+      }
+    }
+
+    // If recipientRoles are provided, find users with those roles and create recipients
+    if (recipientRoles && recipientRoles.length > 0) {
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id')
+        .in('role', recipientRoles)
+
+      if (!usersError && users && users.length > 0) {
+        const recipients = users.map((u) => ({
+          notification_id: notification.id,
+          user_id: u.id,
+        }))
+
+        const { error: recipientsError } = await supabase
+          .from('notification_recipients')
+          .insert(recipients)
+
+        if (recipientsError) {
+          console.error('Error creating role-based recipients:', recipientsError)
+        }
+      }
+    }
+
+    return NextResponse.json({ notification }, { status: 201 })
+  } catch (error) {
+    console.error('Error in POST /api/admin/notifications:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// Update notification (mark as read, etc.)
+export async function PATCH(request: NextRequest) {
+  try {
+    const { notificationId, userId, isRead } = await request.json()
+
+    if (!notificationId || userId === undefined) {
+      return NextResponse.json(
+        { error: 'Notification ID and user ID are required' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = createServerClient()
+
+    // Update notification_recipients
+    const updates: any = {}
+    if (isRead !== undefined) {
+      updates.is_read = isRead
+      if (isRead) {
+        updates.read_at = new Date().toISOString()
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('notification_recipients')
+      .update(updates)
+      .eq('notification_id', notificationId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating notification:', error)
+      return NextResponse.json(
+        { error: 'Failed to update notification' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ notification: data })
+  } catch (error) {
+    console.error('Error in PATCH /api/admin/notifications:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// Delete notification
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const notificationId = searchParams.get('id')
+
+    if (!notificationId) {
+      return NextResponse.json(
+        { error: 'Notification ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = createServerClient()
+
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', notificationId)
+
+    if (error) {
+      console.error('Error deleting notification:', error)
+      return NextResponse.json(
+        { error: 'Failed to delete notification' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ message: 'Notification deleted successfully' })
+  } catch (error) {
+    console.error('Error in DELETE /api/admin/notifications:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+

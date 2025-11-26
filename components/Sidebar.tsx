@@ -12,6 +12,7 @@ import {
   Wrench,
   LogOut,
   Zap,
+  Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -30,9 +31,15 @@ const unifiedLinks = [
   { href: '/mechanic/schedule', label: 'Schedule', icon: Calendar },
 ]
 
+const adminOnlyLinks = [
+  { href: '/admin/settings', label: 'Admin Settings', icon: Settings },
+]
+
 export default function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname()
-  const links = unifiedLinks
+  const links = role === 'admin' 
+    ? [...unifiedLinks, ...adminOnlyLinks]
+    : unifiedLinks
 
   const handleLogout = () => {
     localStorage.removeItem('user')

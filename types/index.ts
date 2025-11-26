@@ -6,6 +6,9 @@ export interface User {
   name: string
   role: UserRole
   phone?: string
+  approval_status?: 'pending_approval' | 'approved'
+  last_seen_at?: string
+  isOnline?: boolean
   createdAt: string
 }
 

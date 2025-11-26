@@ -11,7 +11,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // Server-side client (for API routes)
 // Uses service role key if available, otherwise falls back to anon key
 export function createServerClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set. Server-side Supabase access is blocked for safety.");
+  }
+
   return createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,

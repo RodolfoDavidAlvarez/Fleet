@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT NOT NULL CHECK (role IN ('admin', 'mechanic', 'customer', 'driver')),
   phone TEXT,
   password_hash TEXT,
+  approval_status TEXT NOT NULL CHECK (approval_status IN ('pending_approval', 'approved')) DEFAULT 'pending_approval',
+  last_seen_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -254,6 +256,38 @@ CREATE TABLE IF NOT EXISTS repair_reports (
 
 CREATE INDEX IF NOT EXISTS idx_repair_reports_request ON repair_reports(repair_request_id);
 
+-- Notifications table
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('info', 'warning', 'error', 'success', 'booking', 'repair_request')),
+  recipient_ids UUID[] DEFAULT '{}',
+  recipient_roles TEXT[] DEFAULT '{}',
+  is_read BOOLEAN DEFAULT false,
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Notification recipients junction table (for many-to-many relationship)
+CREATE TABLE IF NOT EXISTS notification_recipients (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  notification_id UUID REFERENCES notifications(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  is_read BOOLEAN DEFAULT false,
+  read_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(notification_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient_roles ON notifications USING GIN(recipient_roles);
+CREATE INDEX IF NOT EXISTS idx_notification_recipients_user_id ON notification_recipients(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_recipients_notification_id ON notification_recipients(notification_id);
+CREATE INDEX IF NOT EXISTS idx_users_approval_status ON users(approval_status);
+CREATE INDEX IF NOT EXISTS idx_users_last_seen_at ON users(last_seen_at);
+
 -- Link bookings to repair requests
 ALTER TABLE bookings
 ADD COLUMN IF NOT EXISTS repair_request_id UUID REFERENCES repair_requests(id);
@@ -282,6 +316,10 @@ DROP TRIGGER IF EXISTS update_repair_requests_updated_at ON repair_requests;
 CREATE TRIGGER update_repair_requests_updated_at BEFORE UPDATE ON repair_requests
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_notifications_updated_at ON notifications;
+CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON notifications
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Insert sample data (optional - for development)
 -- Uncomment to add sample data
 
@@ -300,3 +338,4 @@ INSERT INTO vehicles (id, make, model, year, vin, license_plate, status, mileage
   ('00000000-0000-0000-0000-000000000004', 'Ford', 'F-150', 2022, '1FTFW1E50NFA12345', 'ABC-1234', 'active', 15000),
   ('00000000-0000-0000-0000-000000000005', 'Chevrolet', 'Silverado', 2021, '1GCVKREC1MZ123456', 'XYZ-5678', 'in_service', 25000);
 */
+

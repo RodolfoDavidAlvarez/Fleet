@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { repairRequestDB } from "@/lib/db";
 import { notifyAdminOfRepair, sendRepairBookingLink } from "@/lib/twilio";
+import { sendRepairBookingLinkEmail } from "@/lib/email";
 
 const scheduleSchema = z.object({
   serviceType: z.string().optional(),
@@ -50,6 +51,18 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     if (existing.driverPhone) {
       await sendRepairBookingLink(existing.driverPhone, {
+        requestId: existing.id,
+        link: link.toString(),
+        issueSummary: existing.description.slice(0, 120),
+        language: existing.preferredLanguage,
+        suggestedSlot,
+      });
+    }
+
+    // Send email with booking link if email provided
+    if (existing.driverEmail) {
+      await sendRepairBookingLinkEmail(existing.driverEmail, {
+        driverName: existing.driverName,
         requestId: existing.id,
         link: link.toString(),
         issueSummary: existing.description.slice(0, 120),

@@ -1,4 +1,5 @@
 'use client'
+'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -166,6 +167,170 @@ export default function LoginPage() {
         </div>
       </div>
       <Footer />
+    </div>
+  )
+}
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react'
+
+export default function LoginPage() {
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const userData = localStorage.getItem('user')
+    if (userData) {
+      const user = JSON.parse(userData)
+      // Redirect based on role
+      if (user.role === 'admin' || user.role === 'mechanic') {
+        router.push('/dashboard')
+      } else {
+        router.push('/')
+      }
+    }
+  }, [router])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || 'Login failed')
+        setLoading(false)
+        return
+      }
+
+      // Store user data in localStorage
+      localStorage.setItem('user', JSON.stringify(data.user))
+
+      // Redirect based on role
+      if (data.user.role === 'admin' || data.user.role === 'mechanic') {
+        router.push('/dashboard')
+      } else {
+        router.push('/')
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.')
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="card-surface p-8">
+          {/* Logo/Header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-500/10 rounded-2xl mb-4">
+              <LogIn className="w-8 h-8 text-primary-600" />
+            </div>
+            <h1 className="text-3xl font-bold text-ink mb-2">
+              Fleet Management System
+            </h1>
+            <p className="text-muted">Sign in to your account</p>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email Field */}
+            <div>
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-ink mb-2"
+              >
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full pl-10 pr-4 py-3 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                  placeholder="admin@fleetpro.com"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-ink mb-2"
+              >
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full pl-10 pr-4 py-3 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                  placeholder="Enter your password"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 px-4 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+
+          {/* Demo Credentials */}
+          <div className="mt-8 pt-6 border-t border-border">
+            <p className="text-xs text-muted text-center mb-3">
+              Demo Credentials:
+            </p>
+            <div className="space-y-2 text-xs text-muted">
+              <div className="flex justify-between">
+                <span className="font-medium">Admin:</span>
+                <span>admin@fleetpro.com / admin123</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Mechanic:</span>
+                <span>mechanic@fleetpro.com / mechanic123</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

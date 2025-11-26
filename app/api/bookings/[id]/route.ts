@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { bookingDB, repairRequestDB } from "@/lib/db";
 import { sendStatusUpdate } from "@/lib/twilio";
+import { sendStatusUpdateEmail } from "@/lib/email";
 import { z } from "zod";
 
 const bookingUpdateSchema = z.object({
@@ -55,6 +56,16 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     // Send SMS if status changed
     if (parsed.data.status && parsed.data.status !== currentBooking.status) {
       await sendStatusUpdate(booking.customerPhone, parsed.data.status, booking.id);
+      
+      // Send email notification
+      if (booking.customerEmail) {
+        await sendStatusUpdateEmail(booking.customerEmail, {
+          customerName: booking.customerName,
+          bookingId: booking.id,
+          status: parsed.data.status,
+          serviceType: booking.serviceType,
+        });
+      }
     }
 
     const linkedRequestId = parsed.data.repairRequestId || booking.repairRequestId;

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { jobDB } from "@/lib/db";
+import { jobDB, bookingDB } from "@/lib/db";
+import { notifyMechanicAssignment } from "@/lib/email";
+import { createServerClient } from "@/lib/supabase";
 
 const jobSchema = z.object({
   bookingId: z.string().min(1),
@@ -46,6 +48,35 @@ export async function POST(request: NextRequest) {
       estimatedHours: parsed.data.estimatedHours || 0,
       partsUsed: [],
     });
+
+    // Send email notification to mechanic
+    try {
+      const supabase = createServerClient();
+      const { data: mechanic } = await supabase
+        .from('users')
+        .select('email, name')
+        .eq('id', parsed.data.mechanicId)
+        .single();
+
+      const booking = await bookingDB.getById(parsed.data.bookingId);
+      
+      if (mechanic?.email && booking) {
+        await notifyMechanicAssignment(mechanic.email, {
+          mechanicName: mechanic.name || 'Mechanic',
+          jobId: job.id,
+          bookingId: booking.id,
+          customerName: booking.customerName,
+          serviceType: booking.serviceType,
+          date: booking.scheduledDate,
+          time: booking.scheduledTime,
+          priority: parsed.data.priority || "medium",
+          vehicleInfo: booking.vehicleInfo,
+        });
+      }
+    } catch (error) {
+      console.error('Error sending mechanic assignment email:', error);
+      // Don't fail the request if email fails
+    }
 
     return NextResponse.json({ job }, { status: 201 });
   } catch (error) {

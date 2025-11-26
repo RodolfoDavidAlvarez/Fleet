@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { repairReportDB, repairRequestDB } from "@/lib/db";
 import { sendRepairCompletion } from "@/lib/twilio";
+import { sendRepairCompletionEmail } from "@/lib/email";
 
 const reportSchema = z.object({
   mechanicId: z.string().optional(),
@@ -47,6 +48,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     if (existing.driverPhone) {
       await sendRepairCompletion(existing.driverPhone, {
+        requestId: existing.id,
+        summary: parsed.data.summary,
+        totalCost: parsed.data.totalCost,
+        language: existing.preferredLanguage,
+      });
+    }
+
+    // Send email notification if email provided
+    if (existing.driverEmail) {
+      await sendRepairCompletionEmail(existing.driverEmail, {
+        driverName: existing.driverName,
         requestId: existing.id,
         summary: parsed.data.summary,
         totalCost: parsed.data.totalCost,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { jobDB } from "@/lib/db";
 import { sendJobCompletion } from "@/lib/twilio";
+import { sendJobCompletionEmail } from "@/lib/email";
 import { bookingDB } from "@/lib/db";
 
 const jobUpdateSchema = z.object({
@@ -52,6 +53,16 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
           totalCost: job.totalCost,
           bookingId: booking.id,
         });
+        
+        // Send email notification
+        if (booking.customerEmail) {
+          await sendJobCompletionEmail(booking.customerEmail, {
+            customerName: booking.customerName,
+            serviceType: booking.serviceType,
+            totalCost: job.totalCost,
+            bookingId: booking.id,
+          });
+        }
       }
     }
 

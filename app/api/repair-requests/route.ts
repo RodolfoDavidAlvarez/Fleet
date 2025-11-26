@@ -4,8 +4,10 @@ import { repairRequestDB } from "@/lib/db";
 import { analyzeRepairRequest } from "@/lib/ai";
 import { optimizeAndStoreImages } from "@/lib/media";
 import { notifyAdminOfRepair, sendRepairSubmissionNotice } from "@/lib/twilio";
+import { sendRepairSubmissionEmail, notifyAdminNewRepairRequest } from "@/lib/email";
 
 export const runtime = "nodejs";
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB per image
 
 const createSchema = z.object({
   driverId: z.string().uuid().optional(),
@@ -59,7 +61,19 @@ export async function POST(request: NextRequest) {
     }
 
     const photoFiles = formData.getAll("photos").filter((p): p is File => p instanceof File && p.size > 0);
-    const stored = await optimizeAndStoreImages(photoFiles);
+    const validPhotos: File[] = [];
+
+    for (const file of photoFiles) {
+      if (!file.type.startsWith("image/")) {
+        return NextResponse.json({ error: "Only image uploads are allowed." }, { status: 400 });
+      }
+      if (file.size > MAX_UPLOAD_BYTES) {
+        return NextResponse.json({ error: "Images must be 5MB or smaller." }, { status: 400 });
+      }
+      validPhotos.push(file);
+    }
+
+    const stored = await optimizeAndStoreImages(validPhotos);
 
     const ai = await analyzeRepairRequest({
       description: parsed.data.description,
@@ -92,11 +106,35 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Send email to driver if email provided
+    if (record.driverEmail) {
+      await sendRepairSubmissionEmail(record.driverEmail, {
+        driverName: record.driverName,
+        requestId: record.id,
+        summary: ai.summary,
+        urgency: record.urgency,
+        language: record.preferredLanguage,
+      });
+    }
+
+    // Notify admin via SMS
     await notifyAdminOfRepair({
       requestId: record.id,
       driverName: record.driverName,
       driverPhone: record.driverPhone,
       urgency: record.urgency,
+    });
+
+    // Notify admin via email
+    const adminEmail = process.env.ADMIN_EMAIL || 'ralvarez@bettersystems.ai';
+    await notifyAdminNewRepairRequest(adminEmail, {
+      requestId: record.id,
+      driverName: record.driverName,
+      driverPhone: record.driverPhone,
+      driverEmail: record.driverEmail,
+      urgency: record.urgency,
+      summary: ai.summary,
+      vehicleIdentifier: record.vehicleIdentifier,
     });
 
     return NextResponse.json({ request: record, ai }, { status: 201 });
