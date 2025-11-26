@@ -17,7 +17,7 @@ export async function extractEnhancedVehicles() {
       make: fields.Make || fields.Brand || '',
       model: fields.Model || '',
       year: fields['Vehicle year'] || new Date().getFullYear(),
-      vin: fields.VIN || '',
+      vin: fields.VIN || `AIRTABLE-${record.id}`, // Generate unique VIN if empty
       licensePlate: fields['License plate'] || '',
       vehicleNumber: fields['Vehicle number'] || fields['Asset Number'] || '',
       
@@ -153,6 +153,38 @@ export async function extractMembers() {
   }
 }
 
+// Extract repair requests
+export async function extractRepairRequests() {
+  console.log('🔧 Extracting repair request data...')
+  
+  try {
+    const records = await getAirtableRecords('Repair Requests')
+    
+    return records.map((record: any) => {
+      const fields = record.fields
+      
+      return {
+        driverName: fields['Driver Name'] || fields.Driver || '',
+        driverPhone: normalizePhoneNumber(fields['Driver Phone'] || fields.Phone),
+        driverEmail: normalizeEmail(fields['Driver Email'] || fields.Email),
+        vehicleIdentifier: fields['Vehicle ID'] || fields.Vehicle || '',
+        description: fields.Description || fields.Issue || '',
+        urgency: mapUrgency(fields.Urgency || fields.Priority),
+        status: mapRepairStatus(fields.Status),
+        location: fields.Location || '',
+        odometer: parseInt(fields.Odometer || fields.Mileage || '0'),
+        photoUrls: extractPhotoUrls(fields.Photos || fields.Images),
+        aiCategory: fields['AI Category'] || '',
+        airtableId: record.id,
+        createdAt: record._rawJson?.createdTime || new Date().toISOString(),
+      }
+    })
+  } catch (error) {
+    console.error('Error extracting repair requests:', error)
+    return []
+  }
+}
+
 // Extract appointments/scheduling
 export async function extractAppointments() {
   console.log('📅 Extracting appointment data...')
@@ -233,6 +265,24 @@ function calculateNextService(lastServiceDate: string | undefined, currentMileag
   return nextDate.toISOString().split('T')[0]
 }
 
+function mapUrgency(urgency: any): string {
+  const urgencyStr = (urgency?.toString() || '').toLowerCase()
+  if (urgencyStr.includes('critical') || urgencyStr.includes('emergency')) return 'critical'
+  if (urgencyStr.includes('high') || urgencyStr.includes('urgent')) return 'high'
+  if (urgencyStr.includes('medium') || urgencyStr.includes('moderate')) return 'medium'
+  return 'low'
+}
+
+function mapRepairStatus(status: any): string {
+  const statusStr = (status?.toString() || '').toLowerCase()
+  if (statusStr.includes('complete')) return 'completed'
+  if (statusStr.includes('progress') || statusStr.includes('working')) return 'in_progress'
+  if (statusStr.includes('schedule')) return 'scheduled'
+  if (statusStr.includes('waiting')) return 'waiting_booking'
+  if (statusStr.includes('triage')) return 'triaged'
+  return 'submitted'
+}
+
 // Main extraction coordinator
 export async function extractAllEnhancedData() {
   console.log('🚀 Starting enhanced Airtable data extraction...')
@@ -243,13 +293,15 @@ export async function extractAllEnhancedData() {
       departments,
       serviceRecords,
       members,
-      appointments
+      appointments,
+      repairRequests
     ] = await Promise.all([
       extractEnhancedVehicles(),
       extractDepartments(),
       extractServiceRecords(),
       extractMembers(),
-      extractAppointments()
+      extractAppointments(),
+      extractRepairRequests()
     ])
     
     return {
@@ -258,12 +310,14 @@ export async function extractAllEnhancedData() {
       serviceRecords,
       members,
       appointments,
+      repairRequests,
       summary: {
         vehiclesCount: vehicles.length,
         departmentsCount: departments.length,
         serviceRecordsCount: serviceRecords.length,
         membersCount: members.length,
         appointmentsCount: appointments.length,
+        repairRequestsCount: repairRequests.length,
       }
     }
   } catch (error) {

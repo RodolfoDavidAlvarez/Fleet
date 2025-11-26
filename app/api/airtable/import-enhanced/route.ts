@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
       serviceRecords: { imported: 0, skipped: 0, errors: [] as string[] },
       members: { imported: 0, skipped: 0, errors: [] as string[] },
       appointments: { imported: 0, skipped: 0, errors: [] as string[] },
+      repairRequests: { imported: 0, skipped: 0, errors: [] as string[] },
     }
     
     const supabase = createServerClient()
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
               }
             }
             
-            // Insert/update vehicle with enhanced data
+            // Insert/update vehicle with enhanced data using airtable_id to avoid duplicates
             const { error } = await supabase
               .from('vehicles')
               .upsert({
@@ -270,6 +271,38 @@ export async function POST(request: NextRequest) {
         } catch (error: any) {
           results.appointments.skipped++
           results.appointments.errors.push(`${appt.customerName}: ${error.message}`)
+        }
+      }
+    }
+    
+    // Import repair requests
+    if (dataTypes.includes('all') || dataTypes.includes('repairRequests')) {
+      for (const request of extractedData.repairRequests) {
+        try {
+          if (!dryRun) {
+            const { error } = await supabase
+              .from('repair_requests')
+              .upsert({
+                driver_name: request.driverName,
+                driver_phone: request.driverPhone,
+                driver_email: request.driverEmail,
+                vehicle_identifier: request.vehicleIdentifier,
+                description: request.description,
+                urgency: request.urgency,
+                status: request.status,
+                location: request.location,
+                odometer: request.odometer,
+                photo_urls: request.photoUrls,
+                ai_category: request.aiCategory,
+                airtable_id: request.airtableId,
+              }, { onConflict: 'airtable_id' })
+            
+            if (error) throw error
+          }
+          results.repairRequests.imported++
+        } catch (error: any) {
+          results.repairRequests.skipped++
+          results.repairRequests.errors.push(`${request.driverName || 'Unknown'}: ${error.message}`)
         }
       }
     }
