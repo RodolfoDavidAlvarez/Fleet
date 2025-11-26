@@ -68,3 +68,4 @@ If you don't see a "Secret keys" section:
 3. Try refreshing the page
 4. The service role key might be labeled differently in newer Supabase projects
 
+

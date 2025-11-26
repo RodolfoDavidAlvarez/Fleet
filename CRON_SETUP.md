@@ -149,3 +149,4 @@ Monitor the response to ensure reminders are being sent successfully.
 3. **Test first**: Use the POST endpoint to test with a single booking before enabling cron
 4. **Set up alerts**: Configure error notifications if reminders fail
 
+

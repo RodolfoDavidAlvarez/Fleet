@@ -17,7 +17,8 @@ import {
   MoreVertical,
   Send,
   Edit,
-  Calendar
+  Calendar,
+  UserPlus
 } from 'lucide-react'
 
 interface User {
@@ -30,6 +31,7 @@ interface User {
   last_seen_at?: string
   isOnline?: boolean
   created_at: string
+  notify_on_repair?: boolean
 }
 
 export default function AdminSettingsPage() {
@@ -58,6 +60,13 @@ export default function AdminSettingsPage() {
     slotDuration: 30,
     workingDays: [1, 2, 3, 4, 5],
   })
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteForm, setInviteForm] = useState({
+    email: '',
+    role: 'driver',
+  })
+  const [filterRole, setFilterRole] = useState('all')
+  const [filterStatus, setFilterStatus] = useState('all')
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -122,10 +131,35 @@ export default function AdminSettingsPage() {
     }
   }
 
+  const handleInviteUser = async () => {
+    setSaving(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const res = await fetch('/api/admin/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(inviteForm),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to invite user')
+      }
+      setSuccess(`Invitation sent to ${inviteForm.email}`)
+      setShowInviteModal(false)
+      setInviteForm({ email: '', role: 'driver' })
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to invite user')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const loadUsers = async () => {
     try {
-      // Only fetch administrators for the users tab
-      const res = await fetch('/api/admin/users?role=admin')
+      // Fetch all users
+      const res = await fetch('/api/admin/users')
       if (!res.ok) throw new Error('Failed to load users')
       const data = await res.json()
       setUsers(data.users || [])
@@ -148,7 +182,7 @@ export default function AdminSettingsPage() {
     }
   }
 
-  const handleUpdateUser = async (userId: string, updates: { role?: string; approval_status?: string }) => {
+  const handleUpdateUser = async (userId: string, updates: { role?: string; approval_status?: string; notifyOnRepair?: boolean }) => {
     setSaving(true)
     setError(null)
     setSuccess(null)
@@ -164,7 +198,11 @@ export default function AdminSettingsPage() {
       }
       await loadUsers()
       setEditingUser(null)
-      setSuccess('User updated successfully')
+      if (updates.notifyOnRepair !== undefined) {
+          setSuccess('Notification preferences updated')
+      } else {
+          setSuccess('User updated successfully')
+      }
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update user')
@@ -360,8 +398,43 @@ export default function AdminSettingsPage() {
             {activeTab === 'users' && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold text-gray-900">Administrators</h2>
-                  <p className="text-sm text-gray-600 mt-1">Manage administrator accounts and access to the dashboard</p>
+                  <div className="flex justify-between items-center mb-4">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900">Users Management</h2>
+                      <p className="text-sm text-gray-600 mt-1">Manage user accounts, roles, and approvals</p>
+                    </div>
+                    <button
+                      onClick={() => setShowInviteModal(true)}
+                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>Invite User</span>
+                    </button>
+                  </div>
+                  
+                  <div className="flex space-x-4">
+                    <select
+                      value={filterRole}
+                      onChange={(e) => setFilterRole(e.target.value)}
+                      className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                    >
+                      <option value="all">All Roles</option>
+                      <option value="admin">Admin</option>
+                      <option value="mechanic">Mechanic</option>
+                      <option value="driver">Driver</option>
+                      <option value="customer">Customer</option>
+                    </select>
+
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="block w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="pending_approval">Pending Approval</option>
+                      <option value="approved">Approved</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -377,6 +450,9 @@ export default function AdminSettingsPage() {
                           Role
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Repair Alerts
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Online
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -385,7 +461,19 @@ export default function AdminSettingsPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {users.map((u) => (
+                      {users
+                        .filter(u => {
+                          if (filterRole !== 'all' && u.role !== filterRole) return false
+                          if (filterStatus !== 'all' && u.approval_status !== filterStatus) return false
+                          return true
+                        })
+                        .sort((a, b) => {
+                          // Sort pending users first
+                          if (a.approval_status === 'pending_approval' && b.approval_status !== 'pending_approval') return -1
+                          if (a.approval_status !== 'pending_approval' && b.approval_status === 'pending_approval') return 1
+                          return 0
+                        })
+                        .map((u) => (
                         <tr key={u.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
@@ -400,6 +488,17 @@ export default function AdminSettingsPage() {
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(u.role)}`}>
                               {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
                             </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                                <input 
+                                    type="checkbox" 
+                                    checked={u.notify_on_repair || false} 
+                                    onChange={(e) => handleUpdateUser(u.id, { notifyOnRepair: e.target.checked })}
+                                    className="form-checkbox h-4 w-4 text-primary-600 transition duration-150 ease-in-out"
+                                />
+                                <span className="text-sm text-gray-600">SMS/Email</span>
+                            </label>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {u.isOnline ? (
@@ -453,17 +552,17 @@ export default function AdminSettingsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Maximum Bookings Per Week
                     </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="20"
-                      value={calendarSettings.maxBookingsPerWeek}
-                      onChange={(e) => setCalendarSettings({
-                        ...calendarSettings,
-                        maxBookingsPerWeek: parseInt(e.target.value) || 5
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    />
+                      <input
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={calendarSettings.maxBookingsPerWeek}
+                        onChange={(e) => setCalendarSettings({
+                          ...calendarSettings,
+                          maxBookingsPerWeek: parseInt(e.target.value) || 5
+                        })}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                      />
                     <p className="text-xs text-gray-500 mt-1">Maximum number of bookings allowed per week (default: 5)</p>
                   </div>
 
@@ -479,7 +578,7 @@ export default function AdminSettingsPage() {
                           ...calendarSettings,
                           startTime: e.target.value
                         })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
                       />
                       <p className="text-xs text-gray-500 mt-1">Earliest booking time (default: 06:00)</p>
                     </div>
@@ -495,7 +594,7 @@ export default function AdminSettingsPage() {
                           ...calendarSettings,
                           endTime: e.target.value
                         })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
                       />
                       <p className="text-xs text-gray-500 mt-1">Latest booking time (default: 14:00)</p>
                     </div>
@@ -511,7 +610,7 @@ export default function AdminSettingsPage() {
                         ...calendarSettings,
                         slotDuration: parseInt(e.target.value) || 30
                       })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
                     >
                       <option value="15">15 minutes</option>
                       <option value="30">30 minutes</option>
@@ -649,6 +748,59 @@ export default function AdminSettingsPage() {
         <Footer />
       </div>
 
+      {/* Invite User Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Invite User</h3>
+              <p className="text-sm text-gray-600 mt-1">Send an invitation email to a new user</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                <input
+                  type="email"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                  placeholder="user@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                <select
+                  value={inviteForm.role}
+                  onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                >
+                  <option value="admin">Admin</option>
+                  <option value="mechanic">Mechanic</option>
+                  <option value="driver">Driver</option>
+                  <option value="customer">Customer</option>
+                </select>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowInviteModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleInviteUser}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                disabled={saving || !inviteForm.email}
+              >
+                {saving ? 'Sending...' : 'Send Invitation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit User Modal */}
       {editingUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
@@ -663,7 +815,7 @@ export default function AdminSettingsPage() {
                 <select
                   value={editingUser.role}
                   onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
                 >
                   <option value="admin">Admin</option>
                   <option value="mechanic">Mechanic</option>
@@ -676,7 +828,7 @@ export default function AdminSettingsPage() {
                 <select
                   value={editingUser.approval_status}
                   onChange={(e) => setEditingUser({ ...editingUser, approval_status: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
                 >
                   <option value="pending_approval">Pending Approval</option>
                   <option value="approved">Approved</option>
@@ -722,7 +874,7 @@ export default function AdminSettingsPage() {
                   type="text"
                   value={notificationForm.title}
                   onChange={(e) => setNotificationForm({ ...notificationForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
                   placeholder="Notification title"
                 />
               </div>
@@ -731,7 +883,7 @@ export default function AdminSettingsPage() {
                 <textarea
                   value={notificationForm.message}
                   onChange={(e) => setNotificationForm({ ...notificationForm, message: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
                   rows={4}
                   placeholder="Notification message"
                 />
@@ -741,7 +893,7 @@ export default function AdminSettingsPage() {
                 <select
                   value={notificationForm.type}
                   onChange={(e) => setNotificationForm({ ...notificationForm, type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
                 >
                   <option value="info">Info</option>
                   <option value="warning">Warning</option>
@@ -788,7 +940,7 @@ export default function AdminSettingsPage() {
                     const selected = Array.from(e.target.selectedOptions, (option) => option.value)
                     setNotificationForm({ ...notificationForm, recipientIds: selected })
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
                   size={5}
                 >
                   {users.map((u) => (

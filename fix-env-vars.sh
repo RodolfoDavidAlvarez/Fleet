@@ -64,3 +64,4 @@ echo "1. If SUPABASE_SERVICE_ROLE_KEY has a placeholder, replace it with your ac
 echo "2. Restart your dev server: npm run dev"
 echo "3. Test the connection: node test-db-connection.js"
 
+

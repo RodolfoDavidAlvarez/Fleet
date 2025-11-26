@@ -243,3 +243,4 @@ ENABLE_SMS=false
 5. **All email notifications** include HTML templates with proper styling
 6. **Error handling** is implemented - notification failures don't break the main flow
 
+

@@ -102,12 +102,13 @@ export async function notifyAdminOfRepair(details: {
   driverName?: string
   driverPhone?: string
   urgency?: string
-}) {
-  if (!adminPhone) {
+}, toPhone?: string) {
+  const targetPhone = toPhone || adminPhone
+  if (!targetPhone) {
     return false
   }
   const message = `New repair request #${details.requestId}\nDriver: ${details.driverName || 'Unknown'} (${details.driverPhone || 'n/a'})\nUrgency: ${details.urgency || 'unspecified'}.`
-  return sendSMS(adminPhone, message)
+  return sendSMS(targetPhone, message)
 }
 
 export async function sendRepairBookingLink(
@@ -138,3 +139,4 @@ export async function sendRepairCompletion(
       : `Repair completed (#${details.requestId}). ${details.summary}${costLine}`
   return sendSMS(phone, message)
 }
+

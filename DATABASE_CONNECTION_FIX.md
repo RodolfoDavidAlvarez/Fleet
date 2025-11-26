@@ -121,3 +121,4 @@ If you're still experiencing issues:
 2. Check the terminal where `npm run dev` is running for server-side errors
 3. Run `node test-db-connection.js` to see detailed database connection info
 
+

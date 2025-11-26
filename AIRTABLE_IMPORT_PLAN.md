@@ -173,3 +173,4 @@ If you encounter issues:
 **Status**: Ready to explore your Airtable base!
 **Next Action**: Run `npm run dev` and visit the explore endpoint
 
+

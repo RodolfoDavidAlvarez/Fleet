@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Calendar, Clock, User, Phone, MessageSquare, CheckCircle } from 'lucide-react'
+import { Calendar, Clock, User, MessageSquare, CheckCircle, MapPin, Car } from 'lucide-react'
 
 export default function BookingLinkPage({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -247,59 +247,59 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
       <div className="max-w-5xl w-full bg-white rounded-lg shadow-lg overflow-hidden flex flex-col md:flex-row min-h-[600px]">
         
         {/* Left Panel - Service Details (Calendly Style) */}
-        <div className="w-full md:w-1/3 bg-gray-50 border-r border-gray-200 p-8 flex flex-col">
+        <div className="w-full md:w-1/3 bg-gray-50 border-r border-gray-300 p-8 flex flex-col">
           {/* Logo or Branding */}
           <div className="mb-8">
              <img src="/images/AEC-Horizontal-Official-Logo-2020.png" alt="Agave Environmental Contracting" className="h-12 object-contain" />
           </div>
           
           <div className="flex-1">
-             <div className="flex items-center gap-2 text-gray-500 text-sm font-medium mb-2">
-               <User className="h-4 w-4" />
+             <div className="flex items-center gap-2 text-gray-700 text-sm font-medium mb-2">
+               <User className="h-4 w-4 text-gray-600" />
                <span>{repairRequest.driverName || 'Valued Driver'}</span>
              </div>
              
              <h1 className="text-2xl font-bold text-gray-900 mb-6">Vehicle Repair Service</h1>
              
-             <div className="space-y-4 text-gray-600">
+             <div className="space-y-4 text-gray-700">
                <div className="flex items-start gap-3">
-                 <Clock className="h-5 w-5 mt-0.5 text-gray-400" />
+                 <Clock className="h-5 w-5 mt-0.5 text-gray-600 flex-shrink-0" />
                  <div>
                    <p className="font-medium text-gray-900">30 min</p>
                  </div>
                </div>
                
                <div className="flex items-start gap-3">
-                 <MapPin className="h-5 w-5 mt-0.5 text-gray-400" />
+                 <MapPin className="h-5 w-5 mt-0.5 text-gray-600 flex-shrink-0" />
                  <div>
                    <p className="font-medium text-gray-900">Service Center</p>
-                   <p className="text-sm">Agave Fleet HQ</p>
+                   <p className="text-sm text-gray-600">Agave Fleet HQ</p>
                  </div>
                </div>
 
                {repairRequest.vehicleIdentifier && (
                  <div className="flex items-start gap-3">
-                   <Car className="h-5 w-5 mt-0.5 text-gray-400" />
+                   <Car className="h-5 w-5 mt-0.5 text-gray-600 flex-shrink-0" />
                    <div>
                      <p className="font-medium text-gray-900">Vehicle</p>
-                     <p className="text-sm">{repairRequest.vehicleIdentifier}</p>
+                     <p className="text-sm text-gray-600">{repairRequest.vehicleIdentifier}</p>
                    </div>
                  </div>
                )}
 
                {repairRequest.description && (
                  <div className="flex items-start gap-3">
-                   <MessageSquare className="h-5 w-5 mt-0.5 text-gray-400" />
+                   <MessageSquare className="h-5 w-5 mt-0.5 text-gray-600 flex-shrink-0" />
                    <div>
                      <p className="font-medium text-gray-900">Issue Reported</p>
-                     <p className="text-sm line-clamp-3">{repairRequest.description}</p>
+                     <p className="text-sm text-gray-600 line-clamp-3">{repairRequest.description}</p>
                    </div>
                  </div>
                )}
              </div>
           </div>
           
-          <div className="mt-auto pt-6 text-xs text-gray-400">
+          <div className="mt-auto pt-6 text-xs text-gray-500">
             <p>© Agave Environmental Contracting</p>
           </div>
         </div>
@@ -310,7 +310,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
              <h2 className="text-xl font-bold text-gray-900 mb-6">Select a Date & Time</h2>
              
              {error && (
-               <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+               <div className="mb-6 bg-red-50 border-2 border-red-300 text-red-900 px-4 py-3 rounded-lg text-sm font-medium">
                  {error}
                </div>
              )}
@@ -318,10 +318,10 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Calendar Section */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                  <label className="block text-sm font-medium text-gray-900 mb-3">
                     Select Date
                   </label>
-                  <div className="inline-block border border-gray-200 rounded-lg p-4 bg-white shadow-sm w-full">
+                  <div className="inline-block border-2 border-gray-300 rounded-lg p-4 bg-white shadow-sm w-full focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-200 transition-colors">
                     {/* Simple Custom Calendar UI or Date Input */}
                     <input 
                       type="date" 
@@ -329,9 +329,9 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                       min={new Date().toISOString().split('T')[0]}
                       value={formData.date}
                       onChange={(e) => setFormData({ ...formData, date: e.target.value, time: '' })}
-                      className="w-full p-2 border-none focus:ring-0 text-lg font-medium text-gray-700 cursor-pointer"
+                      className="w-full p-2 border-none focus:ring-0 text-lg font-medium text-gray-900 cursor-pointer bg-transparent"
                     />
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-gray-600 mt-2 font-medium">
                        Monday - Friday only
                     </p>
                   </div>
@@ -339,32 +339,32 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                   {/* Additional Inputs that were in the previous form */}
                   <div className="mt-6 space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Your Name</label>
                       <input
                         type="text"
                         required
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                        className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Phone Number</label>
                       <input
                         type="tel"
                         required
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                        className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Notes</label>
                       <textarea
                         rows={2}
                         value={formData.notes}
                         onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 resize-none"
+                        className="w-full px-3 py-2 bg-white border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none text-gray-900 placeholder-gray-500"
                         placeholder="Any specific requests..."
                       />
                     </div>
@@ -372,23 +372,23 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                 </div>
 
                 {/* Time Slots Section */}
-                <div className="lg:border-l lg:pl-8 border-gray-100">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                <div className="lg:border-l lg:pl-8 border-gray-300">
+                  <label className="block text-sm font-medium text-gray-900 mb-3">
                     Select Time
                   </label>
                   
                   {!formData.date ? (
-                    <div className="flex flex-col items-center justify-center h-48 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                       <Calendar className="h-8 w-8 mb-2 opacity-50" />
-                       <p className="text-sm">Choose a date first</p>
+                    <div className="flex flex-col items-center justify-center h-48 text-gray-600 bg-gray-50 rounded-lg border-2 border-dashed border-gray-400">
+                       <Calendar className="h-8 w-8 mb-2 text-gray-500" />
+                       <p className="text-sm font-medium">Choose a date first</p>
                     </div>
                   ) : loadingAvailability ? (
-                    <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+                    <div className="flex flex-col items-center justify-center h-48 text-gray-700">
                       <div className="h-6 w-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin mb-2"></div>
-                      <p className="text-sm">Checking availability...</p>
+                      <p className="text-sm font-medium">Checking availability...</p>
                     </div>
                   ) : getTimeSlots().length === 0 ? (
-                     <div className="text-center p-4 bg-yellow-50 text-yellow-800 rounded-lg text-sm">
+                     <div className="text-center p-4 bg-yellow-50 border-2 border-yellow-200 text-yellow-900 rounded-lg text-sm font-medium">
                        No slots available for this date.
                      </div>
                   ) : (
@@ -398,10 +398,10 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                           key={time}
                           type="button"
                           onClick={() => setFormData({ ...formData, time })}
-                          className={`w-full py-3 px-4 rounded-md border text-center font-medium transition-all ${
+                          className={`w-full py-3 px-4 rounded-md border-2 text-center font-semibold transition-all ${
                             formData.time === time
                               ? 'border-primary-600 bg-primary-600 text-white shadow-md scale-[1.02]'
-                              : 'border-primary-200 text-primary-700 hover:border-primary-600 hover:shadow-sm bg-white'
+                              : 'border-primary-300 text-primary-800 hover:border-primary-600 hover:bg-primary-50 hover:shadow-sm bg-white'
                           }`}
                         >
                           {time}
@@ -415,7 +415,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                       <button
                         type="submit"
                         disabled={submitting}
-                        className="w-full bg-gray-900 text-white py-3 rounded-md font-semibold text-sm shadow hover:bg-black transition-colors disabled:opacity-50"
+                        className="w-full bg-gray-900 text-white py-3 rounded-md font-semibold text-sm shadow-lg hover:bg-black hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed border-2 border-gray-900"
                       >
                         {submitting ? 'Confirming...' : 'Confirm Booking'}
                       </button>
@@ -429,4 +429,3 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
     </div>
   )
 }
-
