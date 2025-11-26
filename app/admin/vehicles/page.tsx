@@ -69,7 +69,22 @@ export default function VehiclesPage() {
       const res = await fetch('/api/vehicles')
       if (!res.ok) throw new Error('Failed to load vehicles')
       const data = await res.json()
-      setVehicles(data.vehicles || [])
+      
+      // Sort vehicles to prioritize complete records
+      const sortedVehicles = (data.vehicles || []).sort((a: Vehicle, b: Vehicle) => {
+        // Helper to check if a vehicle is "complete" (has make/model and real VIN)
+        const isCompleteA = a.make && a.model && !a.vin.startsWith('AIRTABLE');
+        const isCompleteB = b.make && b.model && !b.vin.startsWith('AIRTABLE');
+
+        // Complete records come first
+        if (isCompleteA && !isCompleteB) return -1;
+        if (!isCompleteA && isCompleteB) return 1;
+        
+        // Secondary sort by Make
+        return (a.make || '').localeCompare(b.make || '');
+      })
+      
+      setVehicles(sortedVehicles)
       setError(null)
     } catch (err) {
       console.error('Error fetching vehicles:', err)
@@ -516,7 +531,7 @@ export default function VehiclesPage() {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
-                            Vehicle
+                            Make / Model
                           </th>
                           <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
                             License Plate
@@ -544,17 +559,30 @@ export default function VehiclesPage() {
                           >
                             <td className="px-4 py-3 align-top">
                               <div className="flex items-start gap-3">
-                                <Car className="h-5 w-5 text-gray-400 mt-0.5" />
-                                <div className="space-y-1">
+                                {vehicle.photoUrl ? (
+                                    <img 
+                                        src={vehicle.photoUrl} 
+                                        alt={`${vehicle.make} ${vehicle.model}`}
+                                        className="w-10 h-10 rounded-lg object-cover border border-gray-100"
+                                    />
+                                ) : (
+                                    <div className="bg-primary-50 p-2 rounded-lg border border-primary-100">
+                                        <Car className="h-5 w-5 text-primary-600" />
+                                    </div>
+                                )}
+                                <div className="space-y-0.5">
                                   <div className="text-sm font-semibold text-gray-900 leading-tight">
-                                    {vehicle.year} {vehicle.make} {vehicle.model}
+                                    {vehicle.make} {vehicle.model}
                                   </div>
-                                  <div className="text-xs text-gray-500 leading-tight">{vehicle.vin}</div>
+                                  <div className="text-xs text-gray-500 leading-tight">Year: {vehicle.year}</div>
+                                  <div className="text-[10px] text-gray-400 font-mono mt-0.5">VIN: {vehicle.vin}</div>
                                 </div>
                               </div>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900 align-top">
-                              {vehicle.licensePlate}
+                              <span className="font-medium bg-gray-100 px-2 py-1 rounded text-gray-700 text-xs border border-gray-200">
+                                {vehicle.licensePlate}
+                              </span>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900 align-top">
                               {vehicle.mileage.toLocaleString()} mi
@@ -695,149 +723,218 @@ export default function VehiclesPage() {
             )}
 
             {editingVehicle && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-                    <h2 className="text-xl font-semibold text-gray-900">Edit Vehicle</h2>
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all duration-300">
+                <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl transform transition-all duration-300 scale-100">
+                  <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-8 py-5 flex items-center justify-between z-10">
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">Edit Vehicle</h2>
+                      <p className="text-sm text-gray-500 mt-1">Update vehicle details, photos, and assignments</p>
+                    </div>
                     <button
                       onClick={() => {
                         setEditingVehicle(null)
                         setPhotoFile(null)
                         setPhotoPreview(null)
                       }}
-                      className="text-gray-500 hover:text-gray-700"
+                      className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-colors"
                     >
                       <X className="h-5 w-5" />
                     </button>
                   </div>
-                  <form onSubmit={handleUpdateVehicle} className="p-6 space-y-6">
-                    {/* Photo Upload */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <form onSubmit={handleUpdateVehicle} className="p-8 space-y-8">
+                    {/* Photo Upload Section */}
+                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
+                      <label className="block text-sm font-semibold text-gray-900 mb-4">
                         Vehicle Photo
                       </label>
-                      <div className="flex items-center gap-4">
-                        {photoPreview ? (
-                          <img 
-                            src={photoPreview} 
-                            alt="Preview" 
-                            className="w-32 h-32 rounded-xl object-cover border border-gray-200"
-                          />
-                        ) : editingVehicle.photoUrl ? (
-                          <img 
-                            src={editingVehicle.photoUrl} 
-                            alt="Current" 
-                            className="w-32 h-32 rounded-xl object-cover border border-gray-200"
-                          />
-                        ) : (
-                          <div className="w-32 h-32 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200">
-                            <Camera className="h-8 w-8 text-gray-400" />
-                          </div>
-                        )}
-                        <div>
-                          <label className="cursor-pointer">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handlePhotoChange}
-                              className="hidden"
+                      <div className="flex items-start gap-6">
+                        <div className="relative group">
+                          {photoPreview ? (
+                            <img 
+                              src={photoPreview} 
+                              alt="Preview" 
+                              className="w-40 h-40 rounded-xl object-cover border-2 border-white shadow-md"
                             />
-                            <span className="btn-secondary px-4 py-2 inline-flex items-center gap-2">
-                              <Upload className="h-4 w-4" />
-                              {photoPreview ? 'Change Photo' : 'Upload Photo'}
-                            </span>
-                          </label>
+                          ) : editingVehicle.photoUrl ? (
+                            <img 
+                              src={editingVehicle.photoUrl} 
+                              alt="Current" 
+                              className="w-40 h-40 rounded-xl object-cover border-2 border-white shadow-md"
+                            />
+                          ) : (
+                            <div className="w-40 h-40 rounded-xl bg-gray-200 flex flex-col items-center justify-center border-2 border-dashed border-gray-300">
+                              <Car className="h-10 w-10 text-gray-400 mb-2" />
+                              <span className="text-xs text-gray-500 font-medium">No Image</span>
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <label className="cursor-pointer">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handlePhotoChange}
+                                  className="hidden"
+                                />
+                                <div className="bg-white/90 p-2 rounded-full shadow-lg hover:bg-white transition-colors">
+                                  <Camera className="h-5 w-5 text-gray-700" />
+                                </div>
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center gap-3">
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handlePhotoChange}
+                                className="hidden"
+                              />
+                              <span className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
+                                <Upload className="h-4 w-4 mr-2" />
+                                {photoPreview || editingVehicle.photoUrl ? 'Replace Photo' : 'Upload Photo'}
+                              </span>
+                            </label>
+                            {(photoPreview || editingVehicle.photoUrl) && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        // TODO: Implement delete photo logic properly if needed
+                                        setPhotoPreview(null);
+                                        setPhotoFile(null);
+                                        // Note: Clearing editingVehicle.photoUrl would require backend support to delete/unset
+                                    }}
+                                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Remove
+                                </button>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 leading-relaxed">
+                            Recommended: High-quality JPG or PNG, max 5MB. 
+                            <br />Images help mechanics identify vehicles quickly.
+                          </p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <label className="space-y-2 text-sm text-gray-700">
-                        Make *
-                        <input
-                          required
-                          value={editForm.make}
-                          onChange={(e) => setEditForm({ ...editForm, make: e.target.value })}
-                          className="input-field py-2"
-                        />
-                      </label>
-                      <label className="space-y-2 text-sm text-gray-700">
-                        Model *
-                        <input
-                          required
-                          value={editForm.model}
-                          onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
-                          className="input-field py-2"
-                        />
-                      </label>
-                      <label className="space-y-2 text-sm text-gray-700">
-                        Year *
-                        <input
-                          required
-                          type="number"
-                          value={editForm.year}
-                          onChange={(e) => setEditForm({ ...editForm, year: e.target.value })}
-                          className="input-field py-2"
-                        />
-                      </label>
-                      <label className="space-y-2 text-sm text-gray-700">
-                        VIN *
-                        <input
-                          required
-                          value={editForm.vin}
-                          onChange={(e) => setEditForm({ ...editForm, vin: e.target.value })}
-                          className="input-field py-2"
-                        />
-                      </label>
-                      <label className="space-y-2 text-sm text-gray-700">
-                        License Plate *
-                        <input
-                          required
-                          value={editForm.licensePlate}
-                          onChange={(e) => setEditForm({ ...editForm, licensePlate: e.target.value })}
-                          className="input-field py-2"
-                        />
-                      </label>
-                      <label className="space-y-2 text-sm text-gray-700">
-                        Mileage
-                        <input
-                          type="number"
-                          value={editForm.mileage}
-                          onChange={(e) => setEditForm({ ...editForm, mileage: e.target.value })}
-                          className="input-field py-2"
-                        />
-                      </label>
-                      <label className="space-y-2 text-sm text-gray-700">
-                        Status *
-                        <select
-                          required
-                          value={editForm.status}
-                          onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
-                          className="input-field py-2"
-                        >
-                          <option value="active">Active</option>
-                          <option value="in_service">In Service</option>
-                          <option value="retired">Retired</option>
-                        </select>
-                      </label>
-                      <label className="space-y-2 text-sm text-gray-700">
-                        Driver
-                        <select
-                          value={editForm.driverId}
-                          onChange={(e) => setEditForm({ ...editForm, driverId: e.target.value })}
-                          className="input-field py-2"
-                        >
-                          <option value="">Unassigned</option>
-                          {drivers.map((driver) => (
-                            <option key={driver.id} value={driver.id}>
-                              {driver.name} • {driver.phone || driver.email}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                    <div className="space-y-6">
+                        <div className="border-b border-gray-100 pb-2">
+                            <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                                <Info className="h-4 w-4 text-primary-600" />
+                                Basic Information
+                            </h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Make <span className="text-red-500">*</span></label>
+                            <input
+                              required
+                              value={editForm.make}
+                              onChange={(e) => setEditForm({ ...editForm, make: e.target.value })}
+                              className="input-field w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all"
+                              placeholder="e.g. Ford"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Model <span className="text-red-500">*</span></label>
+                            <input
+                              required
+                              value={editForm.model}
+                              onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
+                              className="input-field w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all"
+                              placeholder="e.g. F-150"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Year <span className="text-red-500">*</span></label>
+                            <input
+                              required
+                              type="number"
+                              value={editForm.year}
+                              onChange={(e) => setEditForm({ ...editForm, year: e.target.value })}
+                              className="input-field w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all"
+                              placeholder="e.g. 2023"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">License Plate <span className="text-red-500">*</span></label>
+                            <input
+                              required
+                              value={editForm.licensePlate}
+                              onChange={(e) => setEditForm({ ...editForm, licensePlate: e.target.value })}
+                              className="input-field w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all"
+                              placeholder="e.g. ABC-1234"
+                            />
+                          </div>
+                        </div>
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                    <div className="space-y-6">
+                        <div className="border-b border-gray-100 pb-2">
+                             <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                                <Info className="h-4 w-4 text-primary-600" />
+                                Details & Status
+                            </h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">VIN <span className="text-red-500">*</span></label>
+                            <input
+                              required
+                              value={editForm.vin}
+                              onChange={(e) => setEditForm({ ...editForm, vin: e.target.value })}
+                              className="input-field w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all"
+                              placeholder="Vehicle Identification Number"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Mileage</label>
+                            <div className="relative">
+                                <input
+                                type="number"
+                                value={editForm.mileage}
+                                onChange={(e) => setEditForm({ ...editForm, mileage: e.target.value })}
+                                className="input-field w-full pl-4 pr-12 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all"
+                                placeholder="0"
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">mi</span>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Status <span className="text-red-500">*</span></label>
+                            <select
+                              required
+                              value={editForm.status}
+                              onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
+                              className="input-field w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236B7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-no-repeat bg-[right_0.5rem_center]"
+                            >
+                              <option value="active">Active</option>
+                              <option value="in_service">In Service</option>
+                              <option value="retired">Retired</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Assigned Driver</label>
+                            <select
+                              value={editForm.driverId}
+                              onChange={(e) => setEditForm({ ...editForm, driverId: e.target.value })}
+                              className="input-field w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236B7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-no-repeat bg-[right_0.5rem_center]"
+                            >
+                              <option value="">Unassigned</option>
+                              {drivers.map((driver) => (
+                                <option key={driver.id} value={driver.id}>
+                                  {driver.name} • {driver.phone || driver.email}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 bg-gray-50/50 -mx-8 -mb-8 p-8 mt-4 rounded-b-2xl">
                       <button
                         type="button"
                         onClick={() => {
@@ -845,19 +942,19 @@ export default function VehiclesPage() {
                           setPhotoFile(null)
                           setPhotoPreview(null)
                         }}
-                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                        className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-white hover:shadow-sm transition-all focus:ring-2 focus:ring-gray-200"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
                         disabled={updating || uploadingPhoto}
-                        className="btn-primary px-6 py-2 flex items-center gap-2"
+                        className="btn-primary px-8 py-2.5 flex items-center gap-2 rounded-lg font-medium shadow-sm hover:shadow-md transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                       >
                         {updating || uploadingPhoto ? (
                           <>
                             <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            {uploadingPhoto ? 'Uploading...' : 'Saving...'}
+                            {uploadingPhoto ? 'Uploading...' : 'Saving Changes...'}
                           </>
                         ) : (
                           'Save Changes'
