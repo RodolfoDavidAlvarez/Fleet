@@ -1,91 +1,90 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
-import {
-  Calendar,
-  Clock,
-  Mail,
-  Phone,
-  Car,
-  CheckCircle,
-  ArrowLeft,
-  Wrench,
-  ShieldCheck,
-  Smartphone,
-  MessageSquare,
-  Zap,
-} from 'lucide-react'
+import { useState } from "react";
+import Link from "next/link";
+import Footer from "@/components/Footer";
+import { Calendar, Clock, Mail, Phone, Car, CheckCircle, ArrowLeft, Wrench, ShieldCheck, Smartphone, MessageSquare, Zap } from "lucide-react";
 
 const serviceTypes = [
-  'Oil Change',
-  'Tire Rotation',
-  'Brake Service',
-  'Engine Repair',
-  'Transmission Service',
-  'Battery Replacement',
-  'General Inspection',
-  'Other',
-]
+  "Oil Change",
+  "Tire Rotation",
+  "Brake Service",
+  "Engine Repair",
+  "Transmission Service",
+  "Battery Replacement",
+  "General Inspection",
+  "Other",
+];
 
-const timeSlots = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00']
+const timeSlots = ["08:00", "09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
 
-export default function BookingPage() {
+export default function BookingPage({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }) {
+  const prefill = {
+    repairRequestId: typeof searchParams?.repairRequestId === "string" ? searchParams.repairRequestId : "",
+    driverName: typeof searchParams?.driverName === "string" ? searchParams.driverName : "",
+    driverPhone: typeof searchParams?.driverPhone === "string" ? searchParams.driverPhone : "",
+    driverEmail: typeof searchParams?.driverEmail === "string" ? searchParams.driverEmail : "",
+    vehicleInfo: typeof searchParams?.vehicleInfo === "string" ? searchParams.vehicleInfo : "",
+    serviceType: typeof searchParams?.serviceType === "string" ? searchParams.serviceType : "",
+  };
+
   const [formData, setFormData] = useState({
-    customerName: '',
-    customerEmail: '',
-    customerPhone: '',
-    serviceType: '',
-    scheduledDate: '',
-    scheduledTime: '',
-    vehicleInfo: '',
-    notes: '',
+    customerName: prefill.driverName || "Alex Carter",
+    customerEmail: prefill.driverEmail || "alex@example.com",
+    customerPhone: prefill.driverPhone || "+1 (555) 123-4567",
+    serviceType: prefill.serviceType || "",
+    scheduledDate: "",
+    scheduledTime: "",
+    vehicleInfo: prefill.vehicleInfo || "2022 Ford F-150 • ABC-1234",
+    notes: "",
     smsConsent: true,
     complianceAccepted: false,
-  })
-  const [submitted, setSubmitted] = useState(false)
-  const [bookingId, setBookingId] = useState('')
-  const [submittedSnapshot, setSubmittedSnapshot] = useState<typeof formData | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  });
+  const [linkedRequestId] = useState(prefill.repairRequestId);
+  const [submitted, setSubmitted] = useState(false);
+  const [bookingId, setBookingId] = useState("");
+  const [submittedSnapshot, setSubmittedSnapshot] = useState<typeof formData | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const statusChips = [
-    { label: 'Service', ready: Boolean(formData.serviceType) },
-    { label: 'Schedule', ready: Boolean(formData.scheduledDate && formData.scheduledTime) },
-    { label: 'Consent', ready: formData.complianceAccepted },
-  ]
+    { label: "Service", ready: Boolean(formData.serviceType) },
+    { label: "Schedule", ready: Boolean(formData.scheduledDate && formData.scheduledTime) },
+    { label: "Consent", ready: formData.complianceAccepted },
+    { label: "Repair link", ready: Boolean(linkedRequestId) },
+  ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, type } = e.target
-    const value = type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value
+    const { name, type } = e.target;
+    const value = type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value;
     setFormData({
       ...formData,
       [name]: value,
-    })
-  }
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-    setError(null)
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
 
     if (!formData.serviceType || !formData.scheduledDate || !formData.scheduledTime) {
-      setSubmitting(false)
-      setError('Pick a service type, date, and time to continue.')
-      return
+      setSubmitting(false);
+      setError("Pick a service type, date, and time to continue.");
+      return;
     }
 
     if (!formData.complianceAccepted) {
-      setSubmitting(false)
-      setError('Please confirm SMS terms and compliance before booking.')
-      return
+      setSubmitting(false);
+      setError("Please confirm SMS terms and compliance before booking.");
+      return;
     }
 
     try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
+      const response = await fetch("/api/bookings", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           customerName: formData.customerName,
@@ -98,25 +97,26 @@ export default function BookingPage() {
           notes: formData.notes,
           smsConsent: formData.smsConsent,
           complianceAccepted: formData.complianceAccepted,
+          repairRequestId: linkedRequestId || undefined,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create booking')
+        throw new Error(data.error || "Failed to create booking");
       }
 
-      setBookingId(data.booking.id)
-      setSubmittedSnapshot(formData)
-      setSubmitted(true)
+      setBookingId(data.booking.id);
+      setSubmittedSnapshot(formData);
+      setSubmitted(true);
     } catch (error) {
-      console.error('Error creating booking:', error)
-      setError(error instanceof Error ? error.message : 'Failed to create booking. Please try again.')
+      console.error("Error creating booking:", error);
+      setError(error instanceof Error ? error.message : "Failed to create booking. Please try again.");
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   if (submitted) {
     return (
@@ -150,15 +150,20 @@ export default function BookingPage() {
             </div>
           </div>
 
+          {linkedRequestId && (
+            <div className="rounded-2xl bg-primary-50 border border-primary-100 p-4">
+              <p className="text-xs text-primary-700 font-semibold">Linked repair request</p>
+              <p className="font-mono font-semibold text-primary-900 break-all">{linkedRequestId}</p>
+            </div>
+          )}
+
           <div className="rounded-2xl bg-gray-50 p-4">
             <p className="text-sm text-gray-700">
               {submittedSnapshot?.customerName} ({submittedSnapshot?.customerEmail}) • {submittedSnapshot?.customerPhone}
             </p>
-            {submittedSnapshot?.vehicleInfo && (
-              <p className="text-sm text-gray-600 mt-1">Vehicle: {submittedSnapshot.vehicleInfo}</p>
-            )}
+            {submittedSnapshot?.vehicleInfo && <p className="text-sm text-gray-600 mt-1">Vehicle: {submittedSnapshot.vehicleInfo}</p>}
             <p className="text-xs text-gray-500 mt-3">
-              SMS consent: {submittedSnapshot?.smsConsent ? 'opted in' : 'declined'} • Compliance acknowledged
+              SMS consent: {submittedSnapshot?.smsConsent ? "opted in" : "declined"} • Compliance acknowledged
             </p>
           </div>
 
@@ -173,7 +178,7 @@ export default function BookingPage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -207,17 +212,18 @@ export default function BookingPage() {
               Consent-first booking
             </div>
             <h1 className="text-3xl font-bold text-gray-900">Book service without friction</h1>
-            <p className="text-gray-600">
-              Short, mobile-ready form. We capture consent and ship a clear HELP/STOP SMS automatically.
-            </p>
+            <p className="text-gray-600">Short, mobile-ready form. We capture consent and ship a clear HELP/STOP SMS automatically.</p>
+            {linkedRequestId && (
+              <div className="inline-flex items-center gap-2 text-sm text-primary-800 bg-primary-50 border border-primary-100 px-3 py-2 rounded-xl">
+                <Wrench className="h-4 w-4" />
+                Linked to repair request {linkedRequestId.slice(0, 8)}...
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {statusChips.map(({ label, ready }) => (
-              <span
-                key={label}
-                className={`pill ${ready ? 'border-green-200 text-green-800 bg-green-50' : 'border-slate-200 bg-white'}`}
-              >
-                <CheckCircle className={`h-4 w-4 ${ready ? 'text-green-600' : 'text-slate-400'}`} />
+              <span key={label} className={`pill ${ready ? "border-green-200 text-green-800 bg-green-50" : "border-slate-200 bg-white"}`}>
+                <CheckCircle className={`h-4 w-4 ${ready ? "text-green-600" : "text-slate-400"}`} />
                 {label}
               </span>
             ))}
@@ -237,11 +243,7 @@ export default function BookingPage() {
               </span>
             </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {error}
-              </div>
-            )}
+            {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{error}</div>}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -254,7 +256,7 @@ export default function BookingPage() {
                     required
                     value={formData.customerName}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="input-field"
                     placeholder="Alex Carter"
                   />
                 </label>
@@ -271,7 +273,7 @@ export default function BookingPage() {
                     required
                     value={formData.customerEmail}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="input-field"
                     placeholder="alex@example.com"
                   />
                 </label>
@@ -288,7 +290,7 @@ export default function BookingPage() {
                     required
                     value={formData.customerPhone}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="input-field"
                     placeholder="+1 (555) 123-4567"
                   />
                 </label>
@@ -306,7 +308,7 @@ export default function BookingPage() {
                     required
                     value={formData.serviceType}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="input-field"
                   >
                     <option value="">Select a service</option>
                     {serviceTypes.map((service) => (
@@ -323,8 +325,8 @@ export default function BookingPage() {
                         onClick={() => setFormData({ ...formData, serviceType: service })}
                         className={`text-xs px-3 py-2 rounded-lg border ${
                           formData.serviceType === service
-                            ? 'bg-primary-50 border-primary-200 text-primary-800'
-                            : 'border-gray-200 text-gray-700 bg-gray-50 hover:bg-gray-100'
+                            ? "bg-primary-50 border-primary-200 text-primary-800"
+                            : "border-gray-200 text-gray-700 bg-gray-50 hover:bg-gray-100"
                         }`}
                       >
                         {service}
@@ -344,7 +346,7 @@ export default function BookingPage() {
                     name="vehicleInfo"
                     value={formData.vehicleInfo}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="input-field"
                     placeholder="2022 Ford F-150 • ABC-1234"
                   />
                 </label>
@@ -363,8 +365,8 @@ export default function BookingPage() {
                     required
                     value={formData.scheduledDate}
                     onChange={handleInputChange}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    min={new Date().toISOString().split("T")[0]}
+                    className="input-field"
                   />
                 </label>
 
@@ -379,7 +381,7 @@ export default function BookingPage() {
                     required
                     value={formData.scheduledTime}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent mb-3"
+                    className="input-field mb-3"
                   >
                     <option value="">Select a time</option>
                     {timeSlots.map((time) => (
@@ -396,8 +398,8 @@ export default function BookingPage() {
                         onClick={() => setFormData({ ...formData, scheduledTime: time })}
                         className={`text-xs px-3 py-2 rounded-lg border ${
                           formData.scheduledTime === time
-                            ? 'bg-primary-50 border-primary-200 text-primary-800'
-                            : 'border-gray-200 text-gray-700 bg-gray-50 hover:bg-gray-100'
+                            ? "bg-primary-50 border-primary-200 text-primary-800"
+                            : "border-gray-200 text-gray-700 bg-gray-50 hover:bg-gray-100"
                         }`}
                       >
                         {time}
@@ -415,7 +417,7 @@ export default function BookingPage() {
                   rows={3}
                   value={formData.notes}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="input-field resize-none"
                   placeholder="Quick context to keep the crew efficient..."
                 />
               </label>
@@ -449,7 +451,7 @@ export default function BookingPage() {
                   <div className="text-sm text-gray-700">
                     <p className="font-semibold">Consent and privacy</p>
                     <p className="text-gray-600">
-                      We only send operational SMS. Read the{' '}
+                      We only send operational SMS. Read the{" "}
                       <Link href="/compliance" className="text-primary-700 font-semibold">
                         compliance note
                       </Link>
@@ -459,12 +461,18 @@ export default function BookingPage() {
                 </label>
               </div>
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-primary-600 text-white py-4 rounded-lg font-semibold text-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-              >
-                {submitting ? 'Booking...' : 'Book appointment'}
+              <button type="submit" disabled={submitting} className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2">
+                {submitting ? (
+                  <>
+                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Booking...
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="h-5 w-5" />
+                    Book appointment
+                  </>
+                )}
               </button>
             </form>
           </div>
@@ -476,16 +484,16 @@ export default function BookingPage() {
                 <p className="text-sm font-semibold text-gray-900">Your snapshot</p>
               </div>
               <p className="text-sm text-gray-700">
-                {formData.customerName || 'Name pending'} • {formData.customerPhone || 'Phone pending'}
+                {formData.customerName || "Name pending"} • {formData.customerPhone || "Phone pending"}
               </p>
               <p className="text-sm text-gray-700">
-                {formData.serviceType || 'Service pending'} {formData.vehicleInfo && `• ${formData.vehicleInfo}`}
+                {formData.serviceType || "Service pending"} {formData.vehicleInfo && `• ${formData.vehicleInfo}`}
               </p>
               <p className="text-sm text-gray-700">
-                {formData.scheduledDate || 'Date'} {formData.scheduledTime && `• ${formData.scheduledTime}`}
+                {formData.scheduledDate || "Date"} {formData.scheduledTime && `• ${formData.scheduledTime}`}
               </p>
               <p className="text-xs text-gray-500">
-                SMS: {formData.smsConsent ? 'opted in' : 'declined'} • Compliance: {formData.complianceAccepted ? 'acknowledged' : 'pending'}
+                SMS: {formData.smsConsent ? "opted in" : "declined"} • Compliance: {formData.complianceAccepted ? "acknowledged" : "pending"}
               </p>
             </div>
 
@@ -506,6 +514,7 @@ export default function BookingPage() {
           </aside>
         </div>
       </div>
+      <Footer />
     </div>
-  )
+  );
 }

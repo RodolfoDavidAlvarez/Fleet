@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { bookingDB } from "@/lib/db";
+import { bookingDB, repairRequestDB } from "@/lib/db";
 import { sendStatusUpdate } from "@/lib/twilio";
 import { z } from "zod";
 
@@ -17,6 +17,7 @@ const bookingUpdateSchema = z.object({
   smsConsent: z.boolean().optional(),
   complianceAccepted: z.boolean().optional(),
   notes: z.string().optional(),
+  repairRequestId: z.string().uuid().optional(),
 });
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -54,6 +55,21 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     // Send SMS if status changed
     if (parsed.data.status && parsed.data.status !== currentBooking.status) {
       await sendStatusUpdate(booking.customerPhone, parsed.data.status, booking.id);
+    }
+
+    const linkedRequestId = parsed.data.repairRequestId || booking.repairRequestId;
+    if (linkedRequestId) {
+      await repairRequestDB.update(linkedRequestId, {
+        bookingId: booking.id,
+        status:
+          parsed.data.status === "completed"
+            ? "completed"
+            : parsed.data.status === "cancelled"
+            ? "cancelled"
+            : "scheduled",
+        scheduledDate: booking.scheduledDate,
+        scheduledTime: booking.scheduledTime,
+      });
     }
 
     return NextResponse.json({ booking });

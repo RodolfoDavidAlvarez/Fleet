@@ -10,7 +10,7 @@ const spaceGrotesk = Space_Grotesk({
 })
 
 export const metadata: Metadata = {
-  title: 'Fleet Management System',
+  title: 'AGAVE ENVIRONMENTAL CONTRACTING, INC. - Fleet Management System',
   description: 'Modern fleet management system with admin and mechanic dashboards',
 }
 

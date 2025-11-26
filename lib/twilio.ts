@@ -3,6 +3,7 @@ import twilio from 'twilio'
 const accountSid = process.env.TWILIO_ACCOUNT_SID
 const authToken = process.env.TWILIO_AUTH_TOKEN
 const phoneNumber = process.env.TWILIO_PHONE_NUMBER
+const adminPhone = process.env.ADMIN_PHONE_NUMBER
 const smsEnabled = process.env.ENABLE_SMS === 'true'
 
 let client: twilio.Twilio | null = null
@@ -78,5 +79,62 @@ export async function sendJobCompletion(
   }
 ): Promise<boolean> {
   const message = `Your service is complete!\n\nService: ${jobDetails.serviceType}\nTotal Cost: $${jobDetails.totalCost.toFixed(2)}\nBooking ID: ${jobDetails.bookingId}\n\nThank you for your business!`
+  return sendSMS(phone, message)
+}
+
+export async function sendRepairSubmissionNotice(
+  phone: string,
+  details: {
+    requestId: string
+    summary: string
+    language?: 'en' | 'es'
+  }
+): Promise<boolean> {
+  const message =
+    details.language === 'es'
+      ? `Solicitud de reparación recibida (#${details.requestId}).\n${details.summary}\nResponder STOP para salir / HELP para ayuda.`
+      : `Repair request received (#${details.requestId}).\n${details.summary}\nReply STOP to opt out / HELP for help.`
+  return sendSMS(phone, message)
+}
+
+export async function notifyAdminOfRepair(details: {
+  requestId: string
+  driverName?: string
+  driverPhone?: string
+  urgency?: string
+}) {
+  if (!adminPhone) {
+    return false
+  }
+  const message = `New repair request #${details.requestId}\nDriver: ${details.driverName || 'Unknown'} (${details.driverPhone || 'n/a'})\nUrgency: ${details.urgency || 'unspecified'}.`
+  return sendSMS(adminPhone, message)
+}
+
+export async function sendRepairBookingLink(
+  phone: string,
+  details: {
+    requestId: string
+    link: string
+    issueSummary: string
+    language?: 'en' | 'es'
+    suggestedSlot?: string
+  }
+) {
+  const message =
+    details.language === 'es'
+      ? `Agenda tu reparación (#${details.requestId}): ${details.link}\nMotivo: ${details.issueSummary}\n${details.suggestedSlot ? `Sugerencia: ${details.suggestedSlot}\n` : ''}Responder STOP para salir.`
+      : `Book your repair (#${details.requestId}): ${details.link}\nIssue: ${details.issueSummary}\n${details.suggestedSlot ? `Suggested: ${details.suggestedSlot}\n` : ''}Reply STOP to opt out.`
+  return sendSMS(phone, message)
+}
+
+export async function sendRepairCompletion(
+  phone: string,
+  details: { requestId: string; summary: string; totalCost?: number; language?: 'en' | 'es' }
+) {
+  const costLine = details.totalCost ? `\nTotal: $${details.totalCost.toFixed(2)}` : ''
+  const message =
+    details.language === 'es'
+      ? `Reparación completada (#${details.requestId}). ${details.summary}${costLine}`
+      : `Repair completed (#${details.requestId}). ${details.summary}${costLine}`
   return sendSMS(phone, message)
 }

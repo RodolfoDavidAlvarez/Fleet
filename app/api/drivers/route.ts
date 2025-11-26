@@ -11,9 +11,14 @@ const driverSchema = z.object({
 export async function GET() {
   try {
     const drivers = await driverDB.getAll();
+    console.log("Fetched drivers:", drivers.length, drivers);
     return NextResponse.json({ drivers });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch drivers" }, { status: 500 });
+    console.error("Error in GET /api/drivers:", error);
+    return NextResponse.json({ 
+      error: "Failed to fetch drivers",
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
   }
 }
 

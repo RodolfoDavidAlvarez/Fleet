@@ -35,7 +35,7 @@ export default function AnalyticsPage() {
       return
     }
     const parsedUser = JSON.parse(userData)
-    if (parsedUser.role !== 'admin') {
+    if (parsedUser.role !== 'admin' && parsedUser.role !== 'mechanic') {
       router.push('/login')
       return
     }
@@ -48,7 +48,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role="admin" />
+      <Sidebar role={user?.role || 'admin'} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} />
         <main className="flex-1 overflow-y-auto p-6">

@@ -2,7 +2,18 @@
 // Replaces in-memory storage with Supabase PostgreSQL
 
 import { createServerClient } from "./supabase";
-import { Vehicle, Booking, Job, Mechanic, User, DashboardStats, ServiceRecord, Part } from "@/types";
+import {
+  Vehicle,
+  Booking,
+  Job,
+  Mechanic,
+  User,
+  DashboardStats,
+  ServiceRecord,
+  Part,
+  RepairRequest,
+  RepairReport,
+} from "@/types";
 
 // Helper to convert database row to Vehicle
 function rowToVehicle(row: any): Vehicle {
@@ -56,6 +67,7 @@ function rowToBooking(row: any): Booking {
     scheduledTime: row.scheduled_time,
     status: row.status,
     mechanicId: row.mechanic_id,
+    repairRequestId: row.repair_request_id,
     vehicleInfo: row.vehicle_info,
     smsConsent: row.sms_consent,
     complianceAccepted: row.compliance_accepted,
@@ -77,10 +89,90 @@ function bookingToRow(booking: Partial<Booking>): any {
     scheduled_time: booking.scheduledTime,
     status: booking.status,
     mechanic_id: booking.mechanicId,
+    repair_request_id: booking.repairRequestId,
     vehicle_info: booking.vehicleInfo,
     sms_consent: booking.smsConsent,
     compliance_accepted: booking.complianceAccepted,
     notes: booking.notes,
+  };
+}
+
+// Helper to convert database row to RepairRequest
+function rowToRepairRequest(row: any): RepairRequest {
+  return {
+    id: row.id,
+    driverId: row.driver_id,
+    driverName: row.driver_name,
+    driverPhone: row.driver_phone,
+    driverEmail: row.driver_email,
+    preferredLanguage: row.preferred_language,
+    vehicleId: row.vehicle_id,
+    vehicleIdentifier: row.vehicle_identifier,
+    odometer: row.odometer || undefined,
+    location: row.location,
+    description: row.description,
+    urgency: row.urgency,
+    status: row.status,
+    aiCategory: row.ai_category,
+    aiTags: row.ai_tags || [],
+    aiSummary: row.ai_summary,
+    aiConfidence: row.ai_confidence ? parseFloat(row.ai_confidence) : undefined,
+    photoUrls: row.photo_urls || [],
+    thumbUrls: row.thumb_urls || [],
+    bookingId: row.booking_id,
+    bookingLink: row.booking_link,
+    scheduledDate: row.scheduled_date,
+    scheduledTime: row.scheduled_time,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// Helper to convert RepairRequest to database row
+function repairRequestToRow(request: Partial<RepairRequest>): any {
+  return {
+    driver_id: request.driverId,
+    driver_name: request.driverName,
+    driver_phone: request.driverPhone,
+    driver_email: request.driverEmail,
+    preferred_language: request.preferredLanguage,
+    vehicle_id: request.vehicleId,
+    vehicle_identifier: request.vehicleIdentifier,
+    odometer: request.odometer,
+    location: request.location,
+    description: request.description,
+    urgency: request.urgency,
+    status: request.status,
+    ai_category: request.aiCategory,
+    ai_tags: request.aiTags,
+    ai_summary: request.aiSummary,
+    ai_confidence: request.aiConfidence,
+    photo_urls: request.photoUrls,
+    thumb_urls: request.thumbUrls,
+    booking_id: request.bookingId,
+    booking_link: request.bookingLink,
+    scheduled_date: request.scheduledDate,
+    scheduled_time: request.scheduledTime,
+  };
+}
+
+function rowToRepairReport(row: any): RepairReport {
+  return {
+    id: row.id,
+    repairRequestId: row.repair_request_id,
+    mechanicId: row.mechanic_id,
+    summary: row.summary,
+    partsUsed: (row.parts_used || []).map((p: any) => ({
+      id: p.id || `${row.id}-${p.name}`,
+      name: p.name,
+      quantity: p.quantity,
+      cost: parseFloat(p.cost),
+    })),
+    laborHours: row.labor_hours ? parseFloat(row.labor_hours) : undefined,
+    laborCost: row.labor_cost ? parseFloat(row.labor_cost) : undefined,
+    partsCost: row.parts_cost ? parseFloat(row.parts_cost) : undefined,
+    totalCost: row.total_cost ? parseFloat(row.total_cost) : undefined,
+    createdAt: row.created_at,
   };
 }
 
@@ -129,11 +221,33 @@ function rowToMechanic(row: any): Mechanic {
 export const driverDB = {
   getAll: async (): Promise<User[]> => {
     const supabase = createServerClient();
+
+    // First, let's check if we can query the users table at all
+    const { data: allUsers, error: allUsersError } = await supabase.from("users").select("id, role").limit(10);
+
+    console.log("All users sample (for debugging):", allUsers?.length || 0, allUsers);
+    if (allUsersError) {
+      console.error("Error fetching all users:", allUsersError);
+    }
+
+    // Now query for drivers specifically
     const { data, error } = await supabase.from("users").select("*").eq("role", "driver").order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching drivers:", error);
-      return [];
+      console.error("Error details:", JSON.stringify(error, null, 2));
+      throw error; // Re-throw to be caught by API route
+    }
+
+    console.log("Driver query result - data:", data?.length || 0, "records");
+    if (data && data.length > 0) {
+      console.log("Sample driver:", data[0]);
+    } else {
+      console.log("No drivers found. Checking if any users exist with different roles...");
+      if (allUsers && allUsers.length > 0) {
+        const roles = [...new Set(allUsers.map((u) => u.role))];
+        console.log("Found roles in database:", roles);
+      }
     }
 
     return (data || []).map((row) => ({
@@ -283,6 +397,115 @@ export const bookingDB = {
     const { error } = await supabase.from("bookings").delete().eq("id", id);
 
     return !error;
+  },
+};
+
+// Repair request operations
+export const repairRequestDB = {
+  getAll: async (status?: string): Promise<RepairRequest[]> => {
+    const supabase = createServerClient();
+    let query = supabase.from("repair_requests").select("*").order("created_at", { ascending: false });
+    if (status && status !== "all") {
+      query = query.eq("status", status);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Error fetching repair requests:", error);
+      return [];
+    }
+
+    return (data || []).map(rowToRepairRequest);
+  },
+
+  getById: async (id: string): Promise<RepairRequest | undefined> => {
+    const supabase = createServerClient();
+    const { data, error } = await supabase.from("repair_requests").select("*").eq("id", id).single();
+
+    if (error || !data) {
+      return undefined;
+    }
+
+    return rowToRepairRequest(data);
+  },
+
+  create: async (request: Omit<RepairRequest, "id" | "createdAt" | "updatedAt">): Promise<RepairRequest> => {
+    const supabase = createServerClient();
+    const row = repairRequestToRow({
+      ...request,
+      photoUrls: request.photoUrls || [],
+      thumbUrls: request.thumbUrls || [],
+    });
+    Object.keys(row).forEach((key) => row[key] === undefined && delete row[key]);
+    const { data, error } = await supabase.from("repair_requests").insert(row).select().single();
+
+    if (error || !data) {
+      throw new Error(error?.message || "Failed to create repair request");
+    }
+
+    return rowToRepairRequest(data);
+  },
+
+  update: async (id: string, updates: Partial<RepairRequest>): Promise<RepairRequest | null> => {
+    const supabase = createServerClient();
+    const row = repairRequestToRow(updates);
+    Object.keys(row).forEach((key) => row[key] === undefined && delete row[key]);
+    const { data, error } = await supabase.from("repair_requests").update(row).eq("id", id).select().single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return rowToRepairRequest(data);
+  },
+};
+
+export const repairReportDB = {
+  getByRequest: async (requestId: string): Promise<RepairReport[]> => {
+    const supabase = createServerClient();
+    const { data, error } = await supabase
+      .from("repair_reports")
+      .select("*")
+      .eq("repair_request_id", requestId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching repair reports:", error);
+      return [];
+    }
+
+    return (data || []).map(rowToRepairReport);
+  },
+
+  create: async (report: Omit<RepairReport, "id" | "createdAt">): Promise<RepairReport> => {
+    const supabase = createServerClient();
+    const serializedParts = (report.partsUsed || []).map((p) => ({
+      name: p.name,
+      quantity: p.quantity,
+      cost: p.cost,
+    }));
+    const totalCost = report.totalCost ?? (report.laborCost || 0) + (report.partsCost || 0);
+
+    const { data, error } = await supabase
+      .from("repair_reports")
+      .insert({
+        repair_request_id: report.repairRequestId,
+        mechanic_id: report.mechanicId,
+        summary: report.summary,
+        parts_used: serializedParts,
+        labor_hours: report.laborHours,
+        labor_cost: report.laborCost,
+        parts_cost: report.partsCost,
+        total_cost: totalCost,
+      })
+      .select()
+      .single();
+
+    if (error || !data) {
+      throw new Error(error?.message || "Failed to create repair report");
+    }
+
+    return rowToRepairReport(data);
   },
 };
 
@@ -524,6 +747,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { count: completedJobs },
     { count: totalMechanics },
     { count: availableMechanics },
+    { count: totalRepairRequests },
+    { count: openRepairRequests },
+    { count: waitingBookingRepairRequests },
+    { count: completedRepairRequests },
   ] = await Promise.all([
     supabase.from("vehicles").select("*", { count: "exact", head: true }),
     supabase.from("vehicles").select("*", { count: "exact", head: true }).eq("status", "active"),
@@ -533,6 +760,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     supabase.from("jobs").select("*", { count: "exact", head: true }).eq("status", "completed"),
     supabase.from("mechanics").select("*", { count: "exact", head: true }),
     supabase.from("mechanics").select("*", { count: "exact", head: true }).eq("availability", "available"),
+    supabase.from("repair_requests").select("*", { count: "exact", head: true }),
+    supabase
+      .from("repair_requests")
+      .select("*", { count: "exact", head: true })
+      .in("status", ["submitted", "triaged", "waiting_booking", "scheduled", "in_progress"]),
+    supabase.from("repair_requests").select("*", { count: "exact", head: true }).eq("status", "waiting_booking"),
+    supabase.from("repair_requests").select("*", { count: "exact", head: true }).eq("status", "completed"),
   ]);
 
   return {
@@ -544,5 +778,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     completedJobs: completedJobs || 0,
     totalMechanics: totalMechanics || 0,
     availableMechanics: availableMechanics || 0,
+    totalRepairRequests: totalRepairRequests || 0,
+    openRepairRequests: openRepairRequests || 0,
+    waitingBookingRepairRequests: waitingBookingRepairRequests || 0,
+    completedRepairRequests: completedRepairRequests || 0,
   };
 }

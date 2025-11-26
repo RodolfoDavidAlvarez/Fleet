@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
+import Footer from '@/components/Footer'
 import { Wrench, Mail, Lock, LogIn, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
@@ -43,14 +45,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 flex items-center justify-center p-4 soft-grid">
-      <div className="max-w-md w-full animate-scale-in">
-        <div className="card-surface rounded-3xl shadow-2xl p-8 border-2 border-primary-100/50">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 flex flex-col p-4 soft-grid">
+      <div className="flex-1 flex items-center justify-center">
+        <div className="max-w-md w-full animate-scale-in">
+          <div className="card-surface rounded-3xl shadow-2xl p-8 border-2 border-primary-100/50">
           <div className="text-center mb-8 animate-slide-down">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-primary-100 to-primary-200 rounded-2xl mb-4 shadow-lg shadow-primary-500/20 ring-4 ring-primary-50">
-              <Wrench className="h-10 w-10 text-primary-700" />
+            <div className="flex flex-col items-center mb-6">
+              <div className="relative h-16 w-auto mb-3">
+                <Image
+                  src="/images/AEC-Horizontal-Official-Logo-2020.png"
+                  alt="AGAVE ENVIRONMENTAL CONTRACTING, INC."
+                  width={200}
+                  height={64}
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <p className="text-lg font-bold text-slate-900 uppercase tracking-wide">Fleet System</p>
             </div>
-            <p className="text-sm text-primary-700 font-bold uppercase tracking-[0.08em] mb-2">Fleet consoles</p>
             <h1 className="text-4xl font-bold gradient-text mb-2">Welcome back</h1>
             <p className="text-gray-600 font-medium">Admin and mechanic dashboards in one place.</p>
           </div>
@@ -67,15 +79,15 @@ export default function LoginPage() {
                 Email Address
               </label>
               <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary-600 transition-colors" />
+                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10" />
                 <input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="input-field pl-11"
-                  placeholder="you@example.com"
+                  className="input-field pl-12 pr-4"
+                  placeholder="admin@fleetpro.com"
                 />
               </div>
             </div>
@@ -85,20 +97,20 @@ export default function LoginPage() {
                 Password
               </label>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary-600 transition-colors" />
+                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary-600 transition-colors pointer-events-none z-10" />
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="input-field pl-11 pr-12"
-                  placeholder="••••••••"
+                  className="input-field pl-12 pr-12"
+                  placeholder="Enter your password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-600 focus:outline-none transition-colors p-1 rounded-lg hover:bg-gray-100"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-600 focus:outline-none transition-colors p-1 rounded-lg hover:bg-gray-100 z-10"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
@@ -151,7 +163,9 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
+        </div>
       </div>
+      <Footer />
     </div>
   )
 }

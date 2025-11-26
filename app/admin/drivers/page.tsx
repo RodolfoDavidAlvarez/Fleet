@@ -24,7 +24,7 @@ export default function DriversPage() {
       return
     }
     const parsedUser = JSON.parse(userData)
-    if (parsedUser.role !== 'admin') {
+    if (parsedUser.role !== 'admin' && parsedUser.role !== 'mechanic') {
       router.push('/login')
       return
     }
@@ -34,13 +34,16 @@ export default function DriversPage() {
       try {
         setLoading(true)
         const res = await fetch('/api/drivers')
-        if (!res.ok) throw new Error('Failed to load drivers')
         const data = await res.json()
+        if (!res.ok) {
+          throw new Error(data.error || data.details || 'Failed to load drivers')
+        }
+        console.log('Drivers loaded:', data.drivers?.length || 0, data.drivers)
         setDrivers(data.drivers || [])
         setError(null)
       } catch (err) {
         console.error('Error fetching drivers:', err)
-        setError('Failed to load drivers. Please try again.')
+        setError(err instanceof Error ? err.message : 'Failed to load drivers. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -80,7 +83,7 @@ export default function DriversPage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role="admin" />
+      <Sidebar role={user?.role || 'admin'} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} />
         <main className="flex-1 overflow-y-auto p-6">

@@ -206,6 +206,60 @@ CREATE INDEX IF NOT EXISTS idx_jobs_priority ON jobs(priority);
 CREATE INDEX IF NOT EXISTS idx_service_records_vehicle_id ON service_records(vehicle_id);
 CREATE INDEX IF NOT EXISTS idx_mechanics_availability ON mechanics(availability);
 
+-- Repair Requests table
+CREATE TABLE IF NOT EXISTS repair_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  driver_id UUID REFERENCES users(id),
+  driver_name TEXT NOT NULL,
+  driver_phone TEXT,
+  driver_email TEXT,
+  preferred_language TEXT DEFAULT 'en',
+  vehicle_id UUID REFERENCES vehicles(id),
+  vehicle_identifier TEXT,
+  odometer INTEGER,
+  location TEXT,
+  description TEXT NOT NULL,
+  urgency TEXT NOT NULL CHECK (urgency IN ('low', 'medium', 'high', 'critical')) DEFAULT 'medium',
+  status TEXT NOT NULL CHECK (status IN ('submitted', 'triaged', 'waiting_booking', 'scheduled', 'in_progress', 'completed', 'cancelled')) DEFAULT 'submitted',
+  ai_category TEXT,
+  ai_tags TEXT[] DEFAULT '{}',
+  ai_summary TEXT,
+  ai_confidence DECIMAL(5,2),
+  photo_urls TEXT[] DEFAULT '{}',
+  thumb_urls TEXT[] DEFAULT '{}',
+  booking_id UUID REFERENCES bookings(id),
+  booking_link TEXT,
+  scheduled_date DATE,
+  scheduled_time TIME,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_repair_requests_status ON repair_requests(status);
+CREATE INDEX IF NOT EXISTS idx_repair_requests_created_at ON repair_requests(created_at DESC);
+
+-- Repair Reports table
+CREATE TABLE IF NOT EXISTS repair_reports (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  repair_request_id UUID REFERENCES repair_requests(id) ON DELETE CASCADE,
+  mechanic_id UUID REFERENCES mechanics(id),
+  summary TEXT NOT NULL,
+  parts_used JSONB DEFAULT '[]',
+  labor_hours DECIMAL(5,2),
+  labor_cost DECIMAL(10,2),
+  parts_cost DECIMAL(10,2),
+  total_cost DECIMAL(10,2),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_repair_reports_request ON repair_reports(repair_request_id);
+
+-- Link bookings to repair requests
+ALTER TABLE bookings
+ADD COLUMN IF NOT EXISTS repair_request_id UUID REFERENCES repair_requests(id);
+
+CREATE INDEX IF NOT EXISTS idx_bookings_repair_request_id ON bookings(repair_request_id);
+
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -216,10 +270,16 @@ END;
 $$ language 'plpgsql';
 
 -- Triggers to auto-update updated_at
+DROP TRIGGER IF EXISTS update_bookings_updated_at ON bookings;
 CREATE TRIGGER update_bookings_updated_at BEFORE UPDATE ON bookings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_jobs_updated_at ON jobs;
 CREATE TRIGGER update_jobs_updated_at BEFORE UPDATE ON jobs
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_repair_requests_updated_at ON repair_requests;
+CREATE TRIGGER update_repair_requests_updated_at BEFORE UPDATE ON repair_requests
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert sample data (optional - for development)

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { bookingDB } from "@/lib/db";
+import { bookingDB, repairRequestDB } from "@/lib/db";
 import { sendBookingConfirmation } from "@/lib/twilio";
 
 const bookingSchema = z.object({
@@ -15,6 +15,7 @@ const bookingSchema = z.object({
   smsConsent: z.boolean().optional(),
   complianceAccepted: z.boolean().optional(),
   vehicleId: z.string().optional(),
+  repairRequestId: z.string().uuid().optional(),
 });
 
 export async function GET() {
@@ -54,6 +55,15 @@ export async function POST(request: NextRequest) {
       notes: complianceNote || undefined,
       status: "pending",
     });
+
+    if (parsed.data.repairRequestId) {
+      await repairRequestDB.update(parsed.data.repairRequestId, {
+        bookingId: booking.id,
+        status: "scheduled",
+        scheduledDate: booking.scheduledDate,
+        scheduledTime: booking.scheduledTime,
+      });
+    }
 
     // Send SMS confirmation if consented
     if (parsed.data.smsConsent !== false) {

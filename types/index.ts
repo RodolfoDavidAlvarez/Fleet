@@ -58,6 +58,7 @@ export interface Booking {
   scheduledTime: string
   status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
   mechanicId?: string
+  repairRequestId?: string
   vehicleInfo?: string
   smsConsent?: boolean
   complianceAccepted?: boolean
@@ -105,4 +106,58 @@ export interface DashboardStats {
   completedJobs: number
   totalMechanics: number
   availableMechanics: number
+  totalRepairRequests: number
+  openRepairRequests: number
+  waitingBookingRepairRequests: number
+  completedRepairRequests: number
+}
+
+export type RepairRequestStatus =
+  | 'submitted'
+  | 'triaged'
+  | 'waiting_booking'
+  | 'scheduled'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled'
+
+export interface RepairRequest {
+  id: string
+  driverId?: string
+  driverName: string
+  driverPhone?: string
+  driverEmail?: string
+  preferredLanguage?: 'en' | 'es'
+  vehicleId?: string
+  vehicleIdentifier?: string
+  odometer?: number
+  location?: string
+  description: string
+  urgency: 'low' | 'medium' | 'high' | 'critical'
+  status: RepairRequestStatus
+  aiCategory?: string
+  aiTags?: string[]
+  aiSummary?: string
+  aiConfidence?: number
+  photoUrls: string[]
+  thumbUrls: string[]
+  bookingId?: string
+  bookingLink?: string
+  scheduledDate?: string
+  scheduledTime?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RepairReport {
+  id: string
+  repairRequestId: string
+  mechanicId?: string
+  summary: string
+  partsUsed?: Part[]
+  laborHours?: number
+  laborCost?: number
+  partsCost?: number
+  totalCost?: number
+  createdAt: string
 }

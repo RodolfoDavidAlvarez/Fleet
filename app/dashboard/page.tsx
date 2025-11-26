@@ -1,11 +1,13 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 import { Car, Calendar, Users, TrendingUp, AlertCircle, CheckCircle, ShieldCheck, MessageSquare, Wrench, Clock, FileText, BarChart3 } from 'lucide-react'
-import { DashboardStats } from '@/types'
+import { DashboardStats, RepairRequest } from '@/types'
 
 export default function UnifiedDashboard() {
   const router = useRouter()
@@ -13,6 +15,7 @@ export default function UnifiedDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [jobs, setJobs] = useState<any[]>([])
   const [bookings, setBookings] = useState<any[]>([])
+  const [repairRequests, setRepairRequests] = useState<RepairRequest[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -38,10 +41,7 @@ export default function UnifiedDashboard() {
         }
 
         // Load jobs - all for admin, filtered for mechanic
-        const jobsUrl = parsedUser.role === 'mechanic' 
-          ? `/api/jobs?mechanicId=${parsedUser.id}`
-          : '/api/jobs'
-        const jobsRes = await fetch(jobsUrl)
+        const jobsRes = await fetch('/api/jobs')
         if (jobsRes.ok) {
           const jobsData = await jobsRes.json()
           setJobs(jobsData.jobs || [])
@@ -53,6 +53,12 @@ export default function UnifiedDashboard() {
           const bookingsData = await bookingsRes.json()
           // Get most recent 5 bookings
           setBookings((bookingsData.bookings || []).slice(0, 5))
+        }
+
+        const repairsRes = await fetch('/api/repair-requests?limit=4')
+        if (repairsRes.ok) {
+          const repairsData = await repairsRes.json()
+          setRepairRequests(repairsData.requests || [])
         }
       } catch (error) {
         console.error('Error fetching data:', error)
@@ -71,13 +77,15 @@ export default function UnifiedDashboard() {
   const isAdmin = user.role === 'admin'
   const isMechanic = user.role === 'mechanic'
 
-  // Calculate mechanic-specific stats
-  const myJobs = isMechanic ? jobs.length : 0
-  const inProgress = jobs.filter((j) => j.status === 'in_progress').length
-  const completed = jobs.filter((j) => j.status === 'completed').length
-  const assigned = jobs.filter((j) => j.status === 'assigned').length
+  // Calculate mechanic-specific stats from the full dataset
+  const myJobsList = isMechanic ? jobs.filter((j) => j.mechanicId === user.id) : []
+  const myInProgress = myJobsList.filter((j) => j.status === 'in_progress').length
+  const myCompleted = myJobsList.filter((j) => j.status === 'completed').length
+  const myAssigned = myJobsList.filter((j) => j.status === 'assigned').length
+  const myTotalTracked = myCompleted + myInProgress + myAssigned
+  const myCompletionRate = myTotalTracked > 0 ? Math.round((myCompleted / myTotalTracked) * 100) : 0
 
-  const statCards = isAdmin ? [
+  const statCards = [
     {
       title: 'Total Vehicles',
       value: stats?.totalVehicles || 0,
@@ -106,35 +114,6 @@ export default function UnifiedDashboard() {
       color: 'bg-orange-50 text-orange-700',
       change: `${stats?.availableMechanics || 0} available`,
     },
-  ] : [
-    {
-      title: 'My Jobs',
-      value: myJobs,
-      icon: Wrench,
-      color: 'bg-blue-50 text-blue-700',
-      change: `${assigned} assigned`,
-    },
-    {
-      title: 'In Progress',
-      value: inProgress,
-      icon: Clock,
-      color: 'bg-yellow-50 text-yellow-700',
-      change: 'Active work',
-    },
-    {
-      title: 'Completed',
-      value: completed,
-      icon: CheckCircle,
-      color: 'bg-green-50 text-green-700',
-      change: 'This period',
-    },
-    {
-      title: 'Total Bookings',
-      value: stats?.totalBookings || 0,
-      icon: Calendar,
-      color: 'bg-purple-50 text-purple-700',
-      change: `${stats?.pendingBookings || 0} pending`,
-    },
   ]
 
   return (
@@ -147,15 +126,13 @@ export default function UnifiedDashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="space-y-1">
                 <p className="text-xs text-primary-700 font-semibold uppercase tracking-[0.12em]">
-                  {isAdmin ? 'Unified Dashboard' : 'Mechanic Dashboard'}
+                  Unified Dashboard
                 </p>
                 <h1 className="text-3xl font-bold text-gray-900">
-                  {isAdmin ? 'Complete Fleet Overview' : 'Your Work Center'}
+                  Fleet Control Center
                 </h1>
                 <p className="text-gray-600">
-                  {isAdmin 
-                    ? 'All fleet information at a glance - vehicles, bookings, mechanics, and jobs.'
-                    : 'All jobs, bookings, and fleet information in one place.'}
+                  One dashboard for admins and mechanics — vehicles, bookings, mechanics, and jobs all in view.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -247,15 +224,61 @@ export default function UnifiedDashboard() {
               </div>
             </div>
 
+            {/* Repair Requests */}
+            <div className="card-surface rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Repair requests</h2>
+                  <p className="text-sm text-gray-600">AI-tagged issues waiting for booking</p>
+                </div>
+                <Link href="/repairs" className="pill bg-primary-50 border-primary-100 text-primary-800">
+                  Review queue
+                </Link>
+              </div>
+              <div className="space-y-3">
+                {repairRequests.length === 0 ? (
+                  <div className="text-center py-6 text-gray-500">No repair requests yet</div>
+                ) : (
+                  repairRequests.map((req) => (
+                    <div
+                      key={req.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-white transition"
+                    >
+                      <div>
+                        <p className="font-medium text-gray-900">{req.driverName}</p>
+                        <p className="text-xs text-gray-500">
+                          {(req.aiCategory || 'General repair')} • {req.vehicleIdentifier || 'Vehicle not listed'} •{' '}
+                          {new Date(req.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <span
+                        className={`px-3 py-1 text-xs font-medium rounded-full ${
+                          req.status === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : req.status === 'waiting_booking'
+                              ? 'bg-orange-100 text-orange-800'
+                              : req.status === 'scheduled'
+                                ? 'bg-purple-100 text-purple-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
+                        {req.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
             {/* Jobs Section */}
             <div className="card-surface rounded-2xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">
-                    {isMechanic ? 'My Job Queue' : 'All Jobs'}
+                    All Jobs
                   </h2>
                   <p className="text-sm text-gray-600">
-                    {isMechanic ? 'Your assigned work' : 'All active jobs across mechanics'}
+                    Fleet-wide jobs across every mechanic
                   </p>
                 </div>
                 <span className="pill bg-slate-100 border-slate-200">Tap to open</span>
@@ -273,6 +296,9 @@ export default function UnifiedDashboard() {
                       className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-white transition-colors"
                     >
                       <div className="flex items-center space-x-4">
+                        {isMechanic && job.mechanicId === user.id && (
+                          <span className="pill bg-primary-50 border-primary-100 text-primary-800">Mine</span>
+                        )}
                         <div
                           className={`p-2 rounded-lg ${
                             job.status === 'completed'
@@ -378,7 +404,7 @@ export default function UnifiedDashboard() {
                   <div className="p-4 bg-blue-50 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <FileText className="h-5 w-5 text-blue-700" />
-                      <span className="text-2xl font-bold text-blue-900">{completed}</span>
+                      <span className="text-2xl font-bold text-blue-900">{myCompleted}</span>
                     </div>
                     <p className="text-sm text-gray-700">Jobs Completed</p>
                     <p className="text-xs text-gray-500 mt-1">This period</p>
@@ -387,7 +413,7 @@ export default function UnifiedDashboard() {
                     <div className="flex items-center justify-between mb-2">
                       <CheckCircle className="h-5 w-5 text-green-700" />
                       <span className="text-2xl font-bold text-green-900">
-                        {completed > 0 ? Math.round((completed / (completed + inProgress + assigned)) * 100) : 0}%
+                        {myCompletionRate}%
                       </span>
                     </div>
                     <p className="text-sm text-gray-700">Completion Rate</p>
@@ -396,7 +422,7 @@ export default function UnifiedDashboard() {
                   <div className="p-4 bg-purple-50 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <Clock className="h-5 w-5 text-purple-700" />
-                      <span className="text-2xl font-bold text-purple-900">{inProgress}</span>
+                      <span className="text-2xl font-bold text-purple-900">{myInProgress}</span>
                     </div>
                     <p className="text-sm text-gray-700">Active Jobs</p>
                     <p className="text-xs text-gray-500 mt-1">Currently working</p>
@@ -406,8 +432,8 @@ export default function UnifiedDashboard() {
             )}
           </div>
         </main>
+        <Footer />
       </div>
     </div>
   )
 }
-

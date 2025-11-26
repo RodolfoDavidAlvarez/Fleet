@@ -38,7 +38,7 @@ export default function VehiclesPage() {
       return
     }
     const parsedUser = JSON.parse(userData)
-    if (parsedUser.role !== 'admin') {
+    if (parsedUser.role !== 'admin' && parsedUser.role !== 'mechanic') {
       router.push('/login')
       return
     }
@@ -158,7 +158,7 @@ export default function VehiclesPage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role="admin" />
+      <Sidebar role={user?.role || 'admin'} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} />
         <main className="flex-1 overflow-y-auto p-6">
@@ -172,9 +172,9 @@ export default function VehiclesPage() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setFormOpen(prev => !prev)}
-                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"
+                  className="btn-primary px-5 py-2.5 flex items-center gap-2"
                 >
-                  <Plus className="h-5 w-5 mr-2" />
+                  <Plus className="h-5 w-5" />
                   {formOpen ? 'Close Form' : 'Add Vehicle'}
                 </button>
               </div>
@@ -210,7 +210,7 @@ export default function VehiclesPage() {
                         placeholder="Make"
                         value={form.make}
                         onChange={(e) => setForm({ ...form, make: e.target.value })}
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                        className="input-field py-2"
                       />
                     </label>
                     <label className="space-y-2 text-sm text-gray-700">
@@ -220,7 +220,7 @@ export default function VehiclesPage() {
                         placeholder="Model"
                         value={form.model}
                         onChange={(e) => setForm({ ...form, model: e.target.value })}
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                        className="input-field py-2"
                       />
                     </label>
                     <label className="space-y-2 text-sm text-gray-700">
@@ -231,7 +231,7 @@ export default function VehiclesPage() {
                         placeholder="Year"
                         value={form.year}
                         onChange={(e) => setForm({ ...form, year: e.target.value })}
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                        className="input-field py-2"
                       />
                     </label>
                     <label className="space-y-2 text-sm text-gray-700">
@@ -241,7 +241,7 @@ export default function VehiclesPage() {
                         placeholder="VIN"
                         value={form.vin}
                         onChange={(e) => setForm({ ...form, vin: e.target.value })}
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                        className="input-field py-2"
                       />
                     </label>
                     <label className="space-y-2 text-sm text-gray-700">
@@ -251,7 +251,7 @@ export default function VehiclesPage() {
                         placeholder="License Plate"
                         value={form.licensePlate}
                         onChange={(e) => setForm({ ...form, licensePlate: e.target.value })}
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                        className="input-field py-2"
                       />
                     </label>
                     <label className="space-y-2 text-sm text-gray-700">
@@ -261,7 +261,7 @@ export default function VehiclesPage() {
                         placeholder="Mileage"
                         value={form.mileage}
                         onChange={(e) => setForm({ ...form, mileage: e.target.value })}
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                        className="input-field py-2"
                       />
                     </label>
                     <label className="space-y-2 text-sm text-gray-700">
@@ -269,7 +269,7 @@ export default function VehiclesPage() {
                       <select
                         value={form.driverId}
                         onChange={(e) => setForm({ ...form, driverId: e.target.value })}
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-full"
+                        className="input-field py-2"
                       >
                         <option value="">Unassigned</option>
                         {drivers.map((driver) => (
@@ -283,9 +283,16 @@ export default function VehiclesPage() {
                       <button
                         type="submit"
                         disabled={saving}
-                        className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                        className="btn-primary px-6 py-2.5 flex items-center gap-2"
                       >
-                        {saving ? 'Saving...' : 'Save Vehicle'}
+                        {saving ? (
+                          <>
+                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          'Save Vehicle'
+                        )}
                       </button>
                     </div>
                   </form>
@@ -321,9 +328,16 @@ export default function VehiclesPage() {
                       <button
                         type="submit"
                         disabled={driverSaving}
-                        className="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                        className="bg-gradient-to-r from-gray-900 to-gray-800 text-white px-6 py-2.5 rounded-xl font-semibold shadow-lg shadow-gray-900/20 transition-all duration-200 hover:shadow-xl hover:shadow-gray-900/30 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2"
                       >
-                        {driverSaving ? 'Saving...' : 'Save driver'}
+                        {driverSaving ? (
+                          <>
+                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          'Save driver'
+                        )}
                       </button>
                     </div>
                   </form>
@@ -495,14 +509,14 @@ export default function VehiclesPage() {
                     <Info className="h-4 w-4 text-primary-700" />
                     Quick actions
                   </div>
-                  <button className="w-full px-3 py-2 rounded-lg bg-primary-600 text-white font-semibold hover:bg-primary-700">
+                  <button className="btn-primary w-full px-4 py-2.5 text-sm">
                     Update status
                   </button>
-                  <button className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100">
+                  <button className="btn-secondary w-full px-4 py-2.5 text-sm">
                     Assign job
                   </button>
                   <button
-                    className="w-full px-3 py-2 text-sm text-primary-700 font-semibold"
+                    className="w-full px-4 py-2.5 text-sm text-primary-700 font-semibold hover:bg-primary-50 rounded-xl transition-colors"
                     onClick={() => setSelectedVehicle(null)}
                   >
                     Close

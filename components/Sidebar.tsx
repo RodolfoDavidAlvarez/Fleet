@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
@@ -18,23 +19,20 @@ interface SidebarProps {
   role: 'admin' | 'mechanic'
 }
 
-const adminLinks = [
+const unifiedLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/vehicles', label: 'Vehicles', icon: Car },
+  { href: '/repairs', label: 'Repairs', icon: Wrench },
   { href: '/admin/bookings', label: 'Bookings', icon: Calendar },
   { href: '/admin/drivers', label: 'Drivers', icon: Users },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-]
-
-const mechanicLinks = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/mechanic/jobs', label: 'My Jobs', icon: Wrench },
   { href: '/mechanic/schedule', label: 'Schedule', icon: Calendar },
 ]
 
 export default function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname()
-  const links = role === 'admin' ? adminLinks : mechanicLinks
+  const links = unifiedLinks
 
   const handleLogout = () => {
     localStorage.removeItem('user')
@@ -45,15 +43,19 @@ export default function Sidebar({ role }: SidebarProps) {
     <div className="h-screen w-64 bg-white/95 backdrop-blur-sm border-r border-slate-200/80 flex flex-col shadow-lg shadow-slate-900/5">
       <div className="p-6 border-b border-slate-200/80 bg-gradient-to-br from-white to-primary-50/30">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary-600 to-primary-700 text-white flex items-center justify-center shadow-lg shadow-primary-500/30 ring-2 ring-primary-100 transition-all duration-200 hover:scale-105 hover:shadow-xl hover:shadow-primary-500/40">
-              <Zap className="h-5 w-5" />
+          <Link href="/dashboard" className="flex flex-col gap-1 hover:opacity-80 transition-opacity">
+            <div className="relative h-10 w-auto flex items-center">
+              <Image
+                src="/images/AEC-Horizontal-Official-Logo-2020.png"
+                alt="AGAVE ENVIRONMENTAL CONTRACTING, INC."
+                width={120}
+                height={40}
+                className="object-contain"
+                priority
+              />
             </div>
-            <div>
-              <p className="text-xs font-bold text-primary-700 uppercase tracking-[0.12em]">FleetPro</p>
-              <p className="text-sm font-bold text-slate-900">Fast control</p>
-            </div>
-          </div>
+            <p className="text-xs font-bold text-slate-900 uppercase tracking-wide">Fleet System</p>
+          </Link>
           <span className="pill text-[11px] px-2.5 py-1 bg-gradient-to-r from-primary-50 to-primary-100 border-primary-200 text-primary-800 shadow-sm">
             {role}
           </span>

@@ -22,7 +22,7 @@ export default function JobsPage() {
       return
     }
     const parsedUser = JSON.parse(userData)
-    if (parsedUser.role !== 'mechanic') {
+    if (parsedUser.role !== 'admin' && parsedUser.role !== 'mechanic') {
       router.push('/login')
       return
     }
@@ -31,7 +31,10 @@ export default function JobsPage() {
     const loadJobs = async () => {
       try {
         setLoading(true)
-        const res = await fetch(`/api/jobs?mechanicId=${parsedUser.id}`)
+        const jobsUrl = parsedUser.role === 'mechanic'
+          ? `/api/jobs?mechanicId=${parsedUser.id}`
+          : '/api/jobs'
+        const res = await fetch(jobsUrl)
         if (!res.ok) throw new Error('Failed to load jobs')
         const data = await res.json()
         setJobs(data.jobs || [])
@@ -53,7 +56,7 @@ export default function JobsPage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role="mechanic" />
+      <Sidebar role={user?.role || 'mechanic'} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} />
         <main className="flex-1 overflow-y-auto p-6">

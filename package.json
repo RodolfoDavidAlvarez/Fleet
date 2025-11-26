@@ -25,11 +25,13 @@
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.303.0",
     "next": "^14.0.4",
+    "openai": "^6.9.1",
     "postcss": "^8.4.32",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.49.3",
     "recharts": "^2.10.3",
+    "sharp": "^0.34.5",
     "tailwind-merge": "^2.2.0",
     "tailwindcss": "^3.4.0",
     "twilio": "^4.20.0",
@@ -37,6 +39,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "dotenv": "^17.2.3",
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.0.4",
     "nodemon": "^3.1.11"
