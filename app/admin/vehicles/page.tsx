@@ -571,18 +571,24 @@ export default function VehiclesPage() {
                                     </div>
                                 )}
                                 <div className="space-y-0.5">
-                                  <div className="text-sm font-semibold text-gray-900 leading-tight">
-                                    {vehicle.make} {vehicle.model}
+                                  <div className={`text-sm font-semibold leading-tight ${!vehicle.make && !vehicle.model ? 'text-gray-400 italic' : 'text-gray-900'}`}>
+                                    {vehicle.make || vehicle.model ? `${vehicle.make} ${vehicle.model}` : 'Unknown Make/Model'}
                                   </div>
                                   <div className="text-xs text-gray-500 leading-tight">Year: {vehicle.year}</div>
-                                  <div className="text-[10px] text-gray-400 font-mono mt-0.5">VIN: {vehicle.vin}</div>
+                                  {!vehicle.vin.startsWith('AIRTABLE') && (
+                                    <div className="text-[10px] text-gray-400 font-mono mt-0.5">VIN: {vehicle.vin}</div>
+                                  )}
                                 </div>
                               </div>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900 align-top">
-                              <span className="font-medium bg-gray-100 px-2 py-1 rounded text-gray-700 text-xs border border-gray-200">
-                                {vehicle.licensePlate}
-                              </span>
+                              {vehicle.licensePlate ? (
+                                <span className="font-medium bg-gray-100 px-2 py-1 rounded text-gray-700 text-xs border border-gray-200">
+                                  {vehicle.licensePlate}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400 text-xs italic">N/A</span>
+                              )}
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900 align-top">
                               {vehicle.mileage.toLocaleString()} mi
