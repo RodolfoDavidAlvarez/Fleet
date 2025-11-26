@@ -416,7 +416,7 @@ export default function AdminSettingsPage() {
                     <select
                       value={filterRole}
                       onChange={(e) => setFilterRole(e.target.value)}
-                      className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                      className="block w-40 pl-3 pr-10 py-2 text-base border-2 border-gray-400 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md font-medium"
                     >
                       <option value="all">All Roles</option>
                       <option value="admin">Admin</option>
@@ -428,7 +428,7 @@ export default function AdminSettingsPage() {
                     <select
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
-                      className="block w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                      className="block w-48 pl-3 pr-10 py-2 text-base border-2 border-gray-400 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md font-medium"
                     >
                       <option value="all">All Statuses</option>
                       <option value="pending_approval">Pending Approval</option>
@@ -561,7 +561,7 @@ export default function AdminSettingsPage() {
                           ...calendarSettings,
                           maxBookingsPerWeek: parseInt(e.target.value) || 5
                         })}
-                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                        className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
                       />
                     <p className="text-xs text-gray-500 mt-1">Maximum number of bookings allowed per week (default: 5)</p>
                   </div>
@@ -578,7 +578,7 @@ export default function AdminSettingsPage() {
                           ...calendarSettings,
                           startTime: e.target.value
                         })}
-                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                        className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
                       />
                       <p className="text-xs text-gray-500 mt-1">Earliest booking time (default: 06:00)</p>
                     </div>
@@ -594,7 +594,7 @@ export default function AdminSettingsPage() {
                           ...calendarSettings,
                           endTime: e.target.value
                         })}
-                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                        className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
                       />
                       <p className="text-xs text-gray-500 mt-1">Latest booking time (default: 14:00)</p>
                     </div>
@@ -604,14 +604,14 @@ export default function AdminSettingsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Slot Duration (minutes)
                     </label>
-                    <select
-                      value={calendarSettings.slotDuration}
-                      onChange={(e) => setCalendarSettings({
-                        ...calendarSettings,
-                        slotDuration: parseInt(e.target.value) || 30
-                      })}
-                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
-                    >
+                <select
+                  value={calendarSettings.slotDuration}
+                  onChange={(e) => setCalendarSettings({
+                    ...calendarSettings,
+                    slotDuration: parseInt(e.target.value) || 30
+                  })}
+                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
+                >
                       <option value="15">15 minutes</option>
                       <option value="30">30 minutes</option>
                       <option value="60">60 minutes</option>
@@ -763,7 +763,7 @@ export default function AdminSettingsPage() {
                   type="email"
                   value={inviteForm.email}
                   onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
                   placeholder="user@example.com"
                 />
               </div>
@@ -772,7 +772,7 @@ export default function AdminSettingsPage() {
                 <select
                   value={inviteForm.role}
                   onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
                 >
                   <option value="admin">Admin</option>
                   <option value="mechanic">Mechanic</option>
@@ -815,7 +815,7 @@ export default function AdminSettingsPage() {
                 <select
                   value={editingUser.role}
                   onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as any })}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
                 >
                   <option value="admin">Admin</option>
                   <option value="mechanic">Mechanic</option>
@@ -828,7 +828,7 @@ export default function AdminSettingsPage() {
                 <select
                   value={editingUser.approval_status}
                   onChange={(e) => setEditingUser({ ...editingUser, approval_status: e.target.value as any })}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
                 >
                   <option value="pending_approval">Pending Approval</option>
                   <option value="approved">Approved</option>
@@ -874,7 +874,7 @@ export default function AdminSettingsPage() {
                   type="text"
                   value={notificationForm.title}
                   onChange={(e) => setNotificationForm({ ...notificationForm, title: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
                   placeholder="Notification title"
                 />
               </div>
@@ -883,7 +883,7 @@ export default function AdminSettingsPage() {
                 <textarea
                   value={notificationForm.message}
                   onChange={(e) => setNotificationForm({ ...notificationForm, message: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
                   rows={4}
                   placeholder="Notification message"
                 />
@@ -893,7 +893,7 @@ export default function AdminSettingsPage() {
                 <select
                   value={notificationForm.type}
                   onChange={(e) => setNotificationForm({ ...notificationForm, type: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
                 >
                   <option value="info">Info</option>
                   <option value="warning">Warning</option>
@@ -940,7 +940,7 @@ export default function AdminSettingsPage() {
                     const selected = Array.from(e.target.selectedOptions, (option) => option.value)
                     setNotificationForm({ ...notificationForm, recipientIds: selected })
                   }}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
                   size={5}
                 >
                   {users.map((u) => (
