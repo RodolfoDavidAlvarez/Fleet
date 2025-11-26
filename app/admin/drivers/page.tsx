@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Users, Plus, Mail, Phone, Car, X, Edit, Trash2 } from 'lucide-react'
+import { Users, Plus, Mail, Phone, Car, X, Edit, Trash2, LayoutGrid, List } from 'lucide-react'
 import { User } from '@/types'
 
 export default function DriversPage() {
@@ -19,6 +19,19 @@ export default function DriversPage() {
   const [updating, setUpdating] = useState(false)
   const [driverForm, setDriverForm] = useState({ name: '', email: '', phone: '' })
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' })
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+
+  useEffect(() => {
+    const savedView = localStorage.getItem('driversViewMode')
+    if (savedView === 'list' || savedView === 'grid') {
+      setViewMode(savedView)
+    }
+  }, [])
+
+  const toggleViewMode = (mode: 'grid' | 'list') => {
+    setViewMode(mode)
+    localStorage.setItem('driversViewMode', mode)
+  }
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -158,6 +171,30 @@ export default function DriversPage() {
                 <p className="text-gray-600">Manage driver assignments and vehicle assignments.</p>
               </div>
               <div className="flex items-center gap-4">
+                <div className="flex bg-gray-100 rounded-lg p-1 border border-gray-200">
+                  <button
+                    onClick={() => toggleViewMode('grid')}
+                    className={`p-2 rounded-md transition-all ${
+                      viewMode === 'grid' 
+                        ? 'bg-white shadow-sm text-primary-600' 
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    title="Grid View"
+                  >
+                    <LayoutGrid className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => toggleViewMode('list')}
+                    className={`p-2 rounded-md transition-all ${
+                      viewMode === 'list' 
+                        ? 'bg-white shadow-sm text-primary-600' 
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    title="List View"
+                  >
+                    <List className="h-5 w-5" />
+                  </button>
+                </div>
                 <div className="card-surface px-4 py-3 rounded-xl border border-gray-200">
                   <p className="text-xs text-gray-500 mb-1">Total Drivers</p>
                   <p className="text-2xl font-semibold text-gray-900">{drivers.length}</p>
@@ -245,6 +282,81 @@ export default function DriversPage() {
               <div className="flex items-center justify-center py-20">
                 <p className="text-gray-500 text-lg">No drivers found.</p>
               </div>
+            ) : viewMode === 'list' ? (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-medium">
+                        <th className="px-6 py-4">Driver</th>
+                        <th className="px-6 py-4">Contact Info</th>
+                        <th className="px-6 py-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {drivers.map((driver) => (
+                        <tr key={driver.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="bg-primary-100 p-2 rounded-full">
+                                <Users className="h-5 w-5 text-primary-600" />
+                              </div>
+                              <div>
+                                <h3 className="text-sm font-semibold text-gray-900">{driver.name}</h3>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  Driver
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center text-sm text-gray-600">
+                                <Mail className="h-4 w-4 mr-2 text-gray-400" />
+                                {driver.email}
+                              </div>
+                              {driver.phone && (
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <Phone className="h-4 w-4 mr-2 text-gray-400" />
+                                  {driver.phone}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-3">
+                              <button 
+                                onClick={() => router.push('/admin/vehicles')}
+                                className="text-gray-500 hover:text-primary-600 text-sm font-medium flex items-center gap-1 transition-colors"
+                                title="View Vehicles"
+                              >
+                                <Car className="h-4 w-4" />
+                                <span className="hidden lg:inline">Vehicles</span>
+                              </button>
+                              <button 
+                                onClick={() => handleEditClick(driver)}
+                                className="text-gray-500 hover:text-primary-600 text-sm font-medium flex items-center gap-1 transition-colors"
+                                title="Edit Driver"
+                              >
+                                <Edit className="h-4 w-4" />
+                                <span className="hidden lg:inline">Edit</span>
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteDriver(driver.id)}
+                                className="text-gray-500 hover:text-red-600 text-sm font-medium flex items-center gap-1 transition-colors"
+                                title="Delete Driver"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="hidden lg:inline">Delete</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {drivers.map((driver) => (
@@ -280,10 +392,13 @@ export default function DriversPage() {
                     </div>
 
                     <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                      <div className="flex items-center text-sm text-gray-600">
+                      <button 
+                        onClick={() => router.push('/admin/vehicles')}
+                        className="flex items-center text-sm text-gray-600 hover:text-primary-600 transition-colors"
+                      >
                         <Car className="h-4 w-4 mr-2" />
                         View Vehicles
-                      </div>
+                      </button>
                       <div className="flex items-center gap-2">
                         <button 
                           onClick={() => handleEditClick(driver)}
@@ -307,65 +422,95 @@ export default function DriversPage() {
             )}
 
             {editingDriver && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl max-w-md w-full">
-                  <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-                    <h2 className="text-xl font-semibold text-gray-900">Edit Driver</h2>
+              <div className="fixed inset-0 z-50 overflow-hidden">
+                <div className="absolute inset-0 bg-black bg-opacity-30 backdrop-blur-sm transition-opacity" onClick={() => setEditingDriver(null)} />
+                <div className="absolute inset-y-0 right-0 max-w-md w-full bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col h-full border-l border-gray-200">
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">Edit Driver</h2>
+                      <p className="text-sm text-gray-500 mt-0.5">Update driver details and settings</p>
+                    </div>
                     <button
                       onClick={() => setEditingDriver(null)}
-                      className="text-gray-500 hover:text-gray-700"
+                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
                     >
                       <X className="h-5 w-5" />
                     </button>
                   </div>
-                  <form onSubmit={handleUpdateDriver} className="p-6 space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Name</label>
-                      <input
-                        required
-                        value={editForm.name}
-                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="Jamie Driver"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Email</label>
-                      <input
-                        required
-                        type="email"
-                        value={editForm.email}
-                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="driver@example.com"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Phone</label>
-                      <input
-                        value={editForm.phone}
-                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="+1 (555) 123-4567"
-                      />
-                    </div>
-                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                      <button
-                        type="button"
-                        onClick={() => setEditingDriver(null)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={updating}
-                        className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
-                      >
-                        {updating ? 'Saving...' : 'Save Changes'}
-                      </button>
-                    </div>
-                  </form>
+                  
+                  <div className="flex-1 overflow-y-auto p-6">
+                    <form id="edit-driver-form" onSubmit={handleUpdateDriver} className="space-y-6">
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-medium text-gray-900 uppercase tracking-wider">Personal Information</h3>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Full Name</label>
+                            <input
+                              required
+                              value={editForm.name}
+                              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                              placeholder="e.g. Jamie Driver"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Email Address</label>
+                            <input
+                              required
+                              type="email"
+                              value={editForm.email}
+                              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                              placeholder="e.g. driver@example.com"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Phone Number</label>
+                            <input
+                              value={editForm.phone}
+                              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                              placeholder="e.g. +1 (555) 123-4567"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-6 border-t border-gray-200">
+                         <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
+                            <div className="flex items-start">
+                               <div className="flex-shrink-0">
+                                  <Car className="h-5 w-5 text-blue-600" />
+                               </div>
+                               <div className="ml-3">
+                                  <h3 className="text-sm font-medium text-blue-800">Assigned Vehicles</h3>
+                                  <div className="mt-2 text-sm text-blue-700">
+                                     <p>To manage vehicle assignments, please go to the Vehicles page.</p>
+                                  </div>
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+                    <button
+                      type="button"
+                      onClick={() => setEditingDriver(null)}
+                      className="px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-white hover:shadow-sm font-medium transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      form="edit-driver-form"
+                      disabled={updating}
+                      className="bg-primary-600 text-white px-6 py-2.5 rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium shadow-sm hover:shadow transition-all"
+                    >
+                      {updating ? 'Saving Changes...' : 'Save Changes'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

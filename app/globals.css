@@ -122,6 +122,47 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+@layer components {
+  .card-surface {
+    @apply bg-white border border-gray-200 shadow-sm;
+  }
+  
+  [data-theme="dark"] .card-surface {
+    @apply bg-slate-800 border-slate-700;
+  }
+
+  .input-field {
+    @apply w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-shadow;
+  }
+  
+  [data-theme="dark"] .input-field {
+    @apply bg-slate-800 border-slate-600 text-white placeholder-gray-400;
+  }
+
+  /* Override for modern input classes to ensure light background */
+  .input, .select, .textarea {
+    background-color: white !important;
+    color: #0f172a !important;
+  }
+  
+  .input::placeholder, .textarea::placeholder {
+    color: #64748b !important;
+  }
+  
+  [data-theme="dark"] .input,
+  [data-theme="dark"] .select, 
+  [data-theme="dark"] .textarea {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+    border-color: #475569 !important;
+  }
+  
+  [data-theme="dark"] .input::placeholder,
+  [data-theme="dark"] .textarea::placeholder {
+    color: #94a3b8 !important;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
