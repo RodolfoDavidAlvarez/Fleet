@@ -15,6 +15,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
   
   const [formData, setFormData] = useState({
     name: searchParams.get('name') || '',
+    email: '',
     phone: searchParams.get('phone') || '',
     date: '',
     time: '',
@@ -122,6 +123,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
           setFormData(prev => ({
             ...prev,
             name: prev.name || data.request.driverName,
+            email: prev.email || data.request.driverEmail || '',
             phone: prev.phone || data.request.driverPhone,
           }))
         }
@@ -141,6 +143,12 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
     setSubmitting(true)
     setError(null)
 
+    if (!formData.email || !formData.email.includes('@')) {
+      setSubmitting(false)
+      setError('Please add a valid email so we can confirm your booking.')
+      return
+    }
+
     try {
       // Create booking from repair request
       const bookingRes = await fetch('/api/bookings', {
@@ -148,7 +156,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerName: formData.name,
-          customerEmail: repairRequest?.driverEmail || '',
+          customerEmail: formData.email,
           customerPhone: formData.phone,
           serviceType: repairRequest?.aiCategory || 'Repair Service',
           scheduledDate: formData.date,
@@ -356,6 +364,17 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Email</label>
+                      <input
+                        type="email"
+                        required
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 bg-white"
+                        placeholder="name@example.com"
                       />
                     </div>
                     <div>
