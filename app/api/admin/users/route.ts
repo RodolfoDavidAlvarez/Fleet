@@ -5,12 +5,18 @@ import { createServerClient } from "@/lib/supabase";
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient();
+    const { searchParams } = new URL(request.url);
+    const roleFilter = searchParams.get("role");
 
-    // Get all users with their approval status and last_seen_at
-    const { data: users, error } = await supabase
-      .from("users")
-      .select("id, email, name, role, phone, approval_status, last_seen_at, created_at")
-      .order("created_at", { ascending: false });
+    // Build query - filter by role if specified, otherwise get all users
+    let query = supabase.from("users").select("id, email, name, role, phone, approval_status, last_seen_at, created_at");
+
+    // If role filter is specified, apply it
+    if (roleFilter) {
+      query = query.eq("role", roleFilter);
+    }
+
+    const { data: users, error } = await query.order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching users:", error);

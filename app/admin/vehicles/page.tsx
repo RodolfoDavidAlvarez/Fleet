@@ -1,27 +1,39 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useMemo, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import { Car, Plus, Edit, Trash2, Search, Info, UserPlus, X, Upload, Camera } from 'lucide-react'
 import { Vehicle, User } from '@/types'
 import { getStatusColor } from '@/lib/utils'
+import { useVehicles, useDrivers, useCreateVehicle, useUpdateVehicle, useCreateDriver } from '@/hooks/use-vehicles'
+import { PageTransition } from '@/components/ui/smooth-transitions'
+import { VehicleCardSkeleton } from '@/components/ui/loading-states'
+import { useDebounce } from '@/hooks/use-debounce'
 
 export default function VehiclesPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [drivers, setDrivers] = useState<User[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const debouncedSearch = useDebounce(searchTerm, 300)
+  
+  const { data: vehicles = [], isLoading: vehiclesLoading, error: vehiclesError } = useVehicles()
+  const { data: drivers = [], isLoading: driversLoading } = useDrivers()
+  const createVehicleMutation = useCreateVehicle()
+  const updateVehicleMutation = useUpdateVehicle()
+  const createDriverMutation = useCreateDriver()
   const [formOpen, setFormOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [updating, setUpdating] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  
+  const loading = vehiclesLoading || driversLoading
+  const globalError = error || vehiclesError?.message || createVehicleMutation.error?.message || updateVehicleMutation.error?.message || createDriverMutation.error?.message || null
+  const saving = createVehicleMutation.isPending
+  const driverSaving = createDriverMutation.isPending
   const [editForm, setEditForm] = useState({
     make: '',
     model: '',
@@ -34,7 +46,6 @@ export default function VehiclesPage() {
   })
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  const [driverSaving, setDriverSaving] = useState(false)
   const [driverForm, setDriverForm] = useState({ name: '', email: '', phone: '' })
   const [form, setForm] = useState({
     make: '',
@@ -46,6 +57,7 @@ export default function VehiclesPage() {
     driverId: '',
   })
 
+  // Authentication and filtering
   useEffect(() => {
     const userData = localStorage.getItem('user')
     if (!userData) {
@@ -58,118 +70,76 @@ export default function VehiclesPage() {
       return
     }
     setUser(parsedUser)
-
-    loadVehicles()
-    loadDrivers()
   }, [router])
 
-  const loadVehicles = async () => {
-    try {
-      setLoading(true)
-      const res = await fetch('/api/vehicles')
-      if (!res.ok) throw new Error('Failed to load vehicles')
-      const data = await res.json()
-      
-      // Sort vehicles to prioritize complete records
-      const sortedVehicles = (data.vehicles || []).sort((a: Vehicle, b: Vehicle) => {
-        // Helper to check if a vehicle is "complete" (has make/model and real VIN)
-        const isCompleteA = a.make && a.model && !a.vin.startsWith('AIRTABLE');
-        const isCompleteB = b.make && b.model && !b.vin.startsWith('AIRTABLE');
+  // Optimized vehicle filtering and sorting
+  const filteredAndSortedVehicles = useMemo(() => {
+    let filtered = vehicles
 
-        // Complete records come first
-        if (isCompleteA && !isCompleteB) return -1;
-        if (!isCompleteA && isCompleteB) return 1;
-        
-        // Secondary sort by Make
-        return (a.make || '').localeCompare(b.make || '');
-      })
-      
-      setVehicles(sortedVehicles)
-      setError(null)
-    } catch (err) {
-      console.error('Error fetching vehicles:', err)
-      setError('Failed to load vehicles. Please try again.')
-    } finally {
-      setLoading(false)
+    // Apply search filter
+    if (debouncedSearch.trim()) {
+      const search = debouncedSearch.toLowerCase()
+      filtered = vehicles.filter(vehicle => 
+        vehicle.make?.toLowerCase().includes(search) ||
+        vehicle.model?.toLowerCase().includes(search) ||
+        vehicle.vin?.toLowerCase().includes(search) ||
+        vehicle.licensePlate?.toLowerCase().includes(search) ||
+        vehicle.driverName?.toLowerCase().includes(search)
+      )
     }
-  }
 
-  const loadDrivers = async () => {
-    try {
-      const res = await fetch('/api/drivers')
-      if (!res.ok) throw new Error('Failed to load drivers')
-      const data = await res.json()
-      setDrivers(data.drivers || [])
-    } catch (err) {
-      console.error('Error fetching drivers:', err)
-    }
-  }
+    // Sort vehicles to prioritize complete records
+    return filtered.sort((a: Vehicle, b: Vehicle) => {
+      // Helper to check if a vehicle is "complete" (has make/model and real VIN)
+      const isCompleteA = a.make && a.model && !a.vin.startsWith('AIRTABLE');
+      const isCompleteB = b.make && b.model && !b.vin.startsWith('AIRTABLE');
+
+      // Complete records come first
+      if (isCompleteA && !isCompleteB) return -1;
+      if (!isCompleteA && isCompleteB) return 1;
+      
+      // Secondary sort by Make
+      return (a.make || '').localeCompare(b.make || '');
+    })
+  }, [vehicles, debouncedSearch])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    setSaving(true)
-    setError(null)
-
-    try {
-      const res = await fetch('/api/vehicles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          make: form.make,
-          model: form.model,
-          year: form.year,
-          vin: form.vin,
-          licensePlate: form.licensePlate,
-          mileage: form.mileage ? Number(form.mileage) : 0,
-          driverId: form.driverId || undefined,
-        }),
-      })
-
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to create vehicle')
-      }
-
-      setVehicles(prev => [data.vehicle, ...prev])
-      setForm({
-        make: '',
-        model: '',
-        year: new Date().getFullYear().toString(),
-        vin: '',
-        licensePlate: '',
-        mileage: '',
-        driverId: '',
-      })
-      setFormOpen(false)
-    } catch (err) {
-      console.error('Error saving vehicle:', err)
-      setError(err instanceof Error ? err.message : 'Failed to save vehicle')
-    } finally {
-      setSaving(false)
-    }
+    
+    createVehicleMutation.mutate({
+      make: form.make,
+      model: form.model,
+      year: Number(form.year),
+      vin: form.vin,
+      licensePlate: form.licensePlate,
+      mileage: form.mileage ? Number(form.mileage) : 0,
+      status: 'active' as const,
+      serviceHistory: [],
+      driverId: form.driverId || undefined,
+    }, {
+      onSuccess: () => {
+        setForm({
+          make: '',
+          model: '',
+          year: new Date().getFullYear().toString(),
+          vin: '',
+          licensePlate: '',
+          mileage: '',
+          driverId: '',
+        })
+        setFormOpen(false)
+      },
+    })
   }
 
   const handleCreateDriver = async (e: FormEvent) => {
     e.preventDefault()
-    setDriverSaving(true)
-    try {
-      const res = await fetch('/api/drivers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(driverForm),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to create driver')
-      }
-      setDrivers((prev) => [data.driver, ...prev])
-      setDriverForm({ name: '', email: '', phone: '' })
-    } catch (err) {
-      console.error('Error creating driver:', err)
-      setError(err instanceof Error ? err.message : 'Failed to create driver')
-    } finally {
-      setDriverSaving(false)
-    }
+    
+    createDriverMutation.mutate(driverForm, {
+      onSuccess: () => {
+        setDriverForm({ name: '', email: '', phone: '' })
+      },
+    })
   }
 
   const handleEditClick = (vehicle: Vehicle) => {
@@ -241,13 +211,7 @@ export default function VehiclesPage() {
         throw new Error(data.error || 'Failed to update vehicle')
       }
 
-      // Update local state
-      setVehicles(prev => prev.map(v => 
-        v.id === editingVehicle.id 
-          ? { ...data.vehicle, photoUrl: photoUrl || data.vehicle.photoUrl }
-          : v
-      ))
-      
+      // Update selected vehicle if it matches
       if (selectedVehicle?.id === editingVehicle.id) {
         setSelectedVehicle({ ...data.vehicle, photoUrl: photoUrl || data.vehicle.photoUrl })
       }
@@ -276,7 +240,6 @@ export default function VehiclesPage() {
         throw new Error(data.error || 'Failed to delete vehicle')
       }
 
-      setVehicles(prev => prev.filter(v => v.id !== vehicleId))
       if (selectedVehicle?.id === vehicleId) {
         setSelectedVehicle(null)
       }
@@ -286,26 +249,45 @@ export default function VehiclesPage() {
     }
   }
 
-  const filteredVehicles = vehicles.filter(vehicle =>
-    vehicle.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vehicle.licensePlate.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
-  const totalActive = vehicles.filter((v) => v.status === 'active').length
-  const totalService = vehicles.filter((v) => v.status === 'in_service').length
-  const totalRetired = vehicles.filter((v) => v.status === 'retired').length
+  // Statistics with memoization
+  const vehicleStats = useMemo(() => ({
+    totalActive: vehicles.filter((v) => v.status === 'active').length,
+    totalService: vehicles.filter((v) => v.status === 'in_service').length,
+    totalRetired: vehicles.filter((v) => v.status === 'retired').length,
+  }), [vehicles])
+  
+  const { totalActive, totalService, totalRetired } = vehicleStats
 
   if (!user) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
   }
 
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar role={user?.role || 'admin'} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header userName={user?.name || ''} userRole={user?.role || 'admin'} />
+          <main className="flex-1 overflow-y-auto p-6">
+            <div className="max-w-7xl mx-auto space-y-6">
+              <div className="space-y-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <VehicleCardSkeleton key={i} />
+                ))}
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role={user?.role || 'admin'} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user.name} userRole={user.role} />
-        <main className="flex-1 overflow-y-auto p-6">
+        <Sidebar role={user?.role || 'admin'} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header userName={user?.name || ''} userRole={user?.role || 'admin'} />
+          <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="space-y-1">
@@ -313,7 +295,7 @@ export default function VehiclesPage() {
                 <div className="flex items-center gap-3">
                   <h1 className="text-2xl font-semibold text-gray-900">Vehicles</h1>
                   <span className="px-3 py-1 text-xs font-semibold bg-primary-50 text-primary-700 rounded-full">
-                    {vehicles.length} total
+                    {filteredAndSortedVehicles.length} showing / {vehicles.length} total
                   </span>
                 </div>
                 <p className="text-sm text-gray-600">Condensed view with always-visible actions.</p>
@@ -346,6 +328,28 @@ export default function VehiclesPage() {
                 <p className="text-[11px] text-gray-500 uppercase tracking-wide">Retired</p>
                 <p className="text-xl font-semibold text-gray-900">{totalRetired}</p>
               </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search vehicles by make, model, VIN, license plate, or driver..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all gpu-accelerated"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
             </div>
 
             {formOpen && (
@@ -421,7 +425,7 @@ export default function VehiclesPage() {
                         className="input-field py-2"
                       >
                         <option value="">Unassigned</option>
-                        {drivers.map((driver) => (
+                        {drivers.map((driver: User) => (
                           <option key={driver.id} value={driver.id}>
                             {driver.name} • {driver.phone || driver.email}
                           </option>
@@ -494,9 +498,9 @@ export default function VehiclesPage() {
               </>
             )}
 
-            {error && (
+            {globalError && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-                {error}
+                {globalError}
               </div>
             )}
 
@@ -551,7 +555,7 @@ export default function VehiclesPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
-                        {filteredVehicles.map((vehicle) => (
+                        {filteredAndSortedVehicles.map((vehicle) => (
                           <tr
                             key={vehicle.id}
                             className="hover:bg-gray-50 cursor-pointer"
@@ -640,7 +644,7 @@ export default function VehiclesPage() {
                     </table>
                   </div>
                   <div className="md:hidden divide-y divide-gray-200">
-                    {filteredVehicles.map((vehicle) => (
+                    {filteredAndSortedVehicles.map((vehicle) => (
                       <button
                         key={vehicle.id}
                         onClick={() => setSelectedVehicle(vehicle)}
@@ -663,7 +667,7 @@ export default function VehiclesPage() {
                       </button>
                     ))}
                   </div>
-                  {filteredVehicles.length === 0 && !loading && (
+                  {filteredAndSortedVehicles.length === 0 && !loading && (
                     <div className="p-6 text-center text-gray-500">No vehicles found.</div>
                   )}
                 </>
@@ -930,7 +934,7 @@ export default function VehiclesPage() {
                               className="input-field w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236B7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-no-repeat bg-[right_0.5rem_center]"
                             >
                               <option value="">Unassigned</option>
-                              {drivers.map((driver) => (
+                              {drivers.map((driver: User) => (
                                 <option key={driver.id} value={driver.id}>
                                   {driver.name} • {driver.phone || driver.email}
                                 </option>

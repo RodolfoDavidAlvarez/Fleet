@@ -14,9 +14,12 @@ export default function SchedulePage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
 
-  const loadBookings = async (mechanicId: string) => {
+  const loadBookings = async (mechanicId?: string) => {
     try {
-      const res = await fetch(`/api/bookings?mechanicId=${encodeURIComponent(mechanicId)}`)
+      const url = mechanicId 
+        ? `/api/bookings?mechanicId=${encodeURIComponent(mechanicId)}`
+        : '/api/bookings'
+      const res = await fetch(url)
       const data = await res.json()
       if (res.ok) {
         setBookings(data.bookings || [])
@@ -33,12 +36,14 @@ export default function SchedulePage() {
       return
     }
     const parsedUser = JSON.parse(userData)
-    if (parsedUser.role !== 'mechanic') {
+    if (parsedUser.role !== 'admin' && parsedUser.role !== 'mechanic') {
       router.push('/login')
       return
     }
     setUser(parsedUser)
-    loadBookings(parsedUser.id)
+    // Only filter by mechanicId if user is a mechanic, otherwise show all bookings
+    const mechanicId = parsedUser.role === 'mechanic' ? parsedUser.id : undefined
+    loadBookings(mechanicId)
   }, [router])
 
   const grouped = useMemo(() => {
@@ -57,7 +62,7 @@ export default function SchedulePage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role="mechanic" />
+      <Sidebar role={user?.role || 'mechanic'} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} />
         <main className="flex-1 overflow-y-auto p-6">

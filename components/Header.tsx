@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, Search, User, Menu, X } from 'lucide-react'
+import { Bell, Search, User, Menu } from 'lucide-react'
 import { useState } from 'react'
 
 interface HeaderProps {
@@ -11,7 +11,6 @@ interface HeaderProps {
 
 export default function Header({ userName, userRole, onMenuClick }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false)
-  const [showUserMenu, setShowUserMenu] = useState(false)
 
   return (
     <header className="surface-primary border-b border-[var(--border)] h-16 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40 backdrop-blur-md bg-opacity-90">
@@ -80,38 +79,15 @@ export default function Header({ userName, userRole, onMenuClick }: HeaderProps)
           )}
         </div>
 
-        {/* User menu */}
-        <div className="relative">
-          <button 
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-3 p-1.5 pl-3 hover:bg-[var(--surface-hover)] rounded-full transition-colors"
-          >
-            <div className="hidden sm:block text-right">
-              <p className="text-sm font-semibold">{userName}</p>
-              <p className="text-xs text-muted capitalize">{userRole}</p>
-            </div>
-            <div className="w-9 h-9 bg-gradient-to-br from-[var(--primary-400)] to-[var(--primary-600)] rounded-full flex items-center justify-center shadow-sm">
-              <User className="h-4 w-4 text-white" />
-            </div>
-          </button>
-
-          {/* User dropdown */}
-          {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-56 card card-glass animate-slide-down">
-              <div className="p-2">
-                <button className="w-full text-left p-3 hover:bg-[var(--surface-hover)] rounded-lg transition-colors text-sm">
-                  Profile Settings
-                </button>
-                <button className="w-full text-left p-3 hover:bg-[var(--surface-hover)] rounded-lg transition-colors text-sm">
-                  Preferences
-                </button>
-                <div className="divider my-1"></div>
-                <button className="w-full text-left p-3 hover:bg-[var(--surface-hover)] rounded-lg transition-colors text-sm text-danger-600">
-                  Sign Out
-                </button>
-              </div>
-            </div>
-          )}
+        {/* User info */}
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:block text-right">
+            <p className="text-sm font-semibold">{userName}</p>
+            <p className="text-xs text-muted capitalize">{userRole}</p>
+          </div>
+          <div className="w-9 h-9 bg-gradient-to-br from-[var(--primary-400)] to-[var(--primary-600)] rounded-full flex items-center justify-center shadow-sm">
+            <User className="h-4 w-4 text-white" />
+          </div>
         </div>
       </div>
     </header>

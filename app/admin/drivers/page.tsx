@@ -167,7 +167,10 @@ export default function DriversPage() {
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-8">
               <div>
                 <p className="text-sm text-primary-600 font-semibold uppercase tracking-wide mb-1">TEAM</p>
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">Drivers</h1>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-4xl font-bold text-gray-900">Drivers</h1>
+                  <span className="text-2xl font-semibold text-primary-600">({drivers.length})</span>
+                </div>
                 <p className="text-gray-600">Manage driver assignments and vehicle assignments.</p>
               </div>
               <div className="flex items-center gap-4">

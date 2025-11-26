@@ -35,7 +35,17 @@ export default function MechanicsPage() {
         const res = await fetch('/api/mechanics')
         if (!res.ok) throw new Error('Failed to load mechanics')
         const data = await res.json()
-        setMechanics(data.mechanics || [])
+        
+        // Filter to only show specific mechanics
+        const allowedMechanics = ['Jose Catallenos', 'Alex Rosales', 'Jesus Davalos', 'Israel', 'Omero']
+        const filteredMechanics = (data.mechanics || []).filter((mechanic: Mechanic) => 
+          allowedMechanics.some(name => 
+            mechanic.name.toLowerCase().includes(name.toLowerCase()) || 
+            name.toLowerCase().includes(mechanic.name.toLowerCase())
+          )
+        )
+        
+        setMechanics(filteredMechanics)
         setError(null)
       } catch (err) {
         console.error('Error fetching mechanics:', err)

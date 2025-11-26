@@ -124,7 +124,8 @@ export default function AdminSettingsPage() {
 
   const loadUsers = async () => {
     try {
-      const res = await fetch('/api/admin/users')
+      // Only fetch administrators for the users tab
+      const res = await fetch('/api/admin/users?role=admin')
       if (!res.ok) throw new Error('Failed to load users')
       const data = await res.json()
       setUsers(data.users || [])
@@ -359,8 +360,8 @@ export default function AdminSettingsPage() {
             {activeTab === 'users' && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold text-gray-900">All Users</h2>
-                  <p className="text-sm text-gray-600 mt-1">Manage user roles and approval status</p>
+                  <h2 className="text-xl font-semibold text-gray-900">Administrators</h2>
+                  <p className="text-sm text-gray-600 mt-1">Manage administrator accounts and access to the dashboard</p>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -650,7 +651,7 @@ export default function AdminSettingsPage() {
 
       {/* Edit User Modal */}
       {editingUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Edit User</h3>
@@ -709,7 +710,7 @@ export default function AdminSettingsPage() {
 
       {/* Create Notification Modal */}
       {showNotificationForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Create Notification</h3>

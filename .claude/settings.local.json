@@ -4,7 +4,10 @@
       "Bash(chmod:*)",
       "Bash(npx supabase db reset:*)",
       "Bash(curl:*)",
-      "Bash(npx supabase:*)"
+      "Bash(npx supabase:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }
