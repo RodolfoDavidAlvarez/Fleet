@@ -11,13 +11,17 @@ import {
   BarChart3,
   Wrench,
   LogOut,
-  Zap,
   Settings,
+  X,
+  ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useState, useEffect } from 'react'
 
 interface SidebarProps {
   role: 'admin' | 'mechanic'
+  isOpen?: boolean
+  onClose?: () => void
 }
 
 const unifiedLinks = [
@@ -35,8 +39,9 @@ const adminOnlyLinks = [
   { href: '/admin/settings', label: 'Admin Settings', icon: Settings },
 ]
 
-export default function Sidebar({ role }: SidebarProps) {
+export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname()
+  const [collapsed, setCollapsed] = useState(false)
   const links = role === 'admin' 
     ? [...unifiedLinks, ...adminOnlyLinks]
     : unifiedLinks
@@ -46,68 +51,155 @@ export default function Sidebar({ role }: SidebarProps) {
     window.location.href = '/login'
   }
 
+  // Close sidebar on mobile when route changes
+  useEffect(() => {
+    if (window.innerWidth < 1024 && onClose) {
+      onClose()
+    }
+  }, [pathname, onClose])
+
   return (
-    <div className="h-screen w-64 bg-white/95 backdrop-blur-sm border-r border-slate-200/80 flex flex-col shadow-lg shadow-slate-900/5">
-      <div className="p-6 border-b border-slate-200/80 bg-gradient-to-br from-white to-primary-50/30">
-        <div className="flex items-center justify-between">
-          <Link href="/dashboard" className="flex flex-col gap-1 hover:opacity-80 transition-opacity">
-            <div className="relative h-10 w-auto flex items-center">
-              <Image
-                src="/images/AEC-Horizontal-Official-Logo-2020.png"
-                alt="AGAVE ENVIRONMENTAL CONTRACTING, INC."
-                width={120}
-                height={40}
-                className="object-contain"
-                priority
-              />
+    <>
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={cn(
+        "fixed lg:sticky top-0 h-screen flex flex-col surface-primary border-r border-[var(--border)] transition-all duration-300 z-50",
+        collapsed ? "w-16" : "w-64",
+        isOpen ? "left-0" : "-left-64 lg:left-0"
+      )}>
+        {/* Header */}
+        <div className="p-4 border-b border-[var(--border)]">
+          <div className="flex items-center justify-between">
+            <Link href="/dashboard" className={cn(
+              "flex items-center gap-3 transition-all",
+              collapsed && "justify-center"
+            )}>
+              {!collapsed ? (
+                <div className="relative h-9 w-auto flex items-center">
+                  <Image
+                    src="/images/AEC-Horizontal-Official-Logo-2020.png"
+                    alt="AGAVE ENVIRONMENTAL CONTRACTING, INC."
+                    width={140}
+                    height={36}
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+              ) : (
+                <div className="w-8 h-8 bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-600)] rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">A</span>
+                </div>
+              )}
+            </Link>
+            
+            {/* Mobile close button */}
+            <button 
+              onClick={onClose}
+              className="lg:hidden btn-ghost btn-icon btn-sm"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          
+          {!collapsed && (
+            <div className="flex items-center gap-2 mt-4">
+              <div className={`h-2 w-2 rounded-full animate-pulse ${
+                role === 'admin' ? 'bg-[var(--primary-500)]' : 'bg-[var(--success-500)]'
+              }`}></div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                {role === 'admin' ? 'Admin Console' : 'Mechanic Portal'}
+              </p>
             </div>
-            <p className="text-xs font-bold text-slate-900 uppercase tracking-wide">Fleet System</p>
-          </Link>
-          <span className="pill text-[11px] px-2.5 py-1 bg-gradient-to-r from-primary-50 to-primary-100 border-primary-200 text-primary-800 shadow-sm">
-            {role}
-          </span>
+          )}
+        </div>
+
+        {/* Collapse button - desktop only */}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className={cn(
+            "hidden lg:flex absolute -right-3 top-20 w-6 h-6 bg-[var(--surface)] border border-[var(--border)] rounded-full items-center justify-center hover:bg-[var(--surface-hover)] transition-all",
+            "shadow-sm z-10"
+          )}
+        >
+          <ChevronRight className={cn(
+            "h-3 w-3 transition-transform",
+            collapsed ? "" : "rotate-180"
+          )} />
+        </button>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto no-scrollbar">
+          {links.map((link, index) => {
+            const Icon = link.icon
+            const isActive = pathname === link.href
+            
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group',
+                  isActive
+                    ? 'bg-gradient-to-r from-[var(--primary-50)] to-[var(--primary-100)] text-[var(--primary-700)]'
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]',
+                  collapsed && 'justify-center'
+                )}
+                style={{
+                  animationDelay: `${index * 50}ms`
+                }}
+              >
+                {isActive && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-[var(--primary-500)] to-[var(--primary-600)] opacity-10 rounded-lg" />
+                )}
+                
+                <Icon className={cn(
+                  'h-5 w-5 flex-shrink-0 z-10 transition-transform group-hover:scale-110',
+                  isActive ? 'text-[var(--primary-600)]' : ''
+                )} />
+                
+                {!collapsed && (
+                  <span className="truncate z-10 animate-fade-in">{link.label}</span>
+                )}
+                
+                {isActive && !collapsed && (
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-[var(--primary-500)] rounded-l-full" />
+                )}
+                
+                {/* Tooltip for collapsed state */}
+                {collapsed && (
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-md text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+                    {link.label}
+                  </div>
+                )}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Footer */}
+        <div className="p-3 border-t border-[var(--border)]">
+          <button
+            onClick={handleLogout}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
+              "bg-[var(--surface)] hover:bg-[var(--danger-50)] hover:text-[var(--danger-600)]",
+              "border border-[var(--border)] hover:border-[var(--danger-200)]",
+              "group",
+              collapsed && "justify-center"
+            )}
+          >
+            <LogOut className="h-5 w-5 transition-transform group-hover:scale-110" />
+            {!collapsed && <span className="font-semibold">Logout</span>}
+          </button>
         </div>
       </div>
-
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        {links.map((link, index) => {
-          const Icon = link.icon
-          const isActive = pathname === link.href
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                'flex items-center space-x-3 px-4 py-3 rounded-xl border transition-all duration-200 group',
-                'animate-slide-up',
-                isActive
-                  ? 'bg-gradient-to-r from-primary-50 to-primary-100/50 text-primary-800 border-primary-200 shadow-md shadow-primary-500/10 scale-[1.02]'
-                  : 'text-slate-700 border-transparent hover:border-primary-100 hover:bg-gradient-to-r hover:from-slate-50 hover:to-primary-50/30 hover:shadow-sm hover:scale-[1.01]'
-              )}
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              <Icon className={cn(
-                'h-5 w-5 transition-transform duration-200',
-                isActive ? 'text-primary-700 scale-110' : 'text-slate-500 group-hover:text-primary-600 group-hover:scale-110'
-              )} />
-              <span className={cn(
-                'font-semibold transition-colors',
-                isActive ? 'text-primary-900' : 'group-hover:text-primary-800'
-              )}>{link.label}</span>
-            </Link>
-          )
-        })}
-      </nav>
-
-      <div className="p-4 border-t border-slate-200/80 bg-gradient-to-t from-white to-slate-50/50">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-700 border-2 border-slate-200 hover:border-red-200 hover:bg-red-50/50 hover:text-red-700 transition-all duration-200 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] group"
-        >
-          <LogOut className="h-5 w-5 group-hover:rotate-12 transition-transform duration-200" />
-          <span className="font-semibold">Logout</span>
-        </button>
-      </div>
-    </div>
+    </>
   )
 }

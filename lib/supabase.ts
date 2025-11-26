@@ -13,7 +13,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export function createServerClient() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceRoleKey) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set. Server-side Supabase access is blocked for safety.");
+    console.error("❌ SUPABASE_SERVICE_ROLE_KEY is not set in environment variables.");
+    console.error("   This is required for server-side database operations.");
+    console.error("   Get it from: Supabase Dashboard > Settings > API > service_role key");
+    console.error("   Add it to your .env.local file as: SUPABASE_SERVICE_ROLE_KEY=your_key_here");
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set. Server-side Supabase access is blocked for safety. Check server logs for details.");
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {

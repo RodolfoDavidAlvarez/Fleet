@@ -35,13 +35,24 @@ export default function JobsPage() {
           ? `/api/jobs?mechanicId=${parsedUser.id}`
           : '/api/jobs'
         const res = await fetch(jobsUrl)
-        if (!res.ok) throw new Error('Failed to load jobs')
         const data = await res.json()
+        
+        if (!res.ok) {
+          // Check for specific error messages
+          if (data.details && data.details.includes('SUPABASE_SERVICE_ROLE_KEY')) {
+            setError('Database configuration error: Missing SUPABASE_SERVICE_ROLE_KEY. Please check server logs and .env.local file.')
+          } else {
+            setError(data.error || 'Failed to load jobs. Please try again.')
+          }
+          console.error('API Error:', data)
+          return
+        }
+        
         setJobs(data.jobs || [])
         setError(null)
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching jobs:', error)
-        setError('Failed to load jobs. Please try again.')
+        setError('Failed to load jobs. Please check your connection and try again.')
       } finally {
         setLoading(false)
       }
@@ -59,34 +70,40 @@ export default function JobsPage() {
       <Sidebar role={user?.role || 'mechanic'} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} />
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Work orders</p>
+        <main className="flex-1 overflow-y-auto bg-slate-50">
+          <div className="max-w-7xl mx-auto p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-xs text-primary-700 font-semibold uppercase tracking-wider">Work orders</p>
                 <h1 className="text-3xl font-bold text-gray-900">My jobs</h1>
-                <p className="text-gray-600">Tap-friendly cards, live statuses, mobile-ready.</p>
+                <p className="text-sm text-gray-600 mt-1">Tap-friendly cards, live statuses, mobile-ready.</p>
               </div>
-              <div className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-full text-sm font-semibold text-primary-700">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-primary-200 rounded-full text-sm font-semibold text-primary-700 shadow-sm">
                 <Smartphone className="h-4 w-4" />
                 Mobile ready
               </div>
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-                {error}
+              <div className="bg-red-50 border-l-4 border-red-500 text-red-800 px-4 py-3 rounded-r-lg shadow-sm">
+                <p className="font-medium">{error}</p>
               </div>
             )}
 
             {loading ? (
-              <div className="p-8 text-center text-gray-600">Loading jobs...</div>
+              <div className="card-surface rounded-xl p-12 text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mb-4"></div>
+                <p className="text-gray-600 font-medium">Loading jobs...</p>
+              </div>
             ) : (
               <div className="space-y-4">
                 {jobs.length === 0 ? (
-                  <div className="card-surface rounded-xl p-12 text-center">
-                    <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">No jobs assigned yet</p>
+                  <div className="card-surface rounded-xl p-16 text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
+                      <Wrench className="h-8 w-8 text-slate-400" />
+                    </div>
+                    <p className="text-gray-700 font-medium text-lg mb-1">No jobs assigned yet</p>
+                    <p className="text-sm text-gray-500">New work orders will appear here when assigned.</p>
                   </div>
                 ) : (
                   jobs.map((job) => (

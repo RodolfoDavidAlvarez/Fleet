@@ -19,7 +19,9 @@ WHERE schemaname = 'public'
     'repair_reports',
     'service_records',
     'parts',
-    'job_parts'
+    'job_parts',
+    'notifications',
+    'notification_recipients'
   );
 
 --------------------------------------------------------------------
@@ -128,6 +130,21 @@ CREATE POLICY "Service role full access service_records"
 
 CREATE POLICY "Service role full access parts"
   ON parts FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+--------------------------------------------------------------------
+-- Notifications (admin system)
+--------------------------------------------------------------------
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_recipients ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Service role full access notifications" ON notifications;
+DROP POLICY IF EXISTS "Service role full access notification_recipients" ON notification_recipients;
+
+CREATE POLICY "Service role full access notifications"
+  ON notifications FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "Service role full access notification_recipients"
+  ON notification_recipients FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Verify policies (optional)
 SELECT *

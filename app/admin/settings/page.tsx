@@ -16,7 +16,8 @@ import {
   XCircle,
   MoreVertical,
   Send,
-  Edit
+  Edit,
+  Calendar
 } from 'lucide-react'
 
 interface User {
@@ -37,7 +38,7 @@ export default function AdminSettingsPage() {
   const [users, setUsers] = useState<User[]>([])
   const [notifications, setNotifications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'users' | 'notifications'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'notifications' | 'calendar'>('users')
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [showNotificationForm, setShowNotificationForm] = useState(false)
   const [notificationForm, setNotificationForm] = useState({
@@ -50,6 +51,13 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [calendarSettings, setCalendarSettings] = useState({
+    maxBookingsPerWeek: 5,
+    startTime: '06:00',
+    endTime: '14:00',
+    slotDuration: 30,
+    workingDays: [1, 2, 3, 4, 5],
+  })
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -70,7 +78,49 @@ export default function AdminSettingsPage() {
     setUser(parsedUser)
     loadUsers()
     loadNotifications()
+    loadCalendarSettings()
   }, [router])
+
+  const loadCalendarSettings = async () => {
+    try {
+      const res = await fetch('/api/calendar/settings')
+      const data = await res.json()
+      if (data.settings) {
+        setCalendarSettings({
+          maxBookingsPerWeek: data.settings.maxBookingsPerWeek || 5,
+          startTime: data.settings.startTime || '06:00',
+          endTime: data.settings.endTime || '14:00',
+          slotDuration: data.settings.slotDuration || 30,
+          workingDays: data.settings.workingDays || [1, 2, 3, 4, 5],
+        })
+      }
+    } catch (err) {
+      console.error('Error loading calendar settings:', err)
+    }
+  }
+
+  const handleSaveCalendarSettings = async () => {
+    setSaving(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const res = await fetch('/api/calendar/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(calendarSettings),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to save calendar settings')
+      }
+      setSuccess('Calendar settings saved successfully')
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save calendar settings')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const loadUsers = async () => {
     try {
@@ -240,7 +290,7 @@ export default function AdminSettingsPage() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar role={user.role} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header user={user} />
+        <Header userName={user.name} userRole={user.role} />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto">
             <div className="mb-6">
@@ -275,6 +325,19 @@ export default function AdminSettingsPage() {
                   <div className="flex items-center space-x-2">
                     <Bell className="w-5 h-5" />
                     <span>Notifications</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab('calendar')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'calendar'
+                      ? 'border-primary-500 text-primary-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="w-5 h-5" />
+                    <span>Calendar Settings</span>
                   </div>
                 </button>
               </nav>
@@ -372,6 +435,141 @@ export default function AdminSettingsPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+
+            {/* Calendar Settings Tab */}
+            {activeTab === 'calendar' && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900">Booking Calendar Settings</h2>
+                  <p className="text-sm text-gray-600 mt-1">Configure available time slots and booking limits</p>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Maximum Bookings Per Week
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={calendarSettings.maxBookingsPerWeek}
+                      onChange={(e) => setCalendarSettings({
+                        ...calendarSettings,
+                        maxBookingsPerWeek: parseInt(e.target.value) || 5
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Maximum number of bookings allowed per week (default: 5)</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Start Time
+                      </label>
+                      <input
+                        type="time"
+                        value={calendarSettings.startTime}
+                        onChange={(e) => setCalendarSettings({
+                          ...calendarSettings,
+                          startTime: e.target.value
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Earliest booking time (default: 06:00)</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        End Time
+                      </label>
+                      <input
+                        type="time"
+                        value={calendarSettings.endTime}
+                        onChange={(e) => setCalendarSettings({
+                          ...calendarSettings,
+                          endTime: e.target.value
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Latest booking time (default: 14:00)</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Slot Duration (minutes)
+                    </label>
+                    <select
+                      value={calendarSettings.slotDuration}
+                      onChange={(e) => setCalendarSettings({
+                        ...calendarSettings,
+                        slotDuration: parseInt(e.target.value) || 30
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="15">15 minutes</option>
+                      <option value="30">30 minutes</option>
+                      <option value="60">60 minutes</option>
+                      <option value="90">90 minutes</option>
+                      <option value="120">120 minutes</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Duration of each booking slot</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Working Days
+                    </label>
+                    <div className="space-y-2">
+                      {[
+                        { value: 0, label: 'Sunday' },
+                        { value: 1, label: 'Monday' },
+                        { value: 2, label: 'Tuesday' },
+                        { value: 3, label: 'Wednesday' },
+                        { value: 4, label: 'Thursday' },
+                        { value: 5, label: 'Friday' },
+                        { value: 6, label: 'Saturday' },
+                      ].map((day) => (
+                        <label key={day.value} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={calendarSettings.workingDays.includes(day.value)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setCalendarSettings({
+                                  ...calendarSettings,
+                                  workingDays: [...calendarSettings.workingDays, day.value]
+                                })
+                              } else {
+                                setCalendarSettings({
+                                  ...calendarSettings,
+                                  workingDays: calendarSettings.workingDays.filter(d => d !== day.value)
+                                })
+                              }
+                            }}
+                            className="mr-2"
+                          />
+                          <span className="text-sm text-gray-700">{day.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Days when bookings are available (default: Monday - Friday)</p>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-200">
+                    <button
+                      onClick={handleSaveCalendarSettings}
+                      disabled={saving}
+                      className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                    >
+                      {saving ? 'Saving...' : 'Save Calendar Settings'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -632,4 +830,3 @@ export default function AdminSettingsPage() {
     </div>
   )
 }
-

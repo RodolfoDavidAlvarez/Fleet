@@ -74,6 +74,7 @@ export default function BookingsPage() {
     }
   }
 
+
   const filteredBookings = bookings.filter(booking => {
     const matchesSearch = 
       booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -98,32 +99,37 @@ export default function BookingsPage() {
         <Header userName={user.name} userRole={user.role} />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Bookings</p>
-                <h1 className="text-3xl font-bold text-gray-900">Service requests</h1>
-                <p className="text-gray-600">Responsive tables + mobile cards with detail drawer.</p>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-xs text-primary-700 font-semibold uppercase tracking-[0.08em]">Bookings</p>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-semibold text-gray-900">Service requests</h1>
+                  <span className="px-3 py-1 text-xs font-semibold bg-primary-50 text-primary-700 rounded-full">
+                    {bookings.length} total
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600">Compact tables with actions always in view.</p>
               </div>
               <button
                 onClick={loadBookings}
-                className="flex items-center text-sm text-primary-600 hover:text-primary-700"
+                className="flex items-center text-sm text-primary-600 hover:text-primary-700 px-3 py-2 rounded-lg border border-primary-100 bg-white"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-              <div className="card-surface rounded-2xl p-4">
-                <p className="text-xs text-gray-500">Pending</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+              <div className="card-surface rounded-xl p-3 border border-gray-200">
+                <p className="text-[11px] text-gray-500 uppercase tracking-wide">Pending</p>
                 <p className="text-xl font-semibold text-gray-900">{pendingCount}</p>
               </div>
-              <div className="card-surface rounded-2xl p-4">
-                <p className="text-xs text-gray-500">Confirmed</p>
+              <div className="card-surface rounded-xl p-3 border border-gray-200">
+                <p className="text-[11px] text-gray-500 uppercase tracking-wide">Confirmed</p>
                 <p className="text-xl font-semibold text-gray-900">{confirmedCount}</p>
               </div>
-              <div className="card-surface rounded-2xl p-4">
-                <p className="text-xs text-gray-500">Completed</p>
+              <div className="card-surface rounded-xl p-3 border border-gray-200">
+                <p className="text-[11px] text-gray-500 uppercase tracking-wide">Completed</p>
                 <p className="text-xl font-semibold text-gray-900">{completedCount}</p>
               </div>
             </div>
@@ -162,62 +168,69 @@ export default function BookingsPage() {
               </div>
             </div>
 
-            <div className="card-surface rounded-2xl overflow-hidden">
+            <div className="card-surface rounded-xl border border-gray-200 overflow-hidden">
               {loading ? (
                 <div className="p-8 text-center text-gray-600">Loading bookings...</div>
               ) : (
                 <>
-                  <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full">
+                  <div className="hidden md:block">
+                    <table className="w-full table-fixed">
+                      <colgroup>
+                        <col className="w-[34%]" />
+                        <col className="w-[20%]" />
+                        <col className="w-[16%]" />
+                        <col className="w-[18%]" />
+                        <col className="w-[12%]" />
+                      </colgroup>
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
                             Customer
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
                             Service
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
                             Date & Time
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
                             Status
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
                             Actions
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-white divide-y divide-gray-100">
                         {filteredBookings.map((booking) => (
                           <tr
                             key={booking.id}
                             className="hover:bg-gray-50 cursor-pointer"
                             onClick={() => setSelectedBooking(booking)}
                           >
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">{booking.customerName}</div>
-                                <div className="text-sm text-gray-500">{booking.customerEmail}</div>
-                                <div className="text-sm text-gray-500">{booking.customerPhone}</div>
+                            <td className="px-4 py-3 align-top">
+                              <div className="space-y-1">
+                                <div className="text-sm font-semibold text-gray-900 leading-tight">{booking.customerName}</div>
+                                <div className="text-xs text-gray-500 leading-tight">{booking.customerEmail}</div>
+                                <div className="text-xs text-gray-500 leading-tight">{booking.customerPhone}</div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td className="px-4 py-3 text-sm text-gray-900 align-top">
                               {booking.serviceType}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{booking.scheduledDate}</div>
-                              <div className="text-sm text-gray-500">{booking.scheduledTime}</div>
+                            <td className="px-4 py-3 align-top">
+                              <div className="text-sm text-gray-900 leading-tight">{booking.scheduledDate}</div>
+                              <div className="text-xs text-gray-500 leading-tight">{booking.scheduledTime}</div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center space-x-2">
-                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`}>
+                            <td className="px-4 py-3 align-top">
+                              <div className="space-y-2">
+                                <span className={`px-2 py-1 text-[11px] font-semibold rounded-full ${getStatusColor(booking.status)}`}>
                                   {booking.status.replace('_', ' ')}
                                 </span>
                                 <select
                                   value={booking.status}
                                   onChange={(e) => updateStatus(booking.id, e.target.value as Booking['status'])}
-                                  className="text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                  className="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                   disabled={updatingId === booking.id}
                                 >
                                   <option value="pending">Pending</option>
@@ -228,15 +241,16 @@ export default function BookingsPage() {
                                 </select>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <td className="px-4 py-3 whitespace-nowrap text-right sticky right-0 bg-white border-l border-gray-100 align-top">
                               <button
-                                className="text-primary-600 hover:text-primary-900"
+                                className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-gray-200 text-primary-700 hover:bg-primary-50"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   setSelectedBooking(booking)
                                 }}
+                                aria-label="View booking"
                               >
-                                <Eye className="h-5 w-5" />
+                                <Eye className="h-4 w-4" />
                               </button>
                             </td>
                           </tr>
@@ -304,15 +318,12 @@ export default function BookingsPage() {
                     </div>
                   )}
                 </div>
-                <div className="md:w-64 space-y-3 bg-gray-50 border border-gray-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                    <Info className="h-4 w-4 text-primary-700" />
-                    Quick actions
-                  </div>
+                <div className="md:w-64">
                   <select
                     value={selectedBooking.status}
                     onChange={(e) => updateStatus(selectedBooking.id, e.target.value as Booking['status'])}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                    disabled={updatingId === selectedBooking.id}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
                   >
                     <option value="pending">Pending</option>
                     <option value="confirmed">Confirmed</option>
@@ -320,12 +331,6 @@ export default function BookingsPage() {
                     <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
                   </select>
-                  <button
-                    className="w-full px-3 py-2 text-sm text-primary-700 font-semibold"
-                    onClick={() => setSelectedBooking(null)}
-                  >
-                    Close
-                  </button>
                 </div>
               </div>
             )}

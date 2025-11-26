@@ -23,6 +23,7 @@ function rowToVehicle(row: any): Vehicle {
     driverPhone: row.driver_phone || row.driver?.phone,
     driverEmail: row.driver_email || row.driver?.email,
     driverAssignedDate: row.assigned_date,
+    photoUrl: row.photo_url,
     createdAt: row.created_at,
   };
 }
@@ -40,6 +41,7 @@ function vehicleToRow(vehicle: Partial<Vehicle>): any {
     next_service_due: vehicle.nextServiceDue,
     mileage: vehicle.mileage,
     driver_id: vehicle.driverId,
+    photo_url: vehicle.photoUrl,
   };
 }
 
@@ -112,6 +114,11 @@ function rowToRepairRequest(row: any): RepairRequest {
     bookingLink: row.booking_link,
     scheduledDate: row.scheduled_date,
     scheduledTime: row.scheduled_time,
+    division: row.division,
+    vehicleType: row.vehicle_type,
+    makeModel: row.make_model,
+    incidentDate: row.incident_date,
+    isImmediate: row.is_immediate,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -142,6 +149,11 @@ function repairRequestToRow(request: Partial<RepairRequest>): any {
     booking_link: request.bookingLink,
     scheduled_date: request.scheduledDate,
     scheduled_time: request.scheduledTime,
+    division: request.division,
+    vehicle_type: request.vehicleType,
+    make_model: request.makeModel,
+    incident_date: request.incidentDate,
+    is_immediate: request.isImmediate,
   };
 }
 
@@ -211,32 +223,12 @@ export const driverDB = {
   getAll: async (): Promise<User[]> => {
     const supabase = createServerClient();
 
-    // First, let's check if we can query the users table at all
-    const { data: allUsers, error: allUsersError } = await supabase.from("users").select("id, role").limit(10);
-
-    console.log("All users sample (for debugging):", allUsers?.length || 0, allUsers);
-    if (allUsersError) {
-      console.error("Error fetching all users:", allUsersError);
-    }
-
-    // Now query for drivers specifically
     const { data, error } = await supabase.from("users").select("*").eq("role", "driver").order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching drivers:", error);
       console.error("Error details:", JSON.stringify(error, null, 2));
       throw error; // Re-throw to be caught by API route
-    }
-
-    console.log("Driver query result - data:", data?.length || 0, "records");
-    if (data && data.length > 0) {
-      console.log("Sample driver:", data[0]);
-    } else {
-      console.log("No drivers found. Checking if any users exist with different roles...");
-      if (allUsers && allUsers.length > 0) {
-        const roles = [...new Set(allUsers.map((u) => u.role))];
-        console.log("Found roles in database:", roles);
-      }
     }
 
     return (data || []).map((row) => ({
@@ -514,16 +506,21 @@ export const jobDB = {
       return [];
     }
 
-    // Fetch parts for each job
-    const jobsWithParts = await Promise.all(
-      (jobs || []).map(async (job) => {
-        const { data: parts } = await supabase.from("job_parts").select("*").eq("job_id", job.id);
+    const jobList = jobs || [];
+    if (jobList.length === 0) return [];
 
-        return rowToJob(job, parts || []);
-      })
-    );
+    const jobIds = jobList.map((job) => job.id).filter(Boolean);
+    const partsByJob: Record<string, any[]> = {};
 
-    return jobsWithParts;
+    if (jobIds.length > 0) {
+      const { data: parts } = await supabase.from("job_parts").select("*").in("job_id", jobIds);
+      (parts || []).forEach((part) => {
+        if (!part?.job_id) return;
+        partsByJob[part.job_id] = [...(partsByJob[part.job_id] || []), part];
+      });
+    }
+
+    return jobList.map((job) => rowToJob(job, partsByJob[job.id] || []));
   },
 
   getById: async (id: string): Promise<Job | undefined> => {
@@ -548,15 +545,21 @@ export const jobDB = {
       return [];
     }
 
-    const jobsWithParts = await Promise.all(
-      (jobs || []).map(async (job) => {
-        const { data: parts } = await supabase.from("job_parts").select("*").eq("job_id", job.id);
+    const jobList = jobs || [];
+    if (jobList.length === 0) return [];
 
-        return rowToJob(job, parts || []);
-      })
-    );
+    const jobIds = jobList.map((job) => job.id).filter(Boolean);
+    const partsByJob: Record<string, any[]> = {};
 
-    return jobsWithParts;
+    if (jobIds.length > 0) {
+      const { data: parts } = await supabase.from("job_parts").select("*").in("job_id", jobIds);
+      (parts || []).forEach((part) => {
+        if (!part?.job_id) return;
+        partsByJob[part.job_id] = [...(partsByJob[part.job_id] || []), part];
+      });
+    }
+
+    return jobList.map((job) => rowToJob(job, partsByJob[job.id] || []));
   },
 
   create: async (job: Omit<Job, "id" | "createdAt" | "updatedAt">): Promise<Job> => {
@@ -657,19 +660,29 @@ export const mechanicDB = {
       return [];
     }
 
-    // Load current jobs for each mechanic
-    const mechanicsWithJobs = await Promise.all(
-      (data || []).map(async (mechanic) => {
-        const { data: jobs } = await supabase.from("jobs").select("id").eq("mechanic_id", mechanic.id).in("status", ["assigned", "in_progress"]);
+    const mechanics = data || [];
+    if (mechanics.length === 0) return [];
 
-        return {
-          ...rowToMechanic(mechanic),
-          currentJobs: (jobs || []).map((j) => j.id),
-        };
-      })
-    );
+    const mechanicIds = mechanics.map((m) => m.id).filter(Boolean);
+    const jobsByMechanic: Record<string, string[]> = {};
 
-    return mechanicsWithJobs;
+    if (mechanicIds.length > 0) {
+      const { data: jobs } = await supabase
+        .from("jobs")
+        .select("id, mechanic_id")
+        .in("mechanic_id", mechanicIds)
+        .in("status", ["assigned", "in_progress"]);
+
+      (jobs || []).forEach((job) => {
+        if (!job?.mechanic_id) return;
+        jobsByMechanic[job.mechanic_id] = [...(jobsByMechanic[job.mechanic_id] || []), job.id];
+      });
+    }
+
+    return mechanics.map((mechanic) => ({
+      ...rowToMechanic(mechanic),
+      currentJobs: jobsByMechanic[mechanic.id] || [],
+    }));
   },
 
   getById: async (id: string): Promise<Mechanic | undefined> => {

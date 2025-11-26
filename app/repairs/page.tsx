@@ -152,13 +152,24 @@ export default function RepairsPage() {
                 <h1 className="text-3xl font-bold text-gray-900">Repair requests</h1>
                 <p className="text-gray-600">Mobile cards with AI tags, photos, and quick booking links.</p>
               </div>
-              <button
-                onClick={loadRequests}
-                className="flex items-center text-sm text-primary-600 hover:text-primary-700 gap-2 pill"
-              >
-                <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+              <div className="flex items-center gap-3">
+                <a
+                  href="/repair"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary flex items-center gap-2"
+                >
+                  <Wrench className="h-4 w-4" />
+                  Submit Repair Request
+                </a>
+                <button
+                  onClick={loadRequests}
+                  className="flex items-center text-sm text-primary-600 hover:text-primary-700 gap-2 pill"
+                >
+                  <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
             </div>
 
             {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{error}</div>}

@@ -148,11 +148,11 @@ export default function CalendarBooking({
                 onClick={() => handleDateClick(day)}
                 disabled={!available}
                 className={`
-                  aspect-square rounded-lg text-sm font-medium transition-all
+                  aspect-square rounded-lg text-sm font-medium transition-colors
                   ${selected
-                    ? 'bg-primary-600 text-white shadow-lg scale-105'
+                    ? 'bg-primary-600 text-white shadow-lg'
                     : available
-                    ? 'bg-primary-50 text-primary-800 hover:bg-primary-100 hover:scale-105'
+                    ? 'bg-primary-50 text-primary-800 hover:bg-primary-100'
                     : 'text-gray-300 cursor-not-allowed'}
                   ${today && !selected ? 'ring-2 ring-primary-300' : ''}
                 `}
@@ -193,7 +193,7 @@ export default function CalendarBooking({
                   key={time}
                   onClick={() => onTimeSelect(time)}
                   className={`
-                    w-full text-left px-4 py-3 rounded-lg border-2 transition-all
+                    w-full text-left px-4 py-3 rounded-lg border-2 transition-colors
                     ${isSelected
                       ? 'bg-gray-800 text-white border-gray-800'
                       : 'bg-white text-gray-800 border-gray-200 hover:border-primary-300 hover:bg-primary-50'}

@@ -643,3 +643,63 @@ export async function sendRepairCompletionEmail(
   return sendEmail(email, subject, html)
 }
 
+// Password Reset Email
+export async function sendPasswordResetEmail(
+  email: string,
+  details: {
+    userName: string
+    resetLink: string
+    resetToken: string
+  }
+): Promise<boolean> {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 5px 5px; }
+        .info-box { background-color: white; padding: 15px; margin: 10px 0; border-left: 4px solid #2563eb; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0; }
+        .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px; }
+        .warning { color: #ef4444; font-size: 12px; margin-top: 10px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Password Reset Request</h1>
+        </div>
+        <div class="content">
+          <p>Hello ${details.userName},</p>
+          <p>We received a request to reset your password. Click the button below to reset it:</p>
+          
+          <div class="info-box">
+            <p style="text-align: center;">
+              <a href="${details.resetLink}" class="button">Reset Password</a>
+            </p>
+            <p style="text-align: center; margin-top: 15px;">
+              Or copy and paste this link into your browser:<br>
+              <span style="word-break: break-all; color: #2563eb; font-size: 12px;">${details.resetLink}</span>
+            </p>
+          </div>
+          
+          <p class="warning">⚠️ This link will expire in 1 hour. If you didn't request this, please ignore this email.</p>
+          
+          <p>If the button doesn't work, copy and paste the link above into your browser.</p>
+        </div>
+        <div class="footer">
+          <p>FleetPro Management System</p>
+          <p>If you didn't request this, you can safely ignore this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  return sendEmail(email, 'Password Reset Request - FleetPro', html)
+}
+

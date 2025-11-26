@@ -3,10 +3,8 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Sidebar from '@/components/Sidebar'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
-import { Car, Calendar, Users, TrendingUp, AlertCircle, CheckCircle, ShieldCheck, MessageSquare, Wrench, Clock, FileText, BarChart3 } from 'lucide-react'
+import DashboardLayout from '@/components/DashboardLayout'
+import { Car, Calendar, Users, CheckCircle, MessageSquare, Wrench, BarChart3, TrendingUp, AlertTriangle, Clock } from 'lucide-react'
 import { DashboardStats, RepairRequest } from '@/types'
 
 export default function UnifiedDashboard() {
@@ -33,29 +31,28 @@ export default function UnifiedDashboard() {
 
     const loadData = async () => {
       try {
-        // Load dashboard stats
-        const statsRes = await fetch('/api/dashboard')
+        const [statsRes, jobsRes, bookingsRes, repairsRes] = await Promise.all([
+          fetch('/api/dashboard'),
+          fetch('/api/jobs'),
+          fetch('/api/bookings'),
+          fetch('/api/repair-requests?limit=4'),
+        ])
+
         if (statsRes.ok) {
           const statsData = await statsRes.json()
           setStats(statsData.stats)
         }
 
-        // Load jobs - all for admin, filtered for mechanic
-        const jobsRes = await fetch('/api/jobs')
         if (jobsRes.ok) {
           const jobsData = await jobsRes.json()
           setJobs(jobsData.jobs || [])
         }
 
-        // Load recent bookings
-        const bookingsRes = await fetch('/api/bookings')
         if (bookingsRes.ok) {
           const bookingsData = await bookingsRes.json()
-          // Get most recent 5 bookings
           setBookings((bookingsData.bookings || []).slice(0, 5))
         }
 
-        const repairsRes = await fetch('/api/repair-requests?limit=4')
         if (repairsRes.ok) {
           const repairsData = await repairsRes.json()
           setRepairRequests(repairsData.requests || [])
@@ -71,7 +68,14 @@ export default function UnifiedDashboard() {
   }, [router])
 
   if (!user || loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[var(--primary-200)] border-t-[var(--primary-500)] rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted">Loading dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
   const isAdmin = user.role === 'admin'
@@ -90,350 +94,358 @@ export default function UnifiedDashboard() {
       title: 'Total Vehicles',
       value: stats?.totalVehicles || 0,
       icon: Car,
-      color: 'bg-blue-50 text-blue-700',
+      gradient: 'from-blue-500 to-blue-600',
       change: `${stats?.activeVehicles || 0} active`,
+      trend: 'up',
     },
     {
       title: 'Active Vehicles',
       value: stats?.activeVehicles || 0,
       icon: CheckCircle,
-      color: 'bg-green-50 text-green-700',
+      gradient: 'from-emerald-500 to-emerald-600',
       change: `${stats?.vehiclesInService || 0} in service`,
+      trend: 'up',
     },
     {
       title: 'Total Bookings',
       value: stats?.totalBookings || 0,
       icon: Calendar,
-      color: 'bg-purple-50 text-purple-700',
+      gradient: 'from-purple-500 to-purple-600',
       change: `${stats?.pendingBookings || 0} pending`,
+      trend: 'stable',
     },
     {
       title: 'Mechanics',
       value: stats?.totalMechanics || 0,
       icon: Users,
-      color: 'bg-orange-50 text-orange-700',
+      gradient: 'from-orange-500 to-orange-600',
       change: `${stats?.availableMechanics || 0} available`,
+      trend: 'up',
     },
   ]
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-primary-50/60 via-white to-white">
-      <Sidebar role={user.role} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user.name} userRole={user.role} />
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="space-y-1">
-                <p className="text-xs text-primary-700 font-semibold uppercase tracking-[0.12em]">
-                  Unified Dashboard
-                </p>
-                <h1 className="text-3xl font-bold text-gray-900">
-                  Fleet Control Center
-                </h1>
-                <p className="text-gray-600">
-                  One dashboard for admins and mechanics — vehicles, bookings, mechanics, and jobs all in view.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span className="pill bg-primary-50 border-primary-100 text-primary-800">
-                  <ShieldCheck className="h-4 w-4" />
-                  SMS compliant
-                </span>
-                <span className="pill">Mobile-friendly</span>
-              </div>
+    <DashboardLayout userName={user.name} userRole={user.role}>
+      <div className="space-y-8">
+        {/* Header Section */}
+        <div className="animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--primary-600)] mb-1">
+                Unified dashboard
+              </p>
+              <h1 className="text-3xl font-bold text-gradient">
+                Fleet Control Center
+              </h1>
+              <p className="text-muted mt-1">
+                Real-time overview of your fleet operations
+              </p>
             </div>
+            <div className="flex items-center gap-3">
+              <span className="badge badge-primary">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+              </span>
+            </div>
+          </div>
+        </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {statCards.map((stat) => {
-                const Icon = stat.icon
-                return (
-                  <div key={stat.title} className="tile p-5 hover:shadow-lg transition-shadow">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`p-3 rounded-xl ${stat.color}`}>
-                        <Icon className="h-6 w-6" />
-                      </div>
-                      <TrendingUp className="h-5 w-5 text-green-500" />
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 stagger">
+          {statCards.map((stat, index) => {
+            const Icon = stat.icon
+            return (
+              <div key={stat.title} className="card hover-lift group">
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+                      <Icon className="h-6 w-6 text-white" />
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</h3>
-                    <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
-                    <p className="text-xs text-gray-500">{stat.change}</p>
+                    <div className="flex items-center gap-1">
+                      {stat.trend === 'up' && <TrendingUp className="h-4 w-4 text-emerald-500" />}
+                      {stat.trend === 'down' && <TrendingUp className="h-4 w-4 text-danger-500 rotate-180" />}
+                      {stat.trend === 'stable' && <div className="h-4 w-4 rounded-full bg-[var(--warning-500)]" />}
+                    </div>
                   </div>
-                )
-              })}
-            </div>
+                  <div className="space-y-1">
+                    <p className="text-3xl font-bold">{stat.value}</p>
+                    <p className="text-sm font-medium text-muted">{stat.title}</p>
+                    <p className="text-xs text-subtle">{stat.change}</p>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Recent Bookings */}
-              <div className="card-surface rounded-2xl p-6 lg:col-span-2">
-                <div className="flex items-center justify-between mb-3">
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="space-y-6 lg:col-span-2">
+            {/* Recent Bookings */}
+            <div className="card animate-slide-up">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-900">Recent Bookings</h2>
-                    <p className="text-sm text-gray-600">Latest service requests</p>
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-[var(--primary-500)]" />
+                      Recent Bookings
+                    </h2>
+                    <p className="text-sm text-muted mt-1">Latest service requests</p>
                   </div>
-                  <span className="pill bg-slate-100 border-slate-200">Newest first</span>
+                  <Link href="/admin/bookings" className="btn btn-ghost btn-sm">
+                    View all →
+                  </Link>
                 </div>
                 <div className="space-y-3">
                   {bookings.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">No bookings yet</div>
+                    <div className="text-center py-12 text-muted">
+                      <Calendar className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p>No bookings yet</p>
+                    </div>
                   ) : (
-                    bookings.map((booking) => (
-                      <div key={booking.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-white transition">
-                        <div>
-                          <p className="font-medium text-gray-900">{booking.customerName}</p>
-                          <p className="text-xs text-gray-500">
-                            {booking.serviceType} • {new Date(booking.scheduledDate).toLocaleDateString()}
-                          </p>
+                    bookings.map((booking, idx) => (
+                      <div
+                        key={booking.id}
+                        className="group flex items-center justify-between p-4 rounded-xl hover:bg-[var(--surface-hover)] transition-all cursor-pointer"
+                        style={{ animationDelay: `${idx * 50}ms` }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-[var(--primary-100)] flex items-center justify-center">
+                            <span className="text-sm font-semibold text-[var(--primary-700)]">
+                              {booking.customerName.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium">{booking.customerName}</p>
+                            <p className="text-sm text-muted">
+                              {booking.serviceType} • {new Date(booking.scheduledDate).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
-                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${
-                          booking.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          booking.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                          booking.status === 'confirmed' ? 'bg-purple-100 text-purple-800' :
-                          'bg-yellow-100 text-yellow-800'
+                        <span className={`badge ${
+                          booking.status === 'completed' ? 'badge-success' :
+                          booking.status === 'in_progress' ? 'badge-primary' :
+                          booking.status === 'confirmed' ? 'badge-primary' :
+                          'badge-warning'
                         }`}>
-                          {booking.status}
+                          {booking.status.replace('_', ' ')}
                         </span>
                       </div>
                     ))
                   )}
                 </div>
               </div>
-
-              {/* SMS Health / Quick Stats */}
-              <div className="card-surface rounded-2xl p-6 space-y-4">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-primary-700" />
-                  <h2 className="text-xl font-semibold text-gray-900">SMS Health</h2>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700">Opt-in rate</span>
-                    <span className="font-semibold text-gray-900">93%</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700">Delivery</span>
-                    <span className="font-semibold text-gray-900">99.4%</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700">Opt-outs honored</span>
-                    <span className="font-semibold text-gray-900">100%</span>
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* Repair Requests */}
-            <div className="card-surface rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Repair requests</h2>
-                  <p className="text-sm text-gray-600">AI-tagged issues waiting for booking</p>
+            <div className="card animate-slide-up" style={{ animationDelay: '100ms' }}>
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-[var(--warning-500)]" />
+                      Repair Requests
+                    </h2>
+                    <p className="text-sm text-muted mt-1">Issues waiting for booking</p>
+                  </div>
+                  <Link href="/repairs" className="btn btn-ghost btn-sm">
+                    Review queue →
+                  </Link>
                 </div>
-                <Link href="/repairs" className="pill bg-primary-50 border-primary-100 text-primary-800">
-                  Review queue
-                </Link>
-              </div>
-              <div className="space-y-3">
-                {repairRequests.length === 0 ? (
-                  <div className="text-center py-6 text-gray-500">No repair requests yet</div>
-                ) : (
-                  repairRequests.map((req) => (
-                    <div
-                      key={req.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-white transition"
-                    >
-                      <div>
-                        <p className="font-medium text-gray-900">{req.driverName}</p>
-                        <p className="text-xs text-gray-500">
-                          {(req.aiCategory || 'General repair')} • {req.vehicleIdentifier || 'Vehicle not listed'} •{' '}
-                          {new Date(req.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <span
-                        className={`px-3 py-1 text-xs font-medium rounded-full ${
-                          req.status === 'completed'
-                            ? 'bg-green-100 text-green-800'
-                            : req.status === 'waiting_booking'
-                              ? 'bg-orange-100 text-orange-800'
-                              : req.status === 'scheduled'
-                                ? 'bg-purple-100 text-purple-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                        }`}
-                      >
-                        {req.status.replace('_', ' ')}
-                      </span>
+                <div className="space-y-3">
+                  {repairRequests.length === 0 ? (
+                    <div className="text-center py-12 text-muted">
+                      <AlertTriangle className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p>No repair requests yet</p>
                     </div>
-                  ))
-                )}
+                  ) : (
+                    repairRequests.map((req, idx) => (
+                      <div
+                        key={req.id}
+                        className="group flex items-center justify-between p-4 rounded-xl hover:bg-[var(--surface-hover)] transition-all cursor-pointer"
+                        style={{ animationDelay: `${idx * 50}ms` }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-[var(--warning-100)] flex items-center justify-center">
+                            <AlertTriangle className="h-5 w-5 text-[var(--warning-600)]" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{req.driverName}</p>
+                            <p className="text-sm text-muted">
+                              {(req.aiCategory || 'General repair')} • {req.vehicleIdentifier || 'Vehicle not listed'} •{' '}
+                              {new Date(req.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`badge ${
+                          req.status === 'completed' ? 'badge-success' :
+                          req.status === 'waiting_booking' ? 'badge-warning' :
+                          req.status === 'scheduled' ? 'badge-primary' :
+                          'badge-primary'
+                        }`}>
+                          {req.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Jobs Section */}
-            <div className="card-surface rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    All Jobs
-                  </h2>
-                  <p className="text-sm text-gray-600">
-                    Fleet-wide jobs across every mechanic
-                  </p>
-                </div>
-                <span className="pill bg-slate-100 border-slate-200">Tap to open</span>
-              </div>
-              {jobs.length === 0 ? (
-                <div className="text-center py-12">
-                  <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">No jobs {isMechanic ? 'assigned' : 'found'} yet</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {jobs.slice(0, 5).map((job) => (
-                    <div
-                      key={job.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-white transition-colors"
-                    >
-                      <div className="flex items-center space-x-4">
-                        {isMechanic && job.mechanicId === user.id && (
-                          <span className="pill bg-primary-50 border-primary-100 text-primary-800">Mine</span>
-                        )}
-                        <div
-                          className={`p-2 rounded-lg ${
-                            job.status === 'completed'
-                              ? 'bg-green-100'
-                              : job.status === 'in_progress'
-                                ? 'bg-yellow-100'
-                                : 'bg-blue-100'
-                          }`}
-                        >
-                          <Wrench
-                            className={`h-5 w-5 ${
-                              job.status === 'completed'
-                                ? 'text-green-600'
-                                : job.status === 'in_progress'
-                                  ? 'text-yellow-600'
-                                  : 'text-blue-600'
-                            }`}
-                          />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">Job #{job.id.slice(-6)}</p>
-                          <p className="text-sm text-gray-500">
-                            Priority: <span className="capitalize">{job.priority}</span>
-                            {isAdmin && job.mechanicId && ` • Mechanic: ${job.mechanicId.slice(-6)}`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <span
-                          className={`px-3 py-1 text-xs font-medium rounded-full ${
-                            job.status === 'completed'
-                              ? 'bg-green-100 text-green-800'
-                              : job.status === 'in_progress'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-blue-100 text-blue-800'
-                          }`}
-                        >
-                          {job.status.replace('_', ' ')}
-                        </span>
-                        <button className="text-primary-600 hover:text-primary-700 font-medium">Details</button>
-                        <button className="text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1">
-                          <MessageSquare className="h-4 w-4" />
-                          SMS
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Additional Info Sections */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Vehicles Needing Service */}
-              <div className="card-surface rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-xl font-semibold text-gray-900">Vehicles Needing Service</h2>
-                  <span className="pill bg-orange-50 border-orange-100 text-orange-800">Action now</span>
-                </div>
-                <div className="space-y-4">
-                  {stats && stats.vehiclesInService > 0 ? (
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900">{stats.vehiclesInService} vehicles in service</p>
-                        <p className="text-sm text-gray-500">Require attention</p>
-                      </div>
-                      <AlertCircle className="h-5 w-5 text-yellow-500" />
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">All vehicles up to date</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Mechanic Availability */}
-              <div className="card-surface rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-xl font-semibold text-gray-900">Mechanic Availability</h2>
-                  <span className="pill bg-green-50 border-green-100 text-green-800">Balanced</span>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700">Available</span>
-                    <span className="font-semibold text-gray-900">{stats?.availableMechanics || 0}</span>
+            <div className="card animate-slide-up" style={{ animationDelay: '200ms' }}>
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                      <Wrench className="h-5 w-5 text-[var(--primary-500)]" />
+                      Active Jobs
+                    </h2>
+                    <p className="text-sm text-muted mt-1">Top assignments across the fleet</p>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700">Total mechanics</span>
-                    <span className="font-semibold text-gray-900">{stats?.totalMechanics || 0}</span>
-                  </div>
-                  <p className="text-xs text-gray-500">Keep crews balanced to preserve SLA.</p>
+                  <Link href="/mechanic/jobs" className="btn btn-ghost btn-sm">
+                    Open board →
+                  </Link>
                 </div>
+                {jobs.length === 0 ? (
+                  <div className="text-center py-12 text-muted">
+                    <Wrench className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                    <p>No jobs {isMechanic ? 'assigned' : 'available'} yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {jobs.slice(0, 5).map((job, idx) => (
+                      <div
+                        key={job.id}
+                        className="group flex items-center justify-between p-4 rounded-xl hover:bg-[var(--surface-hover)] transition-all cursor-pointer"
+                        style={{ animationDelay: `${idx * 50}ms` }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary-100)] to-[var(--primary-200)] flex items-center justify-center">
+                            <Wrench className="h-5 w-5 text-[var(--primary-600)]" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Job #{job.id.slice(-6)}</p>
+                            <p className="text-sm text-muted">
+                              Priority: <span className="capitalize font-medium text-[var(--text-primary)]">{job.priority}</span>
+                              {isAdmin && job.mechanicId && ` • Mechanic: ${job.mechanicId.slice(-6)}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isMechanic && job.mechanicId === user.id && (
+                            <span className="badge badge-primary">
+                              Assigned to you
+                            </span>
+                          )}
+                          <span className={`badge ${
+                            job.status === 'completed' ? 'badge-success' :
+                            job.status === 'in_progress' ? 'badge-warning' :
+                            'badge-primary'
+                          }`}>
+                            {job.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
+          </div>
 
-            {/* Mechanic Reporting Section */}
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Operational Health */}
+            <div className="card animate-slide-left">
+              <div className="p-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--success-100)] to-[var(--success-200)] flex items-center justify-center">
+                    <MessageSquare className="h-5 w-5 text-[var(--success-600)]" />
+                  </div>
+                  <h2 className="text-lg font-semibold">Operational Health</h2>
+                </div>
+                
+                {/* Communication Metrics */}
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Communication</h3>
+                    {[
+                      { label: 'SMS opt-in', value: '93%', color: 'var(--success-500)' },
+                      { label: 'Delivery rate', value: '99.4%', color: 'var(--success-500)' },
+                      { label: 'Opt-outs honored', value: '100%', color: 'var(--primary-500)' },
+                    ].map((metric, idx) => (
+                      <div key={metric.label} className="flex items-center justify-between">
+                        <span className="text-sm text-muted">{metric.label}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold">{metric.value}</span>
+                          <div className="w-16 h-1.5 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
+                            <div 
+                              className="h-full rounded-full transition-all duration-1000 ease-out"
+                              style={{ 
+                                width: metric.value,
+                                backgroundColor: metric.color,
+                                animationDelay: `${idx * 100}ms`
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="divider" />
+                  
+                  {/* Fleet Status */}
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Fleet Status</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 rounded-lg bg-[var(--bg-tertiary)]">
+                        <p className="text-2xl font-bold">{stats?.vehiclesInService || 0}</p>
+                        <p className="text-xs text-muted">In Service</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-[var(--bg-tertiary)]">
+                        <p className="text-2xl font-bold">{stats?.availableMechanics || 0}</p>
+                        <p className="text-xs text-muted">Available</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* My Performance - Mechanic Only */}
             {isMechanic && (
-              <div className="card-surface rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <BarChart3 className="h-5 w-5 text-primary-700" />
-                  <h2 className="text-xl font-semibold text-gray-900">My Performance Report</h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <FileText className="h-5 w-5 text-blue-700" />
-                      <span className="text-2xl font-bold text-blue-900">{myCompleted}</span>
+              <div className="card animate-slide-left" style={{ animationDelay: '200ms' }}>
+                <div className="p-6">
+                  <div className="flex items-center gap-2 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--primary-100)] to-[var(--primary-200)] flex items-center justify-center">
+                      <BarChart3 className="h-5 w-5 text-[var(--primary-600)]" />
                     </div>
-                    <p className="text-sm text-gray-700">Jobs Completed</p>
-                    <p className="text-xs text-gray-500 mt-1">This period</p>
+                    <h2 className="text-lg font-semibold">My Performance</h2>
                   </div>
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <CheckCircle className="h-5 w-5 text-green-700" />
-                      <span className="text-2xl font-bold text-green-900">
-                        {myCompletionRate}%
-                      </span>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center p-4 rounded-xl bg-gradient-to-br from-[var(--success-50)] to-[var(--success-100)] border border-[var(--success-200)]">
+                      <p className="text-2xl font-bold text-[var(--success-700)]">{myCompleted}</p>
+                      <p className="text-xs text-[var(--success-600)] font-medium">Completed</p>
                     </div>
-                    <p className="text-sm text-gray-700">Completion Rate</p>
-                    <p className="text-xs text-gray-500 mt-1">Efficiency metric</p>
+                    <div className="text-center p-4 rounded-xl bg-gradient-to-br from-[var(--primary-50)] to-[var(--primary-100)] border border-[var(--primary-200)]">
+                      <p className="text-2xl font-bold text-[var(--primary-700)]">{myCompletionRate}%</p>
+                      <p className="text-xs text-[var(--primary-600)] font-medium">Completion</p>
+                    </div>
+                    <div className="text-center p-4 rounded-xl bg-gradient-to-br from-[var(--warning-50)] to-[var(--warning-100)] border border-[var(--warning-200)]">
+                      <p className="text-2xl font-bold text-[var(--warning-700)]">{myInProgress}</p>
+                      <p className="text-xs text-[var(--warning-600)] font-medium">In Progress</p>
+                    </div>
                   </div>
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <Clock className="h-5 w-5 text-purple-700" />
-                      <span className="text-2xl font-bold text-purple-900">{myInProgress}</span>
-                    </div>
-                    <p className="text-sm text-gray-700">Active Jobs</p>
-                    <p className="text-xs text-gray-500 mt-1">Currently working</p>
+                  <div className="mt-4 p-3 rounded-lg bg-[var(--bg-tertiary)] text-center">
+                    <p className="text-xs text-muted">Total assigned jobs: {myAssigned}</p>
                   </div>
                 </div>
               </div>
             )}
           </div>
-        </main>
-        <Footer />
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   )
 }

@@ -28,8 +28,28 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ jobs });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch jobs" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Error fetching jobs:", error);
+    const errorMessage = error?.message || "Failed to fetch jobs";
+
+    // Check if it's a missing environment variable error
+    if (errorMessage.includes("SUPABASE_SERVICE_ROLE_KEY")) {
+      return NextResponse.json(
+        {
+          error: "Database configuration error. Please check server logs.",
+          details: "SUPABASE_SERVICE_ROLE_KEY is missing from environment variables.",
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        error: "Failed to fetch jobs",
+        details: errorMessage,
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -52,17 +72,13 @@ export async function POST(request: NextRequest) {
     // Send email notification to mechanic
     try {
       const supabase = createServerClient();
-      const { data: mechanic } = await supabase
-        .from('users')
-        .select('email, name')
-        .eq('id', parsed.data.mechanicId)
-        .single();
+      const { data: mechanic } = await supabase.from("users").select("email, name").eq("id", parsed.data.mechanicId).single();
 
       const booking = await bookingDB.getById(parsed.data.bookingId);
-      
+
       if (mechanic?.email && booking) {
         await notifyMechanicAssignment(mechanic.email, {
-          mechanicName: mechanic.name || 'Mechanic',
+          mechanicName: mechanic.name || "Mechanic",
           jobId: job.id,
           bookingId: booking.id,
           customerName: booking.customerName,
@@ -74,7 +90,7 @@ export async function POST(request: NextRequest) {
         });
       }
     } catch (error) {
-      console.error('Error sending mechanic assignment email:', error);
+      console.error("Error sending mechanic assignment email:", error);
       // Don't fail the request if email fails
     }
 

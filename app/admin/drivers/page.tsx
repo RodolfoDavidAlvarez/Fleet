@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Users, Plus, Mail, Phone, Car, X } from 'lucide-react'
+import { Users, Plus, Mail, Phone, Car, X, Edit, Trash2 } from 'lucide-react'
 import { User } from '@/types'
 
 export default function DriversPage() {
@@ -14,8 +14,11 @@ export default function DriversPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(false)
+  const [editingDriver, setEditingDriver] = useState<User | null>(null)
   const [saving, setSaving] = useState(false)
+  const [updating, setUpdating] = useState(false)
   const [driverForm, setDriverForm] = useState({ name: '', email: '', phone: '' })
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' })
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -74,6 +77,66 @@ export default function DriversPage() {
       setError(err instanceof Error ? err.message : 'Failed to create driver')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleEditClick = (driver: User) => {
+    setEditingDriver(driver)
+    setEditForm({
+      name: driver.name,
+      email: driver.email,
+      phone: driver.phone || '',
+    })
+  }
+
+  const handleUpdateDriver = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!editingDriver) return
+
+    setUpdating(true)
+    setError(null)
+
+    try {
+      const res = await fetch(`/api/drivers/${editingDriver.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update driver')
+      }
+
+      setDrivers(prev => prev.map(d => 
+        d.id === editingDriver.id ? data.driver : d
+      ))
+      setEditingDriver(null)
+    } catch (err) {
+      console.error('Error updating driver:', err)
+      setError(err instanceof Error ? err.message : 'Failed to update driver')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleDeleteDriver = async (driverId: string) => {
+    if (!confirm('Are you sure you want to delete this driver?')) return
+
+    try {
+      const res = await fetch(`/api/drivers/${driverId}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to delete driver')
+      }
+
+      setDrivers(prev => prev.filter(d => d.id !== driverId))
+    } catch (err) {
+      console.error('Error deleting driver:', err)
+      setError(err instanceof Error ? err.message : 'Failed to delete driver')
     }
   }
 
@@ -221,12 +284,89 @@ export default function DriversPage() {
                         <Car className="h-4 w-4 mr-2" />
                         View Vehicles
                       </div>
-                      <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                        View Details
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handleEditClick(driver)}
+                          className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1"
+                        >
+                          <Edit className="h-4 w-4" />
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteDriver(driver.id)}
+                          className="text-red-600 hover:text-red-700 text-sm font-medium flex items-center gap-1"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {editingDriver && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl max-w-md w-full">
+                  <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                    <h2 className="text-xl font-semibold text-gray-900">Edit Driver</h2>
+                    <button
+                      onClick={() => setEditingDriver(null)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <form onSubmit={handleUpdateDriver} className="p-6 space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Name</label>
+                      <input
+                        required
+                        value={editForm.name}
+                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        placeholder="Jamie Driver"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Email</label>
+                      <input
+                        required
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        placeholder="driver@example.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Phone</label>
+                      <input
+                        value={editForm.phone}
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        placeholder="+1 (555) 123-4567"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => setEditingDriver(null)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={updating}
+                        className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                      >
+                        {updating ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
           </div>

@@ -21,6 +21,11 @@ const createSchema = z.object({
   location: z.string().optional(),
   description: z.string().min(5, "description is required"),
   urgency: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  division: z.string().optional(),
+  vehicleType: z.string().optional(),
+  makeModel: z.string().optional(),
+  incidentDate: z.string().optional(),
+  isImmediate: z.coerce.boolean().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -53,6 +58,11 @@ export async function POST(request: NextRequest) {
       location: formData.get("location")?.toString(),
       description: formData.get("description")?.toString() || "",
       urgency: (formData.get("urgency")?.toString() as "low" | "medium" | "high" | "critical" | undefined) || "medium",
+      division: formData.get("division")?.toString(),
+      vehicleType: formData.get("vehicleType")?.toString(),
+      makeModel: formData.get("makeModel")?.toString(),
+      incidentDate: formData.get("incidentDate")?.toString(),
+      isImmediate: formData.get("isImmediate") === 'true',
     };
 
     const parsed = createSchema.safeParse(payload);
@@ -96,46 +106,88 @@ export async function POST(request: NextRequest) {
       bookingId: undefined,
       scheduledDate: undefined,
       scheduledTime: undefined,
+      division: parsed.data.division,
+      vehicleType: parsed.data.vehicleType,
+      makeModel: parsed.data.makeModel,
+      incidentDate: parsed.data.incidentDate,
+      isImmediate: parsed.data.isImmediate,
     });
 
+    const asyncNotifications: Promise<unknown>[] = [];
+
     if (record.driverPhone) {
-      await sendRepairSubmissionNotice(record.driverPhone, {
-        requestId: record.id,
-        summary: ai.summary,
-        language: record.preferredLanguage,
-      });
+      asyncNotifications.push(
+        sendRepairSubmissionNotice(record.driverPhone, {
+          requestId: record.id,
+          summary: ai.summary,
+          language: record.preferredLanguage,
+        })
+      );
     }
 
     // Send email to driver if email provided
     if (record.driverEmail) {
-      await sendRepairSubmissionEmail(record.driverEmail, {
-        driverName: record.driverName,
-        requestId: record.id,
-        summary: ai.summary,
-        urgency: record.urgency,
-        language: record.preferredLanguage,
-      });
+      asyncNotifications.push(
+        sendRepairSubmissionEmail(record.driverEmail, {
+          driverName: record.driverName,
+          requestId: record.id,
+          summary: ai.summary,
+          urgency: record.urgency,
+          language: record.preferredLanguage,
+        })
+      );
     }
 
     // Notify admin via SMS
-    await notifyAdminOfRepair({
-      requestId: record.id,
-      driverName: record.driverName,
-      driverPhone: record.driverPhone,
-      urgency: record.urgency,
-    });
+    asyncNotifications.push(
+      notifyAdminOfRepair({
+        requestId: record.id,
+        driverName: record.driverName,
+        driverPhone: record.driverPhone,
+        urgency: record.urgency,
+      })
+    );
 
     // Notify admin via email
     const adminEmail = process.env.ADMIN_EMAIL || 'ralvarez@bettersystems.ai';
-    await notifyAdminNewRepairRequest(adminEmail, {
-      requestId: record.id,
-      driverName: record.driverName,
-      driverPhone: record.driverPhone,
-      driverEmail: record.driverEmail,
-      urgency: record.urgency,
-      summary: ai.summary,
-      vehicleIdentifier: record.vehicleIdentifier,
+    asyncNotifications.push(
+      notifyAdminNewRepairRequest(adminEmail, {
+        requestId: record.id,
+        driverName: record.driverName,
+        driverPhone: record.driverPhone,
+        driverEmail: record.driverEmail,
+        urgency: record.urgency,
+        summary: ai.summary,
+        vehicleIdentifier: record.vehicleIdentifier,
+      })
+    );
+
+    Promise.allSettled(asyncNotifications).catch((err) => {
+      console.error("Background repair notifications failed", err);
     });
+
+    // Automatically send booking link via SMS
+    if (record.driverPhone) {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+      const bookingLink = `${baseUrl}/booking-link/${record.id}?name=${encodeURIComponent(record.driverName)}&phone=${encodeURIComponent(record.driverPhone)}`;
+      
+      // Update repair request with booking link
+      await repairRequestDB.update(record.id, {
+        bookingLink: bookingLink,
+        status: 'waiting_booking',
+      });
+
+      // Send booking link via SMS
+      const { sendRepairBookingLink } = await import('@/lib/twilio');
+      sendRepairBookingLink(record.driverPhone, {
+        requestId: record.id,
+        link: bookingLink,
+        issueSummary: record.description.slice(0, 120),
+        language: record.preferredLanguage,
+      }).catch((err) => {
+        console.error("Failed to send booking link SMS", err);
+      });
+    }
 
     return NextResponse.json({ request: record, ai }, { status: 201 });
   } catch (error) {

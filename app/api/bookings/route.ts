@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { smsConsent, complianceAccepted, vehicleInfo, notes, ...bookingData } = parsed.data;
+    const asyncNotifications: Promise<unknown>[] = [];
 
     const complianceNote = [
       vehicleInfo ? `Vehicle: ${vehicleInfo}` : null,
@@ -70,36 +71,46 @@ export async function POST(request: NextRequest) {
 
     // Send SMS confirmation if consented
     if (parsed.data.smsConsent !== false) {
-      await sendBookingConfirmation(parsed.data.customerPhone, {
+      asyncNotifications.push(
+        sendBookingConfirmation(parsed.data.customerPhone, {
+          serviceType: parsed.data.serviceType,
+          date: parsed.data.scheduledDate,
+          time: parsed.data.scheduledTime,
+          bookingId: booking.id,
+        })
+      );
+    }
+
+    // Send email confirmation to customer
+    asyncNotifications.push(
+      sendBookingConfirmationEmail(parsed.data.customerEmail, {
+        customerName: parsed.data.customerName,
         serviceType: parsed.data.serviceType,
         date: parsed.data.scheduledDate,
         time: parsed.data.scheduledTime,
         bookingId: booking.id,
-      });
-    }
-
-    // Send email confirmation to customer
-    await sendBookingConfirmationEmail(parsed.data.customerEmail, {
-      customerName: parsed.data.customerName,
-      serviceType: parsed.data.serviceType,
-      date: parsed.data.scheduledDate,
-      time: parsed.data.scheduledTime,
-      bookingId: booking.id,
-      vehicleInfo: parsed.data.vehicleInfo,
-      notes: parsed.data.notes,
-    });
+        vehicleInfo: parsed.data.vehicleInfo,
+        notes: parsed.data.notes,
+      })
+    );
 
     // Notify admin of new booking
     const adminEmail = process.env.ADMIN_EMAIL || 'ralvarez@bettersystems.ai';
-    await notifyAdminNewBooking(adminEmail, {
-      bookingId: booking.id,
-      customerName: parsed.data.customerName,
-      customerEmail: parsed.data.customerEmail,
-      customerPhone: parsed.data.customerPhone,
-      serviceType: parsed.data.serviceType,
-      date: parsed.data.scheduledDate,
-      time: parsed.data.scheduledTime,
-      vehicleInfo: parsed.data.vehicleInfo,
+    asyncNotifications.push(
+      notifyAdminNewBooking(adminEmail, {
+        bookingId: booking.id,
+        customerName: parsed.data.customerName,
+        customerEmail: parsed.data.customerEmail,
+        customerPhone: parsed.data.customerPhone,
+        serviceType: parsed.data.serviceType,
+        date: parsed.data.scheduledDate,
+        time: parsed.data.scheduledTime,
+        vehicleInfo: parsed.data.vehicleInfo,
+      })
+    );
+
+    Promise.allSettled(asyncNotifications).catch((err) => {
+      console.error("Background booking notifications failed", err);
     });
 
     return NextResponse.json({ booking }, { status: 201 });

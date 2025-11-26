@@ -29,6 +29,7 @@ export interface Vehicle {
   driverPhone?: string
   driverEmail?: string
   driverAssignedDate?: string
+  photoUrl?: string
   createdAt: string
 }
 
@@ -148,6 +149,11 @@ export interface RepairRequest {
   bookingLink?: string
   scheduledDate?: string
   scheduledTime?: string
+  division?: string
+  vehicleType?: string
+  makeModel?: string
+  incidentDate?: string
+  isImmediate?: boolean
   createdAt: string
   updatedAt: string
 }
