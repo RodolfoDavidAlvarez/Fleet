@@ -162,21 +162,38 @@ export async function extractRepairRequests() {
     
     return records.map((record: any) => {
       const fields = record.fields
+      const reportedAt = parseDateTime(fields['Reported Date and Time'] || record._rawJson?.createdTime)
+      const requiresImmediate = Boolean(fields['Requires Immediate Attention'])
+      const vehicleIdentifier = pickFirst([
+        fields['Vehicle number'],
+        fields['Vehicle detected'],
+        fields['Service ID'],
+        fields['Jotform ID'],
+        fields['Make and Model']
+      ])
       
       return {
-        driverName: fields['Driver Name'] || fields.Driver || '',
-        driverPhone: normalizePhoneNumber(fields['Driver Phone'] || fields.Phone),
+        driverName: fields['Employee'] || fields['Driver Name'] || fields.Driver || '',
+        driverPhone: normalizePhoneNumber(fields['Phone Number'] || fields['Driver Phone'] || fields.Phone),
         driverEmail: normalizeEmail(fields['Driver Email'] || fields.Email),
-        vehicleIdentifier: fields['Vehicle ID'] || fields.Vehicle || '',
-        description: fields.Description || fields.Issue || '',
-        urgency: mapUrgency(fields.Urgency || fields.Priority),
-        status: mapRepairStatus(fields.Status),
+        vehicleIdentifier: vehicleIdentifier || '',
+        description: fields['Problem Description'] || fields.Description || fields.Issue || '',
+        urgency: mapUrgency(fields.Urgency || fields.Priority, requiresImmediate),
+        status: mapRepairStatusFromFields(fields),
         location: fields.Location || '',
         odometer: parseInt(fields.Odometer || fields.Mileage || '0'),
-        photoUrls: extractPhotoUrls(fields.Photos || fields.Images),
-        aiCategory: fields['AI Category'] || '',
+        photoUrls: extractPhotoUrls(fields['Photos Or Attachements'] || fields.Photos || fields.Images),
+        aiCategory: fields['Problem classification'] || fields['AI Category'] || '',
+        aiTags: fields['Problem classification'] ? [fields['Problem classification']] : [],
+        aiSummary: fields['Preview message'] || '',
         airtableId: record.id,
-        createdAt: record._rawJson?.createdTime || new Date().toISOString(),
+        division: fields['Division'],
+        vehicleType: fields['Vehicle type'],
+        makeModel: fields['Make and Model'],
+        incidentDate: parseDate(fields['Reported Date and Time']),
+        isImmediate: requiresImmediate,
+        createdAt: reportedAt || record._rawJson?.createdTime || new Date().toISOString(),
+        updatedAt: reportedAt || record._rawJson?.createdTime || new Date().toISOString(),
       }
     })
   } catch (error) {
@@ -255,6 +272,23 @@ function extractPhotoUrls(photos: any): string[] {
   return photos.map((photo: any) => photo.url).filter(Boolean)
 }
 
+function parseDateTime(dateValue: any): string | undefined {
+  if (!dateValue) return undefined
+  const date = new Date(dateValue)
+  return isNaN(date.getTime()) ? undefined : date.toISOString()
+}
+
+function pickFirst(values: any[]): string | undefined {
+  for (const value of values) {
+    if (value === undefined || value === null) continue
+    if (Array.isArray(value) && value.length === 0) continue
+    if (Array.isArray(value)) return value[0]
+    const str = value.toString().trim()
+    if (str.length > 0) return str
+  }
+  return undefined
+}
+
 function calculateNextService(lastServiceDate: string | undefined, currentMileage: number): string | undefined {
   if (!lastServiceDate) return undefined
   
@@ -265,21 +299,30 @@ function calculateNextService(lastServiceDate: string | undefined, currentMileag
   return nextDate.toISOString().split('T')[0]
 }
 
-function mapUrgency(urgency: any): string {
+function mapUrgency(urgency: any, requiresImmediate: boolean = false): string {
+  if (requiresImmediate) return 'critical'
   const urgencyStr = (urgency?.toString() || '').toLowerCase()
-  if (urgencyStr.includes('critical') || urgencyStr.includes('emergency')) return 'critical'
+  if (urgencyStr.includes('critical') || urgencyStr.includes('emergency') || urgencyStr.includes('immediate')) return 'critical'
   if (urgencyStr.includes('high') || urgencyStr.includes('urgent')) return 'high'
   if (urgencyStr.includes('medium') || urgencyStr.includes('moderate')) return 'medium'
   return 'low'
 }
 
-function mapRepairStatus(status: any): string {
-  const statusStr = (status?.toString() || '').toLowerCase()
-  if (statusStr.includes('complete')) return 'completed'
-  if (statusStr.includes('progress') || statusStr.includes('working')) return 'in_progress'
-  if (statusStr.includes('schedule')) return 'scheduled'
-  if (statusStr.includes('waiting')) return 'waiting_booking'
+function mapRepairStatusFromFields(fields: any): string {
+  const statusStr = (fields['Status']?.toString() || '').toLowerCase()
+  const bookStatus = (fields['Book status']?.toString() || '').toLowerCase()
+  const currentStatus = (fields['Current status']?.toString() || '').toLowerCase()
+  const appointmentStatus = (fields['Appointment status']?.toString() || '').toLowerCase()
+
+  if (currentStatus.includes('service completed') || statusStr.includes('resolved')) return 'completed'
+  if (currentStatus.includes('resolved')) return 'completed'
+  if (currentStatus.includes('closed') || statusStr.includes('closed')) return 'cancelled'
+  if (bookStatus.includes('cancel')) return 'cancelled'
+  if (bookStatus.includes('booking link')) return 'waiting_booking'
+  if (bookStatus.includes('booked') || appointmentStatus.includes('active')) return 'scheduled'
+  if (statusStr.includes('progress')) return 'in_progress'
   if (statusStr.includes('triage')) return 'triaged'
+  if (statusStr.includes('open')) return 'submitted'
   return 'submitted'
 }
 

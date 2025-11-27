@@ -154,6 +154,7 @@ export default function VehiclesPage() {
       licensePlate: vehicle.licensePlate,
       mileage: vehicle.mileage.toString(),
       status: vehicle.status,
+      // Ensure driverId is a string, defaulting to empty if null/undefined
       driverId: vehicle.driverId || '',
     })
     setPhotoPreview(vehicle.photoUrl || null)
