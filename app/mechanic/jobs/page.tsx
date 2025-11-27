@@ -7,6 +7,7 @@ import { Wrench, Clock, Calendar, Smartphone } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
 import { Job } from '@/types'
 import { formatDateTime } from '@/lib/utils'
+import { Pagination } from '@/components/ui/pagination'
 
 const statusVariant: Record<string, string> = {
   completed: 'badge-success',
@@ -51,6 +52,8 @@ export default function JobsPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [authReady, setAuthReady] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
 
   const copy = useMemo(
     () => ({
@@ -108,6 +111,14 @@ export default function JobsPage() {
   const loading = isLoading || (isFetching && jobs.length === 0)
   const errorMessage = error instanceof Error ? error.message : null
 
+  // Pagination logic
+  const totalPages = Math.ceil(jobs.length / itemsPerPage)
+  const paginatedJobs = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return jobs.slice(startIndex, endIndex)
+  }, [jobs, currentPage, itemsPerPage])
+
   if (!authReady || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-secondary)]">
@@ -161,7 +172,8 @@ export default function JobsPage() {
                 </p>
               </div>
             ) : (
-              jobs.map((job) => (
+              <>
+                {paginatedJobs.map((job) => (
                 <div key={job.id} className="card p-6 hover-lift">
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex items-center gap-4">
@@ -233,7 +245,20 @@ export default function JobsPage() {
                     )}
                   </div>
                 </div>
-              ))
+              ))}
+                {/* Pagination */}
+                {jobs.length > 0 && (
+                  <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm mt-6">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                      itemsPerPage={itemsPerPage}
+                      totalItems={jobs.length}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
