@@ -236,6 +236,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ request: record, ai }, { status: 201 });
   } catch (error) {
     console.error("Error creating repair request", error);
-    return NextResponse.json({ error: "Failed to create repair request" }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error("Error details:", { errorMessage, errorStack });
+    return NextResponse.json(
+      { 
+        error: "Failed to create repair request",
+        details: process.env.NODE_ENV === "development" ? errorMessage : undefined
+      },
+      { status: 500 }
+    );
   }
 }
