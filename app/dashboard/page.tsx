@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import DashboardLayout from '@/components/DashboardLayout'
+import QuickActions from '@/components/dashboard/QuickActions'
 import { Car, Calendar, Users, CheckCircle, MessageSquare, Wrench, BarChart3, TrendingUp, AlertTriangle, Clock } from 'lucide-react'
 import { DashboardStats, RepairRequest } from '@/types'
 
@@ -82,7 +83,7 @@ export default function UnifiedDashboard() {
     },
     enabled: authReady,
     staleTime: 60 * 1000,
-    onSuccess: () => setLastUpdated(new Date()),
+
   })
 
   const {
@@ -102,27 +103,7 @@ export default function UnifiedDashboard() {
     },
     enabled: authReady,
     staleTime: 30 * 1000,
-    onSuccess: () => setLastUpdated(new Date()),
-  })
 
-  const {
-    data: bookingsData,
-    isLoading: bookingsLoading,
-    isFetching: bookingsFetching,
-    error: bookingsError,
-  } = useQuery<{ bookings: any[] }>({
-    queryKey: ['dashboard-bookings'],
-    queryFn: async () => {
-      const res = await fetch('/api/bookings')
-      const data: { bookings: any[]; error?: string } = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to load bookings.')
-      }
-      return data
-    },
-    enabled: authReady,
-    staleTime: 30 * 1000,
-    onSuccess: () => setLastUpdated(new Date()),
   })
 
   const {
@@ -142,33 +123,37 @@ export default function UnifiedDashboard() {
     },
     enabled: authReady,
     staleTime: 30 * 1000,
-    onSuccess: () => setLastUpdated(new Date()),
+
   })
+
+  useEffect(() => {
+    if (statsData || jobsData || repairsData) {
+      setLastUpdated(new Date())
+    }
+  }, [statsData, jobsData, repairsData])
 
   const stats = statsData?.stats || null
   const jobs = jobsData?.jobs || []
-  const bookings = (bookingsData?.bookings || []).slice(0, 5)
+  const bookings = stats?.recentBookings || []
   const repairRequests = repairsData?.requests || []
 
   const isInitialLoading =
     (statsLoading && !stats) ||
     (jobsLoading && jobs.length === 0) ||
-    (bookingsLoading && bookings.length === 0) ||
     (repairsLoading && repairRequests.length === 0)
 
-  const isRefetching = statsFetching || jobsFetching || bookingsFetching || repairsFetching
+  const isRefetching = statsFetching || jobsFetching || repairsFetching
 
-  const firstError = [statsError, jobsError, bookingsError, repairsError].find(Boolean) as Error | undefined
+  const firstError = [statsError, jobsError, repairsError].find(Boolean) as Error | undefined
 
   const showStatsSkeleton = !stats && (statsLoading || isInitialLoading)
-  const showBookingsSkeleton = bookings.length === 0 && (bookingsLoading || isInitialLoading)
+  const showBookingsSkeleton = bookings.length === 0 && (statsLoading || isInitialLoading)
   const showRepairsSkeleton = repairRequests.length === 0 && (repairsLoading || isInitialLoading)
   const showJobsSkeleton = jobs.length === 0 && (jobsLoading || isInitialLoading)
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
     queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] })
-    queryClient.invalidateQueries({ queryKey: ['dashboard-bookings'] })
     queryClient.invalidateQueries({ queryKey: ['dashboard-repair-requests'] })
   }
 
@@ -196,12 +181,12 @@ export default function UnifiedDashboard() {
 
   const statCards = [
     {
-      title: 'Total Vehicles',
-      value: stats?.totalVehicles || 0,
-      icon: Car,
-      gradient: 'from-blue-500 to-blue-600',
-      change: `${stats?.activeVehicles || 0} active`,
-      trend: 'up',
+      title: 'Urgent Repairs',
+      value: stats?.urgentRepairRequests || 0,
+      icon: AlertTriangle,
+      gradient: 'from-red-500 to-red-600',
+      change: 'Requires attention',
+      trend: (stats?.urgentRepairRequests || 0) > 0 ? 'down' : 'stable',
     },
     {
       title: 'Active Vehicles',
@@ -212,19 +197,19 @@ export default function UnifiedDashboard() {
       trend: 'up',
     },
     {
-      title: 'Total Bookings',
-      value: stats?.totalBookings || 0,
-      icon: Calendar,
-      gradient: 'from-purple-500 to-purple-600',
-      change: `${stats?.pendingBookings || 0} pending`,
+      title: 'Maintenance Cost',
+      value: `$${(stats?.totalMaintenanceCost || 0).toLocaleString()}`,
+      icon: Wrench,
+      gradient: 'from-blue-500 to-blue-600',
+      change: 'Total spent',
       trend: 'stable',
     },
     {
-      title: 'Mechanics',
-      value: stats?.totalMechanics || 0,
-      icon: Users,
-      gradient: 'from-orange-500 to-orange-600',
-      change: `${stats?.availableMechanics || 0} available`,
+      title: 'Pending Bookings',
+      value: stats?.pendingBookings || 0,
+      icon: Calendar,
+      gradient: 'from-purple-500 to-purple-600',
+      change: `${stats?.totalBookings || 0} total`,
       trend: 'up',
     },
   ]
@@ -317,6 +302,9 @@ export default function UnifiedDashboard() {
                 )
               })}
         </div>
+
+        {/* Quick Actions */}
+        {isAdmin && <QuickActions />}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -580,16 +568,20 @@ export default function UnifiedDashboard() {
                   
                   {/* Fleet Status */}
                   <div className="space-y-3">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Fleet Status</h3>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Fleet Status Breakdown</h3>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 rounded-lg bg-[var(--bg-tertiary)]">
-                        <p className="text-2xl font-bold">{stats?.vehiclesInService || 0}</p>
-                        <p className="text-xs text-muted">In Service</p>
-                      </div>
-                      <div className="p-3 rounded-lg bg-[var(--bg-tertiary)]">
-                        <p className="text-2xl font-bold">{stats?.availableMechanics || 0}</p>
-                        <p className="text-xs text-muted">Available</p>
-                      </div>
+                      {stats?.vehiclesByStatus && Object.entries(stats.vehiclesByStatus).length > 0 ? (
+                        Object.entries(stats.vehiclesByStatus).map(([status, count]) => (
+                          <div key={status} className="p-3 rounded-lg bg-[var(--bg-tertiary)]">
+                            <p className="text-2xl font-bold">{count}</p>
+                            <p className="text-xs text-muted capitalize">{status.replace('_', ' ')}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="col-span-2 text-center py-4 text-muted text-sm">
+                          No status data available
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
