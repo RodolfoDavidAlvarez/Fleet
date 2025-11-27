@@ -11,6 +11,7 @@ export async function extractEnhancedVehicles() {
   
   return records.map((record: any) => {
     const fields = record.fields
+    const uniqueId = fields['* Unique ID'] || fields['Vehicle Year, Make and Model or Item Brand and Model']
     
     return {
       // Basic vehicle info
@@ -20,6 +21,9 @@ export async function extractEnhancedVehicles() {
       vin: fields.VIN || `AIRTABLE-${record.id}`, // Generate unique VIN if empty
       licensePlate: fields['License plate'] || '',
       vehicleNumber: fields['Vehicle number'] || fields['Asset Number'] || '',
+      assetNumber: fields['Asset Number'] || '',
+      companyUniqueId: uniqueId,
+      airtableVidNumber: fields['AIrtableVID#'] || fields['Airtable Vehicle ID'],
       
       // Enhanced data from Equipment Inventory
       department: fields.Department || 'General',
@@ -28,14 +32,30 @@ export async function extractEnhancedVehicles() {
       currentMileage: parseFloat(fields['* Current Mileage'] || '0'),
       yearAge: fields['Number of years old'] || 0,
       reminderNumber: fields['* Reminder Number'] || '',
-      uniqueId: fields['* Unique ID'] || '',
+      uniqueId,
 
       // Admin info
       loanLender: fields['Loan Lender'] || '',
       tagExp: parseDate(fields['Tag Expiration'] || fields['Tag Exp']),
       firstAidFire: fields['First Aid/Fire'] || '',
       title: fields['Title'] || '',
-      
+      reminderState: fields['* Reminder Number'] || '',
+      weeklyInspectionState: fields['* Weekly Inspection State'] || '',
+      lastInspectionDate: parseDate(fields['Last Inspection Date'] || fields['Last Service']),
+      lastMaintenanceDate: parseDate(fields['Last Maintenance Date']),
+      lastMaintenanceMileage: safeNumber(fields['Last Maintenance Mileage']),
+      vehicleState: fields['Vehicle State'] || '',
+      bookStatus: fields['Book Status'] || '',
+      alertMethod: fields['Alert method'] || '',
+      vehicleSystem: fields['Vehicle System'] || '',
+      newVehicleCondition: fields['New Vehicle Condition'] || '',
+      startingMileage: safeNumber(fields['Starting Mileage']),
+      acquisitionValue: parseCurrency(fields['Acquisition Value']),
+      placedInService: parseDate(fields['Placed in service']),
+      loanMaturityDate: parseDate(fields['Loan Maturity Date']),
+      depreciationMethod: fields['Depreciation Method'] || '',
+      serialNumber: fields['Serial Number'] || '',
+
       // Driver information (linked record)
       driverId: Array.isArray(fields.Driver) ? fields.Driver[0] : fields.Driver,
       driverName: fields['Driver Name'] || '',
@@ -47,7 +67,6 @@ export async function extractEnhancedVehicles() {
       
       // Service information
       nextServiceDue: calculateNextService(undefined, fields['* Current Mileage']),
-      lastInspectionDate: parseDate(fields['Last Inspection Date'] || fields['Last Service']),
       supervisor: fields['Supervisor'] || fields['Managed By'] || '',
       
       // Metadata
@@ -159,6 +178,11 @@ export async function extractMembers() {
         email: normalizeEmail(fields.Email),
         phone: normalizePhoneNumber(fields.Phone),
         role: fields.Role || fields.Position || 'staff',
+        memberLegacyId: fields.ID,
+        preferredLanguage: fields['Preferred language'],
+        notes: fields.Notes,
+        levelCertification: fields['Level Certification'],
+        equipmentOversight: splitList(fields['Equipment Oversight Responsability']),
         department: fields.Department || '',
         supervisor: fields.Supervisor || '',
         hireDate: parseDate(fields['Hire Date']),
@@ -209,6 +233,9 @@ export async function extractRepairRequests() {
         aiTags: fields['Problem classification'] ? [fields['Problem classification']] : [],
         aiSummary: fields['Preview message'] || '',
         airtableId: record.id,
+        legacyServiceId: fields['Service ID'],
+        legacyAutonumber: safeNumber(fields['Autonumber']),
+        jotformId: fields['Jotform ID'],
         division: fields['Division'],
         vehicleType: fields['Vehicle type'],
         makeModel: fields['Make and Model'],
@@ -294,6 +321,19 @@ function extractPhotoUrls(photos: any): string[] {
   return photos.map((photo: any) => photo.url).filter(Boolean)
 }
 
+function safeNumber(value: any): number | undefined {
+  if (value === undefined || value === null) return undefined
+  const num = parseFloat(value)
+  return isNaN(num) ? undefined : num
+}
+
+function parseCurrency(value: any): number | undefined {
+  if (!value) return undefined
+  const cleaned = value.toString().replace(/[^0-9.-]+/g, '')
+  const num = parseFloat(cleaned)
+  return isNaN(num) ? undefined : num
+}
+
 function parseDateTime(dateValue: any): string | undefined {
   if (!dateValue) return undefined
   const date = new Date(dateValue)
@@ -346,6 +386,16 @@ function mapRepairStatusFromFields(fields: any): string {
   if (statusStr.includes('triage')) return 'triaged'
   if (statusStr.includes('open')) return 'submitted'
   return 'submitted'
+}
+
+function splitList(value: any): string[] {
+  if (!value) return []
+  if (Array.isArray(value)) return value
+  return value
+    .toString()
+    .split(',')
+    .map((s: string) => s.trim())
+    .filter(Boolean)
 }
 
 // Main extraction coordinator
