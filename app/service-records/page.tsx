@@ -366,7 +366,7 @@ export default function ServiceRecordsPage() {
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <User className="h-3.5 w-3.5 text-gray-400" />
-                              <span className="text-sm font-medium text-gray-900">{rec.mechanicName || "—"}</span>
+                              <span className="text-sm font-medium text-gray-900">{mechanicLabel(rec.mechanicName)}</span>
                             </div>
                             {rec.vehicleLabel && (
                               <p className="text-xs text-gray-500 truncate">{rec.vehicleLabel}</p>
