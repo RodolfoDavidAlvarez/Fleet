@@ -1,30 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { 
   BadgeCheck, 
-  Calendar, 
   Camera, 
   CheckCircle, 
   ClipboardList, 
   Loader2, 
-  MapPin, 
-  Phone, 
   Send, 
   Wrench,
   Search,
   X,
   Copy,
   Edit,
-  Plus,
-  Trash2,
-  ExternalLink
 } from "lucide-react";
 import { RepairReport, RepairRequest } from "@/types";
 import { formatDate } from "@/lib/utils";
+import { useRepairs, useUpdateRepair, useSubmitRepairReport } from "@/hooks/use-repairs";
+import { TableRowSkeleton } from "@/components/ui/loading-states";
+import { motion, AnimatePresence } from "framer-motion";
 
 const statusStyles: Record<string, string> = {
   submitted: "bg-yellow-50 text-yellow-700 border-yellow-200",
@@ -39,17 +36,18 @@ const statusStyles: Record<string, string> = {
 export default function RepairsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [requests, setRequests] = useState<RepairRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
   
+  // React Query Hooks
+  const { data: requests = [], isLoading, refetch } = useRepairs();
+  const updateRepair = useUpdateRepair();
+  const submitReportMutation = useSubmitRepairReport();
+  
   // Side Panel & Edit States
   const [selected, setSelected] = useState<RepairRequest | null>(null);
   const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<Partial<RepairRequest>>({});
 
   // Report Modal States
@@ -69,31 +67,11 @@ export default function RepairsPage() {
       return;
     }
     setUser(parsedUser);
-    loadRequests();
   }, [router]);
-
-  const loadRequests = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch("/api/repair-requests");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load");
-      setRequests(data.requests || []);
-      setError(null);
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to load repair requests");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const copyLink = (link?: string) => {
     if (!link) return;
     navigator.clipboard.writeText(link);
-    // Could add a toast here, but for now simple alert or just action is fine.
-    // We'll trust the user sees it happened or maybe standard browser feedback?
-    // Let's stick to a simple alert for confirmation for now if needed, or just nothing.
     alert("Link copied to clipboard"); 
   };
 
@@ -112,20 +90,21 @@ export default function RepairsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to send link");
 
-      setRequests((prev) => prev.map((item) => (item.id === request.id ? { ...item, ...(data.request || item) } : item)));
+      // Refetch to get updated status
+      refetch();
       alert("Booking link sent to driver.");
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to send booking link");
+      alert(err instanceof Error ? err.message : "Failed to send booking link");
     } finally {
       setSendingId(null);
     }
   };
 
   const openReport = async (request: RepairRequest) => {
-    // If opening report, we keep selected item but open modal
     setReportForm({ summary: "", laborHours: "", laborCost: "", partsCost: "", totalCost: "" });
     setReportModalOpen(true);
+    // Fetch reports if not already loaded
     if (!reports[request.id]) {
       const res = await fetch(`/api/repair-requests/${request.id}`);
       const data = await res.json();
@@ -137,36 +116,29 @@ export default function RepairsPage() {
 
   const submitReport = async () => {
     if (!selected) return;
-    try {
-      const payload = {
-        summary: reportForm.summary,
-        laborHours: reportForm.laborHours ? Number(reportForm.laborHours) : undefined,
-        laborCost: reportForm.laborCost ? Number(reportForm.laborCost) : undefined,
-        partsCost: reportForm.partsCost ? Number(reportForm.partsCost) : undefined,
-        totalCost: reportForm.totalCost ? Number(reportForm.totalCost) : undefined,
-        status: "completed",
-      };
-      const res = await fetch(`/api/repair-requests/${selected.id}/report`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save report");
-      
-      const updatedRequest = data.request || selected;
-      setRequests((prev) => prev.map((r) => (r.id === selected.id ? updatedRequest : r)));
-      setSelected(updatedRequest); // Update selected view
-      
-      setReports((prev) => ({
-        ...prev,
-        [selected.id]: data.report ? [data.report, ...(prev[selected.id] || [])] : prev[selected.id],
-      }));
-      setReportModalOpen(false);
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to submit report");
-    }
+    const payload = {
+      summary: reportForm.summary,
+      laborHours: reportForm.laborHours ? Number(reportForm.laborHours) : undefined,
+      laborCost: reportForm.laborCost ? Number(reportForm.laborCost) : undefined,
+      partsCost: reportForm.partsCost ? Number(reportForm.partsCost) : undefined,
+      totalCost: reportForm.totalCost ? Number(reportForm.totalCost) : undefined,
+      status: "completed",
+    };
+
+    submitReportMutation.mutate(
+        { requestId: selected.id, data: payload },
+        {
+            onSuccess: (data) => {
+                const updatedRequest = data.request || selected;
+                setSelected(updatedRequest);
+                setReports((prev) => ({
+                    ...prev,
+                    [selected.id]: data.report ? [data.report, ...(prev[selected.id] || [])] : prev[selected.id],
+                }));
+                setReportModalOpen(false);
+            }
+        }
+    )
   };
 
   const openEdit = (req: RepairRequest) => {
@@ -178,33 +150,22 @@ export default function RepairsPage() {
       driverName: req.driverName,
       driverPhone: req.driverPhone,
       vehicleIdentifier: req.vehicleIdentifier,
-      location: req.location,
       odometer: req.odometer,
     });
   };
 
-  const submitEdit = async () => {
+  const submitEdit = () => {
     if (!selected) return;
-    try {
-      setSaving(true);
-      const res = await fetch(`/api/repair-requests/${selected.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update repair request");
-      
-      const updatedRequest = { ...selected, ...data.request };
-      setRequests((prev) => prev.map((r) => (r.id === selected.id ? updatedRequest : r)));
-      setSelected(updatedRequest);
-      setEditing(false);
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to update repair request");
-    } finally {
-      setSaving(false);
-    }
+    updateRepair.mutate(
+        { id: selected.id, updates: editForm },
+        {
+            onSuccess: (data) => {
+                const updatedRequest = { ...selected, ...data.request };
+                setSelected(updatedRequest);
+                setEditing(false);
+            }
+        }
+    )
   };
 
   const filteredRequests = useMemo(() => {
@@ -242,15 +203,13 @@ export default function RepairsPage() {
                 <p className="text-gray-600">Manage repair requests, triage issues, and schedule bookings.</p>
               </div>
               <button
-                onClick={loadRequests}
+                onClick={() => refetch()}
                 className="btn-secondary px-4 py-2 flex items-center gap-2"
               >
-                <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <Loader2 className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
             </div>
-
-            {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{error}</div>}
 
             {/* Filters and Search */}
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
@@ -281,326 +240,347 @@ export default function RepairsPage() {
 
             {/* Table View */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm min-h-[400px]">
-              {loading ? (
-                <div className="flex items-center justify-center h-64">
-                  <Loader2 className="h-6 w-6 text-primary-600 animate-spin" />
-                </div>
-              ) : filteredRequests.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-                  <ClipboardList className="h-12 w-12 mb-3 opacity-20" />
-                  <p>No repair requests found.</p>
-                </div>
-              ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Driver & Vehicle</th>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Issue</th>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredRequests.map((req) => (
-                      <tr
-                        key={req.id}
-                        onClick={() => setSelected(req)}
-                        className="group hover:bg-gray-50 cursor-pointer transition-colors"
-                      >
-                        <td className="px-6 py-4 align-top">
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-gray-900">{req.driverName}</p>
-                            {req.vehicleIdentifier && (
-                                <p className="text-xs text-gray-500 flex items-center gap-1">
-                                    <Wrench className="h-3 w-3" /> {req.vehicleIdentifier}
-                                </p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 align-top">
-                          <div className="space-y-1 max-w-xs">
-                             <div className="flex items-center gap-2">
-                                <span className="pill bg-primary-50 border-primary-100 text-primary-800 text-[10px] px-1.5 py-0.5 h-auto">
-                                  {req.urgency}
-                                </span>
-                                {req.aiCategory && (
-                                  <span className="pill bg-indigo-50 border-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 h-auto">
-                                    {req.aiCategory}
-                                  </span>
-                                )}
-                              </div>
-                            <p className="text-sm text-gray-700 line-clamp-2">{req.description}</p>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 align-top">
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusStyles[req.status] || ""}`}>
-                            {req.status.replace("_", " ")}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 align-top text-sm text-gray-500">
-                           {formatDate(req.createdAt)}
-                        </td>
-                        <td className="px-6 py-4 align-top text-right">
-                            <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                                {req.bookingLink && (
-                                    <button 
-                                        onClick={() => copyLink(req.bookingLink)}
-                                        className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                                        title="Copy Booking Link"
-                                    >
-                                        <Copy className="h-4 w-4" />
-                                    </button>
-                                )}
-                                <button 
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                            <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Driver & Vehicle</th>
+                            <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Issue</th>
+                            <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                            <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                        {isLoading ? (
+                            Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={5} />)
+                        ) : filteredRequests.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                    <div className="flex flex-col items-center justify-center">
+                                        <ClipboardList className="h-12 w-12 mb-3 opacity-20" />
+                                        <p>No repair requests found.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        ) : (
+                            <AnimatePresence>
+                                {filteredRequests.map((req, i) => (
+                                <motion.tr
+                                    key={req.id}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.2, delay: i * 0.05 }}
                                     onClick={() => setSelected(req)}
-                                    className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline p-1.5"
+                                    className="group hover:bg-gray-50 cursor-pointer transition-colors"
                                 >
-                                    View
-                                </button>
-                            </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                                    <td className="px-6 py-4 align-top">
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-semibold text-gray-900">{req.driverName}</p>
+                                        {req.vehicleIdentifier && (
+                                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                <Wrench className="h-3 w-3" /> {req.vehicleIdentifier}
+                                            </p>
+                                        )}
+                                    </div>
+                                    </td>
+                                    <td className="px-6 py-4 align-top">
+                                    <div className="space-y-1 max-w-xs">
+                                        <div className="flex items-center gap-2">
+                                            <span className="pill bg-primary-50 border-primary-100 text-primary-800 text-[10px] px-1.5 py-0.5 h-auto">
+                                            {req.urgency}
+                                            </span>
+                                            {req.aiCategory && (
+                                            <span className="pill bg-indigo-50 border-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 h-auto">
+                                                {req.aiCategory}
+                                            </span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-gray-700 line-clamp-2">{req.description}</p>
+                                    </div>
+                                    </td>
+                                    <td className="px-6 py-4 align-top">
+                                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusStyles[req.status] || ""}`}>
+                                        {req.status.replace("_", " ")}
+                                    </span>
+                                    </td>
+                                    <td className="px-6 py-4 align-top text-sm text-gray-500">
+                                    {formatDate(req.createdAt)}
+                                    </td>
+                                    <td className="px-6 py-4 align-top text-right">
+                                        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                            {req.bookingLink && (
+                                                <button 
+                                                    onClick={() => copyLink(req.bookingLink)}
+                                                    className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                                    title="Copy Booking Link"
+                                                >
+                                                    <Copy className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                            <button 
+                                                onClick={() => setSelected(req)}
+                                                className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline p-1.5"
+                                            >
+                                                View
+                                            </button>
+                                        </div>
+                                    </td>
+                                </motion.tr>
+                                ))}
+                            </AnimatePresence>
+                        )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
           </div>
         </main>
       </div>
 
       {/* Side Panel */}
-      {selected && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" onClick={() => setSelected(null)} />
-          <div className="absolute inset-y-0 right-0 w-full max-w-2xl bg-white shadow-2xl transform transition-transform duration-300 translate-x-0 flex flex-col h-full">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white z-10">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">Request Details</h2>
-                <p className="text-sm text-gray-500">ID: {selected.id.slice(0, 8)}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                 {selected.bookingLink && (
-                    <button 
-                        onClick={() => copyLink(selected.bookingLink)}
-                        className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
-                    >
-                        <Copy className="h-3 w-3" /> Copy Link
-                    </button>
-                 )}
-                 <button
-                    onClick={() => setSelected(null)}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                    <X className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-8">
-              {/* Header Info */}
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${selected.urgency === 'critical' || selected.urgency === 'high' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                    <Wrench className="h-5 w-5" />
-                </div>
+      <AnimatePresence>
+        {selected && (
+            <motion.div 
+                className="fixed inset-0 z-50 overflow-hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+            >
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" onClick={() => setSelected(null)} />
+            <motion.div 
+                className="absolute inset-y-0 right-0 w-full max-w-2xl bg-white shadow-2xl flex flex-col h-full"
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            >
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white z-10">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{selected.driverName}</p>
-                  <p className="text-xs text-gray-500">{formatDate(selected.createdAt)}</p>
+                    <h2 className="text-lg font-bold text-gray-900">Request Details</h2>
+                    <p className="text-sm text-gray-500">ID: {selected.id.slice(0, 8)}</p>
                 </div>
-                <span className={`ml-auto px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${statusStyles[selected.status]}`}>
-                  {selected.status.replace("_", " ")}
-                </span>
-                {!editing && (
-                  <button
-                    onClick={() => openEdit(selected)}
-                    className="ml-3 text-sm font-medium text-primary-600 hover:text-primary-700"
-                  >
-                    Edit
-                  </button>
-                )}
-              </div>
-
-              {!editing ? (
-                <>
-                  {/* Read Only View */}
-                  <section>
-                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                      <ClipboardList className="h-4 w-4" /> Issue Description
-                    </h3>
-                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-                      {selected.description}
-                    </div>
-                  </section>
-                  
-                  {selected.thumbUrls?.length > 0 && (
-                      <section>
-                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                            <Camera className="h-4 w-4" /> Photos
-                        </h3>
-                        <div className="flex gap-2 overflow-x-auto pb-2">
-                            {selected.thumbUrls.map((url, i) => (
-                            <a key={i} href={selected.photoUrls[i] || url} target="_blank" rel="noopener noreferrer">
-                                <img src={url} alt={`Evidence ${i+1}`} className="h-24 w-24 rounded-lg object-cover border hover:opacity-90 transition-opacity" />
-                            </a>
-                            ))}
-                        </div>
-                      </section>
-                  )}
-
-                  <section>
-                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                      <Wrench className="h-4 w-4" /> Vehicle & Contact
-                    </h3>
-                    <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Vehicle</p>
-                        <p className="font-medium text-gray-900">{selected.vehicleIdentifier || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Odometer</p>
-                        <p className="font-medium text-gray-900">{selected.odometer ? `${selected.odometer.toLocaleString()} mi` : "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Phone</p>
-                        <p className="font-medium text-gray-900">{selected.driverPhone || "—"}</p>
-                      </div>
-                      <div>
-                         <p className="text-xs text-gray-500 mb-1">Location</p>
-                         <p className="font-medium text-gray-900">{selected.location || "—"}</p>
-                      </div>
-                    </div>
-                  </section>
-                  
-                  {/* Actions */}
-                  <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
-                    <p className="text-sm font-bold text-gray-900">Actions</p>
-                    <div className="flex gap-3">
-                         <button
-                            onClick={() => sendBookingLink(selected)}
-                            disabled={sendingId === selected.id}
-                            className="btn-primary flex-1 justify-center flex items-center gap-2"
+                <div className="flex items-center gap-2">
+                    {selected.bookingLink && (
+                        <button 
+                            onClick={() => copyLink(selected.bookingLink)}
+                            className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
                         >
-                            {sendingId === selected.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                            Resend Booking Link
+                            <Copy className="h-3 w-3" /> Copy Link
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setSelected(null)}
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                        <X className="h-6 w-6" />
+                    </button>
+                </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                {/* Header Info */}
+                <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${selected.urgency === 'critical' || selected.urgency === 'high' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                        <Wrench className="h-5 w-5" />
+                    </div>
+                    <div>
+                    <p className="text-sm font-semibold text-gray-900">{selected.driverName}</p>
+                    <p className="text-xs text-gray-500">{formatDate(selected.createdAt)}</p>
+                    </div>
+                    <span className={`ml-auto px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${statusStyles[selected.status]}`}>
+                    {selected.status.replace("_", " ")}
+                    </span>
+                    {!editing && (
+                    <button
+                        onClick={() => openEdit(selected)}
+                        className="ml-3 text-sm font-medium text-primary-600 hover:text-primary-700"
+                    >
+                        Edit
+                    </button>
+                    )}
+                </div>
+
+                {!editing ? (
+                    <>
+                    {/* Read Only View */}
+                    <section>
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <ClipboardList className="h-4 w-4" /> Issue Description
+                        </h3>
+                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                        {selected.description}
+                        </div>
+                    </section>
+                    
+                    {selected.thumbUrls?.length > 0 && (
+                        <section>
+                            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <Camera className="h-4 w-4" /> Photos
+                            </h3>
+                            <div className="flex gap-2 overflow-x-auto pb-2">
+                                {selected.thumbUrls.map((url, i) => (
+                                <a key={i} href={selected.photoUrls[i] || url} target="_blank" rel="noopener noreferrer">
+                                    <img src={url} alt={`Evidence ${i+1}`} className="h-24 w-24 rounded-lg object-cover border hover:opacity-90 transition-opacity" />
+                                </a>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    <section>
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <Wrench className="h-4 w-4" /> Vehicle & Contact
+                        </h3>
+                        <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
+                        <div>
+                            <p className="text-xs text-gray-500 mb-1">Vehicle</p>
+                            <p className="font-medium text-gray-900">{selected.vehicleIdentifier || "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 mb-1">Odometer</p>
+                            <p className="font-medium text-gray-900">{selected.odometer ? `${selected.odometer.toLocaleString()} mi` : "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 mb-1">Phone</p>
+                            <p className="font-medium text-gray-900">{selected.driverPhone || "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 mb-1">Location</p>
+                            <p className="font-medium text-gray-900">{selected.location || "—"}</p>
+                        </div>
+                        </div>
+                    </section>
+                    
+                    {/* Actions */}
+                    <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
+                        <p className="text-sm font-bold text-gray-900">Actions</p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => sendBookingLink(selected)}
+                                disabled={sendingId === selected.id}
+                                className="btn-primary flex-1 justify-center flex items-center gap-2"
+                            >
+                                {sendingId === selected.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                Resend Booking Link
+                            </button>
+                            <button
+                                onClick={() => openReport(selected)}
+                                className="btn-secondary flex-1 justify-center flex items-center gap-2"
+                            >
+                                <CheckCircle className="h-4 w-4" />
+                                Complete & Report
+                            </button>
+                        </div>
+                    </div>
+                    </>
+                ) : (
+                    /* Edit Mode */
+                    <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label className="space-y-1.5 block">
+                        <span className="text-sm font-semibold text-gray-700">Driver Name</span>
+                        <input
+                            className="input-field w-full"
+                            value={editForm.driverName || ""}
+                            onChange={(e) => setEditForm({ ...editForm, driverName: e.target.value })}
+                        />
+                        </label>
+                        <label className="space-y-1.5 block">
+                        <span className="text-sm font-semibold text-gray-700">Driver Phone</span>
+                        <input
+                            className="input-field w-full"
+                            value={editForm.driverPhone || ""}
+                            onChange={(e) => setEditForm({ ...editForm, driverPhone: e.target.value })}
+                        />
+                        </label>
+                        <label className="space-y-1.5 block">
+                        <span className="text-sm font-semibold text-gray-700">Vehicle ID</span>
+                        <input
+                            className="input-field w-full"
+                            value={editForm.vehicleIdentifier || ""}
+                            onChange={(e) => setEditForm({ ...editForm, vehicleIdentifier: e.target.value })}
+                        />
+                        </label>
+                        <label className="space-y-1.5 block">
+                        <span className="text-sm font-semibold text-gray-700">Odometer</span>
+                        <input
+                            type="number"
+                            className="input-field w-full"
+                            value={editForm.odometer || ""}
+                            onChange={(e) => setEditForm({ ...editForm, odometer: Number(e.target.value) })}
+                        />
+                        </label>
+                        <label className="space-y-1.5 block">
+                        <span className="text-sm font-semibold text-gray-700">Status</span>
+                        <select
+                            className="input-field w-full"
+                            value={editForm.status}
+                            onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
+                        >
+                            <option value="submitted">Submitted</option>
+                            <option value="triaged">Triaged</option>
+                            <option value="waiting_booking">Waiting Booking</option>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                        </label>
+                        <label className="space-y-1.5 block">
+                        <span className="text-sm font-semibold text-gray-700">Urgency</span>
+                        <select
+                            className="input-field w-full"
+                            value={editForm.urgency}
+                            onChange={(e) => setEditForm({ ...editForm, urgency: e.target.value as any })}
+                        >
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                        </label>
+                    </div>
+                    <label className="space-y-1.5 block">
+                        <span className="text-sm font-semibold text-gray-700">Description</span>
+                        <textarea
+                        className="input-field w-full min-h-[120px]"
+                        value={editForm.description || ""}
+                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                        />
+                    </label>
+                    <div className="flex gap-3">
+                        <button
+                        onClick={() => setEditing(false)}
+                        className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                        disabled={updateRepair.isPending}
+                        >
+                        Cancel
                         </button>
                         <button
-                            onClick={() => openReport(selected)}
-                            className="btn-secondary flex-1 justify-center flex items-center gap-2"
+                        onClick={submitEdit}
+                        className="flex-1 btn-primary py-2.5 justify-center flex items-center gap-2 shadow-lg shadow-primary-500/20"
+                        disabled={updateRepair.isPending}
                         >
-                            <CheckCircle className="h-4 w-4" />
-                            Complete & Report
+                        {updateRepair.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                        Save changes
                         </button>
                     </div>
-                  </div>
-                </>
-              ) : (
-                /* Edit Mode */
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <label className="space-y-1.5 block">
-                      <span className="text-sm font-semibold text-gray-700">Driver Name</span>
-                      <input
-                        className="input-field w-full"
-                        value={editForm.driverName || ""}
-                        onChange={(e) => setEditForm({ ...editForm, driverName: e.target.value })}
-                      />
-                    </label>
-                    <label className="space-y-1.5 block">
-                      <span className="text-sm font-semibold text-gray-700">Driver Phone</span>
-                      <input
-                        className="input-field w-full"
-                        value={editForm.driverPhone || ""}
-                        onChange={(e) => setEditForm({ ...editForm, driverPhone: e.target.value })}
-                      />
-                    </label>
-                    <label className="space-y-1.5 block">
-                      <span className="text-sm font-semibold text-gray-700">Vehicle ID</span>
-                      <input
-                        className="input-field w-full"
-                        value={editForm.vehicleIdentifier || ""}
-                        onChange={(e) => setEditForm({ ...editForm, vehicleIdentifier: e.target.value })}
-                      />
-                    </label>
-                    <label className="space-y-1.5 block">
-                      <span className="text-sm font-semibold text-gray-700">Odometer</span>
-                      <input
-                         type="number"
-                        className="input-field w-full"
-                        value={editForm.odometer || ""}
-                        onChange={(e) => setEditForm({ ...editForm, odometer: Number(e.target.value) })}
-                      />
-                    </label>
-                     <label className="space-y-1.5 block">
-                      <span className="text-sm font-semibold text-gray-700">Status</span>
-                      <select
-                        className="input-field w-full"
-                        value={editForm.status}
-                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
-                      >
-                         <option value="submitted">Submitted</option>
-                         <option value="triaged">Triaged</option>
-                         <option value="waiting_booking">Waiting Booking</option>
-                         <option value="scheduled">Scheduled</option>
-                         <option value="in_progress">In Progress</option>
-                         <option value="completed">Completed</option>
-                         <option value="cancelled">Cancelled</option>
-                      </select>
-                    </label>
-                    <label className="space-y-1.5 block">
-                      <span className="text-sm font-semibold text-gray-700">Urgency</span>
-                      <select
-                        className="input-field w-full"
-                        value={editForm.urgency}
-                        onChange={(e) => setEditForm({ ...editForm, urgency: e.target.value as any })}
-                      >
-                         <option value="low">Low</option>
-                         <option value="medium">Medium</option>
-                         <option value="high">High</option>
-                         <option value="critical">Critical</option>
-                      </select>
-                    </label>
-                  </div>
-                  <label className="space-y-1.5 block">
-                    <span className="text-sm font-semibold text-gray-700">Description</span>
-                    <textarea
-                      className="input-field w-full min-h-[120px]"
-                      value={editForm.description || ""}
-                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                    />
-                  </label>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setEditing(false)}
-                      className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-                      disabled={saving}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={submitEdit}
-                      className="flex-1 btn-primary py-2.5 justify-center flex items-center gap-2 shadow-lg shadow-primary-500/20"
-                      disabled={saving}
-                    >
-                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                      Save changes
-                    </button>
-                  </div>
+                    </div>
+                )}
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+            </motion.div>
+        )}
+      </AnimatePresence>
 
-      {reportModalOpen && reportTarget && (
+      {reportModalOpen && selected && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
-            {/* ... Report Modal Content (same as before) ... */}
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Report for</p>
-                <h3 className="text-lg font-semibold text-gray-900">{selected?.driverName}</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{selected.driverName}</h3>
               </div>
               <button className="text-gray-500 hover:text-gray-800" onClick={() => setReportModalOpen(false)}>
                 ✕
@@ -658,7 +638,8 @@ export default function RepairsPage() {
 
             <div className="flex gap-2">
               <button onClick={submitReport} className="btn-primary flex-1 justify-center flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" /> Save report
+                {submitReportMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                Save report
               </button>
               <button onClick={() => setReportModalOpen(false)} className="btn-secondary flex-1 justify-center flex items-center gap-2">
                 Cancel
@@ -670,6 +651,3 @@ export default function RepairsPage() {
     </div>
   );
 }
-
-// Helper to keep typescript happy if I removed reportTarget but used selected
-const reportTarget = {};
