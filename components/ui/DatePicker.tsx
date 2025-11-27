@@ -24,20 +24,26 @@ export default function DatePicker({
   maxDate,
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    // Initialize with selected date or today
+    if (value) {
+      const date = new Date(value + "T00:00:00");
+      return new Date(date.getFullYear(), date.getMonth(), 1);
+    }
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
   const datePickerRef = useRef<HTMLDivElement>(null);
 
   // Parse the value to get the selected date
   const selectedDate = value ? new Date(value + "T00:00:00") : null;
 
-  // Set current month to selected date or today
+  // Set current month to selected date or today (only when value changes externally)
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && !isOpen) {
       setCurrentMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
-    } else {
-      setCurrentMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     }
-  }, [value]);
+  }, [value, isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

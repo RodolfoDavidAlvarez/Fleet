@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, Search, User, Menu, CheckCircle, AlertCircle } from 'lucide-react'
+import { Bell, Search, User, Menu, CheckCircle, AlertCircle, Settings } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -13,6 +13,7 @@ interface HeaderProps {
 export default function Header({ userName, userRole, onMenuClick }: HeaderProps) {
   const router = useRouter()
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [notifications, setNotifications] = useState([
@@ -244,8 +245,37 @@ export default function Header({ userName, userRole, onMenuClick }: HeaderProps)
             <p className="text-sm font-semibold">{userName}</p>
             <p className="text-xs text-muted capitalize">{userRole}</p>
           </div>
-          <div className="w-9 h-9 bg-gradient-to-br from-[var(--primary-400)] to-[var(--primary-600)] rounded-full flex items-center justify-center shadow-sm">
-            <User className="h-4 w-4 text-white" />
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="w-9 h-9 bg-gradient-to-br from-[var(--primary-400)] to-[var(--primary-600)] rounded-full flex items-center justify-center shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+              aria-label="User menu"
+            >
+              <User className="h-4 w-4 text-white" />
+            </button>
+            {/* Dropdown menu */}
+            {showUserMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowUserMenu(false)}
+                />
+                <div className="absolute right-0 mt-2 w-48 card card-glass animate-slide-down shadow-xl z-20">
+                  <div className="p-2">
+                    <button
+                      onClick={() => {
+                        router.push('/admin/settings')
+                        setShowUserMenu(false)
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-[var(--surface-hover)] rounded-lg transition-colors text-left"
+                    >
+                      <Settings className="h-4 w-4 text-[var(--text-secondary)]" />
+                      <span className="text-sm text-[var(--text-primary)]">Settings</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

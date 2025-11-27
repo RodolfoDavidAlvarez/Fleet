@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase";
+import { sendSMS } from "@/lib/twilio";
 
 const createSchema = z.object({
   repairRequestId: z.string().uuid().optional(),
@@ -14,6 +15,8 @@ const createSchema = z.object({
   status: z.enum(["in_progress", "completed", "cancelled", "open"]).default("in_progress"),
   date: z.string().optional(),
   nextServiceDue: z.string().optional(),
+  notifyDriver: z.boolean().optional(),
+  notificationStatus: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -41,15 +44,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch service records" }, { status: 500 });
     }
 
-    const repairRequestIds = Array.from(
-      new Set((records || []).map((r) => r.repair_request_id).filter(Boolean))
-    ) as string[];
-    const vehicleIds = Array.from(
-      new Set((records || []).map((r) => r.vehicle_id).filter(Boolean))
-    ) as string[];
-    const mechanicIds = Array.from(
-      new Set((records || []).map((r) => r.mechanic_id).filter(Boolean))
-    ) as string[];
+    const repairRequestIds = Array.from(new Set((records || []).map((r) => r.repair_request_id).filter(Boolean))) as string[];
+    const vehicleIds = Array.from(new Set((records || []).map((r) => r.vehicle_id).filter(Boolean))) as string[];
+    const mechanicIds = Array.from(new Set((records || []).map((r) => r.mechanic_id).filter(Boolean))) as string[];
 
     const [repairsLookup, vehiclesLookup, mechanicsLookup] = await Promise.all([
       repairRequestIds.length
@@ -58,18 +55,8 @@ export async function GET(request: NextRequest) {
             .select("id, driver_name, vehicle_identifier, division, vehicle_type, make_model, vehicle_id")
             .in("id", repairRequestIds)
         : { data: [] },
-      vehicleIds.length
-        ? supabase
-            .from("vehicles")
-            .select("id, license_plate, make, model, vehicle_number")
-            .in("id", vehicleIds)
-        : { data: [] },
-      mechanicIds.length
-        ? supabase
-            .from("mechanics")
-            .select("id, name, email, airtable_id, user_id")
-            .in("id", mechanicIds)
-        : { data: [] },
+      vehicleIds.length ? supabase.from("vehicles").select("id, license_plate, make, model, vehicle_number").in("id", vehicleIds) : { data: [] },
+      mechanicIds.length ? supabase.from("mechanics").select("id, name, email, airtable_id, user_id").in("id", mechanicIds) : { data: [] },
     ]);
 
     const repairMap = new Map(
@@ -100,9 +87,7 @@ export async function GET(request: NextRequest) {
       ])
     );
 
-    const mechanicMap = new Map(
-      (mechanicsLookup.data || []).map((m: any) => [m.id, m])
-    );
+    const mechanicMap = new Map((mechanicsLookup.data || []).map((m: any) => [m.id, m]));
 
     const hydrated = (records || []).map((r) => {
       const repair = r.repair_request_id ? repairMap.get(r.repair_request_id) : null;
@@ -170,11 +155,7 @@ export async function POST(request: NextRequest) {
 
     let vehicleId = payload.vehicleId || null;
     if (!vehicleId && payload.repairRequestId) {
-      const { data: repair } = await supabase
-        .from("repair_requests")
-        .select("vehicle_id")
-        .eq("id", payload.repairRequestId)
-        .maybeSingle();
+      const { data: repair } = await supabase.from("repair_requests").select("vehicle_id").eq("id", payload.repairRequestId).maybeSingle();
       if (repair?.vehicle_id) vehicleId = repair.vehicle_id;
     }
 
@@ -200,6 +181,51 @@ export async function POST(request: NextRequest) {
     if (error || !data) {
       console.error("Failed to create service record", error);
       return NextResponse.json({ error: "Failed to create service record" }, { status: 500 });
+    }
+
+    // Send notification SMS to driver if requested and repair request is linked
+    if (payload.notifyDriver && payload.repairRequestId) {
+      try {
+        const { data: repairRequest } = await supabase
+          .from("repair_requests")
+          .select("driver_name, driver_phone, preferred_language")
+          .eq("id", payload.repairRequestId)
+          .single();
+
+        if (repairRequest?.driver_phone) {
+          const statusMessages: Record<string, { en: string; es: string }> = {
+            completed_ready_for_pickup: {
+              en: "is completed and ready for pickup",
+              es: "está completada y lista para recoger",
+            },
+            completed: {
+              en: "is completed",
+              es: "está completada",
+            },
+            on_hold: {
+              en: "is on hold",
+              es: "está en espera",
+            },
+            waiting_for_parts: {
+              en: "is waiting for parts",
+              es: "está esperando repuestos",
+            },
+          };
+
+          const notificationStatus = payload.notificationStatus || "completed_ready_for_pickup";
+          const messages = statusMessages[notificationStatus] || statusMessages.completed_ready_for_pickup;
+          const language = repairRequest.preferred_language || "en";
+          const message =
+            language === "es"
+              ? `${repairRequest.driver_name}, su solicitud de reparación ${messages.es}.`
+              : `${repairRequest.driver_name}, your repair request ${messages.en}.`;
+
+          await sendSMS(repairRequest.driver_phone, message);
+        }
+      } catch (smsError) {
+        console.error("Failed to send notification SMS", smsError);
+        // Don't fail the request if SMS fails
+      }
     }
 
     return NextResponse.json({

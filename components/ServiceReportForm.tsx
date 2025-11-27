@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, X, CheckCircle, Wrench, User, Calendar, AlertCircle, Search } from "lucide-react";
+import { Loader2, X, CheckCircle, Wrench, User, Calendar, AlertCircle, Search, Bell } from "lucide-react";
 import { RepairRequest } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDate } from "@/lib/utils";
@@ -29,6 +29,8 @@ export interface ServiceReportFormData {
   status: string;
   date: string;
   repairRequestId?: string;
+  notifyDriver?: boolean;
+  notificationStatus?: string;
 }
 
 export default function ServiceReportForm({
@@ -55,6 +57,8 @@ export default function ServiceReportForm({
     status: "completed",
     date: new Date().toISOString().split("T")[0],
     repairRequestId: initialRepairRequest?.id,
+    notifyDriver: true, // Pre-selected by default
+    notificationStatus: "completed_ready_for_pickup",
   });
 
   // Update form when repair request is selected
@@ -101,12 +105,7 @@ export default function ServiceReportForm({
 
   return (
     <AnimatePresence>
-      <motion.div
-        className="fixed inset-0 z-50 overflow-hidden"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
+      <motion.div className="fixed inset-0 z-50 overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
         <div className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" onClick={onClose} />
         <motion.div
           className="absolute inset-y-0 right-0 w-full max-w-3xl bg-white shadow-2xl flex flex-col h-full"
@@ -121,12 +120,8 @@ export default function ServiceReportForm({
                 <CheckCircle className="h-5 w-5 text-primary-600" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">
-                  {selectedRepairRequest ? "Submit Service Report" : "New Service Record"}
-                </h2>
-                <p className="text-xs text-gray-500 font-mono">
-                  {selectedRepairRequest ? selectedRepairRequest.driverName : "Log mechanic work"}
-                </p>
+                <h2 className="text-xl font-bold text-gray-900">{selectedRepairRequest ? "Submit Service Report" : "New Service Record"}</h2>
+                <p className="text-xs text-gray-500 font-mono">{selectedRepairRequest ? selectedRepairRequest.driverName : "Log mechanic work"}</p>
               </div>
             </div>
             <button onClick={onClose} className="btn btn-ghost btn-icon" aria-label="Close">
@@ -163,41 +158,36 @@ export default function ServiceReportForm({
                       </div>
                       {showRepairSelector && (
                         <>
-                          <div
-                            className="fixed inset-0 z-10"
-                            onClick={() => setShowRepairSelector(false)}
-                          />
+                          <div className="fixed inset-0 z-10" onClick={() => setShowRepairSelector(false)} />
                           <div className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                          {filteredRepairOptions.length === 0 ? (
-                            <div className="p-4 text-center text-sm text-gray-500">No repair requests found</div>
-                          ) : (
-                            filteredRepairOptions.slice(0, 10).map((req) => (
-                              <button
-                                key={req.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedRepairRequest(req);
-                                  setShowRepairSelector(false);
-                                  setRepairSearch("");
-                                }}
-                                className="w-full text-left p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-gray-900 truncate">{req.driverName}</p>
-                                    <p className="text-xs text-gray-500 truncate">{req.vehicleIdentifier || "No vehicle"}</p>
-                                    <p className="text-xs text-gray-400 mt-1 line-clamp-1">{req.description}</p>
+                            {filteredRepairOptions.length === 0 ? (
+                              <div className="p-4 text-center text-sm text-gray-500">No repair requests found</div>
+                            ) : (
+                              filteredRepairOptions.slice(0, 10).map((req) => (
+                                <button
+                                  key={req.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedRepairRequest(req);
+                                    setShowRepairSelector(false);
+                                    setRepairSearch("");
+                                  }}
+                                  className="w-full text-left p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-semibold text-gray-900 truncate">{req.driverName}</p>
+                                      <p className="text-xs text-gray-500 truncate">{req.vehicleIdentifier || "No vehicle"}</p>
+                                      <p className="text-xs text-gray-400 mt-1 line-clamp-1">{req.description}</p>
+                                    </div>
+                                    <div className="flex-shrink-0 text-right">
+                                      <span className="text-xs text-gray-500">{formatDate(req.createdAt)}</span>
+                                      {req.aiCategory && <span className="block text-xs text-indigo-600 mt-1">{req.aiCategory}</span>}
+                                    </div>
                                   </div>
-                                  <div className="flex-shrink-0 text-right">
-                                    <span className="text-xs text-gray-500">{formatDate(req.createdAt)}</span>
-                                    {req.aiCategory && (
-                                      <span className="block text-xs text-indigo-600 mt-1">{req.aiCategory}</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </button>
-                            ))
-                          )}
+                                </button>
+                              ))
+                            )}
                           </div>
                         </>
                       )}
@@ -282,57 +272,57 @@ export default function ServiceReportForm({
                   Service Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="space-y-1.5 block">
-              <span className="text-sm font-semibold text-gray-700">
-                Mechanic name <span className="text-red-500">*</span>
-              </span>
-              <input
-                className="input-field w-full"
-                value={form.mechanicName}
-                onChange={(e) => setForm({ ...form, mechanicName: e.target.value })}
-                placeholder="Who performed the work"
-                required
-              />
-            </label>
+                  <label className="space-y-1.5 block">
+                    <span className="text-sm font-semibold text-gray-700">
+                      Mechanic name <span className="text-red-500">*</span>
+                    </span>
+                    <input
+                      className="input-field w-full"
+                      value={form.mechanicName}
+                      onChange={(e) => setForm({ ...form, mechanicName: e.target.value })}
+                      placeholder="Who performed the work"
+                      required
+                    />
+                  </label>
 
-            <label className="space-y-1.5 block">
-              <span className="text-sm font-semibold text-gray-700">
-                Service type <span className="text-red-500">*</span>
-              </span>
-              <input
-                className="input-field w-full"
-                value={form.serviceType}
-                onChange={(e) => setForm({ ...form, serviceType: e.target.value })}
-                placeholder="Oil change, brakes, inspection..."
-                required
-              />
-            </label>
+                  <label className="space-y-1.5 block">
+                    <span className="text-sm font-semibold text-gray-700">
+                      Service type <span className="text-red-500">*</span>
+                    </span>
+                    <input
+                      className="input-field w-full"
+                      value={form.serviceType}
+                      onChange={(e) => setForm({ ...form, serviceType: e.target.value })}
+                      placeholder="Oil change, brakes, inspection..."
+                      required
+                    />
+                  </label>
 
-            <label className="space-y-1.5 block">
-              <span className="text-sm font-semibold text-gray-700">Date</span>
-              <DatePicker
-                value={form.date}
-                onChange={(value) => setForm({ ...form, date: value })}
-                placeholder="Select a date"
-                minDate={new Date().toISOString().split("T")[0]}
-              />
-            </label>
+                  <label className="space-y-1.5 block">
+                    <span className="text-sm font-semibold text-gray-700">Date</span>
+                    <DatePicker
+                      value={form.date}
+                      onChange={(value) => setForm({ ...form, date: value })}
+                      placeholder="Select a date"
+                      minDate={new Date().toISOString().split("T")[0]}
+                    />
+                  </label>
 
-            <label className="space-y-1.5 block">
-              <span className="text-sm font-semibold text-gray-700">Mileage</span>
-              <input
-                className="input-field w-full"
-                type="text"
-                value={form.mileage ? parseInt(form.mileage || "0").toLocaleString() : ""}
-                onChange={(e) => {
-                  const numericValue = e.target.value.replace(/,/g, "");
-                  if (numericValue === "" || /^\d+$/.test(numericValue)) {
-                    setForm({ ...form, mileage: numericValue });
-                  }
-                }}
-                placeholder="Current odometer reading"
-              />
-            </label>
+                  <label className="space-y-1.5 block">
+                    <span className="text-sm font-semibold text-gray-700">Mileage</span>
+                    <input
+                      className="input-field w-full"
+                      type="text"
+                      value={form.mileage ? parseInt(form.mileage || "0").toLocaleString() : ""}
+                      onChange={(e) => {
+                        const numericValue = e.target.value.replace(/,/g, "");
+                        if (numericValue === "" || /^\d+$/.test(numericValue)) {
+                          setForm({ ...form, mileage: numericValue });
+                        }
+                      }}
+                      placeholder="Current odometer reading"
+                    />
+                  </label>
 
                   {selectedRepairRequest && (
                     <>
@@ -400,20 +390,20 @@ export default function ServiceReportForm({
                     </label>
                   )}
 
-            <label className="space-y-1.5 block">
-              <span className="text-sm font-semibold text-gray-700">Status</span>
-              <Select
-                value={form.status}
-                onChange={(value) => setForm({ ...form, status: value })}
-                options={[
-                  { value: "in_progress", label: "In Progress" },
-                  { value: "completed", label: "Completed" },
-                  { value: "cancelled", label: "Cancelled" },
-                  { value: "open", label: "Open" },
-                ]}
-                placeholder="Select status"
-              />
-            </label>
+                  <label className="space-y-1.5 block">
+                    <span className="text-sm font-semibold text-gray-700">Status</span>
+                    <Select
+                      value={form.status}
+                      onChange={(value) => setForm({ ...form, status: value })}
+                      options={[
+                        { value: "in_progress", label: "In Progress" },
+                        { value: "completed", label: "Completed" },
+                        { value: "cancelled", label: "Cancelled" },
+                        { value: "open", label: "Open" },
+                      ]}
+                      placeholder="Select status"
+                    />
+                  </label>
                 </div>
               </section>
 
@@ -437,6 +427,53 @@ export default function ServiceReportForm({
                   />
                 </label>
               </section>
+
+              {/* Driver Notification Section - Only show if repair request is linked */}
+              {selectedRepairRequest && (
+                <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <Bell className="h-4 w-4 text-blue-600" />
+                    </div>
+                    Driver Notification
+                  </h3>
+                  <div className="space-y-4">
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={form.notifyDriver}
+                        onChange={(e) => setForm({ ...form, notifyDriver: e.target.checked })}
+                        className="mt-1 h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 cursor-pointer"
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-semibold text-gray-900">Notify the driver with status</span>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Send SMS notification to {selectedRepairRequest.driverName} about the service status
+                        </p>
+                      </div>
+                    </label>
+
+                    {form.notifyDriver && (
+                      <div className="pl-7">
+                        <label className="space-y-1.5 block">
+                          <span className="text-sm font-semibold text-gray-700">Notification Status</span>
+                          <Select
+                            value={form.notificationStatus || "completed_ready_for_pickup"}
+                            onChange={(value) => setForm({ ...form, notificationStatus: value })}
+                            options={[
+                              { value: "completed_ready_for_pickup", label: "Completed - Ready for Pickup" },
+                              { value: "completed", label: "Completed" },
+                              { value: "on_hold", label: "On Hold" },
+                              { value: "waiting_for_parts", label: "Waiting for Parts" },
+                            ]}
+                            placeholder="Select notification status"
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
 
               <div className="flex gap-3 pt-2 border-t border-gray-200 bg-white rounded-xl p-5 shadow-sm sticky bottom-0">
                 <button
@@ -472,4 +509,3 @@ export default function ServiceReportForm({
     </AnimatePresence>
   );
 }
-
