@@ -47,8 +47,11 @@ export async function GET(request: NextRequest) {
     const vehicleIds = Array.from(
       new Set((records || []).map((r) => r.vehicle_id).filter(Boolean))
     ) as string[];
+    const mechanicIds = Array.from(
+      new Set((records || []).map((r) => r.mechanic_id).filter(Boolean))
+    ) as string[];
 
-    const [repairsLookup, vehiclesLookup] = await Promise.all([
+    const [repairsLookup, vehiclesLookup, mechanicsLookup] = await Promise.all([
       repairRequestIds.length
         ? supabase
             .from("repair_requests")
@@ -60,6 +63,12 @@ export async function GET(request: NextRequest) {
             .from("vehicles")
             .select("id, license_plate, make, model, vehicle_number")
             .in("id", vehicleIds)
+        : { data: [] },
+      mechanicIds.length
+        ? supabase
+            .from("mechanics")
+            .select("id, name, email, airtable_id, user_id")
+            .in("id", mechanicIds)
         : { data: [] },
     ]);
 
@@ -91,16 +100,22 @@ export async function GET(request: NextRequest) {
       ])
     );
 
+    const mechanicMap = new Map(
+      (mechanicsLookup.data || []).map((m: any) => [m.id, m])
+    );
+
     const hydrated = (records || []).map((r) => {
       const repair = r.repair_request_id ? repairMap.get(r.repair_request_id) : null;
       const vehicle = r.vehicle_id ? vehicleMap.get(r.vehicle_id) : null;
+      const mechanic = r.mechanic_id ? mechanicMap.get(r.mechanic_id) : null;
+      const mechanicName = cleanMechanicName(r.mechanic_name, mechanic);
 
       return {
         id: r.id,
         repairRequestId: r.repair_request_id || undefined,
         vehicleId: r.vehicle_id || repair?.vehicleId || undefined,
         mechanicId: r.mechanic_id || undefined,
-        mechanicName: r.mechanic_name || "",
+        mechanicName,
         serviceType: r.service_type || repair?.makeModel || "",
         description: r.description || "",
         cost: r.cost !== null && r.cost !== undefined ? Number(r.cost) : undefined,
@@ -123,6 +138,23 @@ export async function GET(request: NextRequest) {
     console.error("Error in GET /api/service-records", error);
     return NextResponse.json({ error: "Failed to load service records" }, { status: 500 });
   }
+}
+
+function cleanMechanicName(raw: any, mechanicRow?: any): string {
+  if (raw) {
+    const str = raw.toString();
+    try {
+      const parsed = JSON.parse(str);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(Boolean).join(", ");
+      }
+    } catch (_) {
+      // not JSON, fall through
+    }
+    if (str.trim().length > 0) return str;
+  }
+  if (mechanicRow?.name) return mechanicRow.name;
+  return "";
 }
 
 export async function POST(request: NextRequest) {
