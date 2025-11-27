@@ -8,13 +8,8 @@ import Footer from '@/components/Footer'
 import { 
   Users, 
   Bell, 
-  Mail, 
-  Shield, 
-  UserCheck, 
-  Clock, 
   CheckCircle, 
-  XCircle,
-  MoreVertical,
+  Clock, 
   Send,
   Edit,
   Calendar,
@@ -38,18 +33,9 @@ export default function AdminSettingsPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [users, setUsers] = useState<User[]>([])
-  const [notifications, setNotifications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'users' | 'notifications' | 'calendar'>('users')
   const [editingUser, setEditingUser] = useState<User | null>(null)
-  const [showNotificationForm, setShowNotificationForm] = useState(false)
-  const [notificationForm, setNotificationForm] = useState({
-    title: '',
-    message: '',
-    type: 'info',
-    recipientIds: [] as string[],
-    recipientRoles: [] as string[],
-  })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -86,7 +72,6 @@ export default function AdminSettingsPage() {
     }
     setUser(parsedUser)
     loadUsers()
-    loadNotifications()
     loadCalendarSettings()
   }, [router])
 
@@ -171,17 +156,6 @@ export default function AdminSettingsPage() {
     }
   }
 
-  const loadNotifications = async () => {
-    try {
-      const res = await fetch('/api/admin/notifications')
-      if (!res.ok) throw new Error('Failed to load notifications')
-      const data = await res.json()
-      setNotifications(data.notifications || [])
-    } catch (err) {
-      console.error('Error loading notifications:', err)
-    }
-  }
-
   const handleUpdateUser = async (userId: string, updates: { role?: string; approval_status?: string; notifyOnRepair?: boolean }) => {
     setSaving(true)
     setError(null)
@@ -229,61 +203,6 @@ export default function AdminSettingsPage() {
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send password reset')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleCreateNotification = async () => {
-    setSaving(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      const res = await fetch('/api/admin/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(notificationForm),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to create notification')
-      }
-      await loadNotifications()
-      setNotificationForm({
-        title: '',
-        message: '',
-        type: 'info',
-        recipientIds: [],
-        recipientRoles: [],
-      })
-      setShowNotificationForm(false)
-      setSuccess('Notification created successfully')
-      setTimeout(() => setSuccess(null), 3000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create notification')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleDeleteNotification = async (notificationId: string) => {
-    if (!confirm('Are you sure you want to delete this notification?')) return
-    
-    setSaving(true)
-    setError(null)
-    try {
-      const res = await fetch(`/api/admin/notifications?id=${notificationId}`, {
-        method: 'DELETE',
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to delete notification')
-      }
-      await loadNotifications()
-      setSuccess('Notification deleted successfully')
-      setTimeout(() => setSuccess(null), 3000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete notification')
     } finally {
       setSaving(false)
     }
@@ -363,7 +282,7 @@ export default function AdminSettingsPage() {
                 >
                   <div className="flex items-center space-x-2">
                     <Bell className="w-5 h-5" />
-                    <span>Notifications</span>
+                    <span>Notification Recipients</span>
                   </div>
                 </button>
                 <button
@@ -674,71 +593,62 @@ export default function AdminSettingsPage() {
               </div>
             )}
 
-            {/* Notifications Tab */}
+            {/* Notification Recipients Tab */}
             {activeTab === 'notifications' && (
               <div className="space-y-6">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <div>
-                      <h2 className="text-xl font-semibold text-gray-900">Notifications</h2>
-                      <p className="text-sm text-gray-600 mt-1">Manage system notifications</p>
-                    </div>
-                    <button
-                      onClick={() => setShowNotificationForm(true)}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                    >
-                      Create Notification
-                    </button>
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900">Notification Recipients</h2>
+                    <p className="text-sm text-gray-600 mt-1">Select users who should receive system alerts and repair requests via SMS/Email.</p>
                   </div>
 
-                  <div className="space-y-4">
-                    {notifications.length === 0 ? (
-                      <p className="text-gray-500 text-center py-8">No notifications yet</p>
-                    ) : (
-                      notifications.map((notification) => (
-                        <div
-                          key={notification.id}
-                          className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <h3 className="font-semibold text-gray-900">{notification.title}</h3>
-                                <span className={`px-2 py-1 text-xs rounded-full ${
-                                  notification.type === 'error' ? 'bg-red-100 text-red-800' :
-                                  notification.type === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                                  notification.type === 'success' ? 'bg-green-100 text-green-800' :
-                                  'bg-blue-100 text-blue-800'
-                                }`}>
-                                  {notification.type}
-                                </span>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            User
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Role
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Receive Alerts
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {users
+                          .filter(u => u.role === 'admin' || u.role === 'mechanic')
+                          .map((u) => (
+                          <tr key={u.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{u.name}</div>
+                                <div className="text-sm text-gray-500">{u.email}</div>
+                                {u.phone && <div className="text-xs text-gray-400">{u.phone}</div>}
                               </div>
-                              <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
-                              <div className="flex items-center space-x-4 text-xs text-gray-500">
-                                <span>
-                                  {notification.recipient_roles?.length > 0 && (
-                                    <span>Roles: {notification.recipient_roles.join(', ')}</span>
-                                  )}
-                                  {notification.recipient_ids?.length > 0 && (
-                                    <span>Users: {notification.recipient_ids.length}</span>
-                                  )}
-                                </span>
-                                <span>
-                                  {new Date(notification.created_at).toLocaleString()}
-                                </span>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => handleDeleteNotification(notification.id)}
-                              className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete notification"
-                            >
-                              <XCircle className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(u.role)}`}>
+                                {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <label className="flex items-center space-x-2 cursor-pointer">
+                                  <input 
+                                      type="checkbox" 
+                                      checked={u.notify_on_repair || false} 
+                                      onChange={(e) => handleUpdateUser(u.id, { notifyOnRepair: e.target.checked })}
+                                      className="form-checkbox h-4 w-4 text-primary-600 transition duration-150 ease-in-out"
+                                  />
+                                  <span className="text-sm text-gray-600">{u.notify_on_repair ? 'Enabled' : 'Disabled'}</span>
+                              </label>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -854,127 +764,6 @@ export default function AdminSettingsPage() {
                 disabled={saving}
               >
                 {saving ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Notification Modal */}
-      {showNotificationForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Create Notification</h3>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
-                <input
-                  type="text"
-                  value={notificationForm.title}
-                  onChange={(e) => setNotificationForm({ ...notificationForm, title: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
-                  placeholder="Notification title"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                <textarea
-                  value={notificationForm.message}
-                  onChange={(e) => setNotificationForm({ ...notificationForm, message: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
-                  rows={4}
-                  placeholder="Notification message"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-                <select
-                  value={notificationForm.type}
-                  onChange={(e) => setNotificationForm({ ...notificationForm, type: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
-                >
-                  <option value="info">Info</option>
-                  <option value="warning">Warning</option>
-                  <option value="error">Error</option>
-                  <option value="success">Success</option>
-                  <option value="booking">Booking</option>
-                  <option value="repair_request">Repair Request</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Send to Roles</label>
-                <div className="space-y-2">
-                  {['admin', 'mechanic', 'driver', 'customer'].map((role) => (
-                    <label key={role} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={notificationForm.recipientRoles.includes(role)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setNotificationForm({
-                              ...notificationForm,
-                              recipientRoles: [...notificationForm.recipientRoles, role],
-                            })
-                          } else {
-                            setNotificationForm({
-                              ...notificationForm,
-                              recipientRoles: notificationForm.recipientRoles.filter((r) => r !== role),
-                            })
-                          }
-                        }}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-gray-700 capitalize">{role}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Send to Specific Users</label>
-                <select
-                  multiple
-                  value={notificationForm.recipientIds}
-                  onChange={(e) => {
-                    const selected = Array.from(e.target.selectedOptions, (option) => option.value)
-                    setNotificationForm({ ...notificationForm, recipientIds: selected })
-                  }}
-                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
-                  size={5}
-                >
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.email}) - {u.role}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple users</p>
-              </div>
-            </div>
-            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowNotificationForm(false)
-                  setNotificationForm({
-                    title: '',
-                    message: '',
-                    type: 'info',
-                    recipientIds: [],
-                    recipientRoles: [],
-                  })
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-                disabled={saving}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateNotification}
-                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
-                disabled={saving || !notificationForm.title || !notificationForm.message}
-              >
-                {saving ? 'Creating...' : 'Create Notification'}
               </button>
             </div>
           </div>

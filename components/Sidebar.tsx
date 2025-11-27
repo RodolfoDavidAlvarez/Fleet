@@ -16,6 +16,7 @@ import {
   X,
   ChevronRight,
   MessageSquare,
+  Megaphone,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
@@ -43,6 +44,7 @@ const mechanicOnlyLinks = [
 ]
 
 const adminOnlyLinks = [
+  { href: '/admin/announcements', label: 'Announcements', icon: Megaphone },
   { href: '/admin/settings', label: 'Admin Settings', icon: Settings },
 ]
 

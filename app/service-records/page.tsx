@@ -20,7 +20,6 @@ import {
   X,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { Pagination } from "@/components/ui/pagination";
 
 const statusLabels: Record<string, string> = {
   in_progress: "In Progress",
@@ -47,8 +46,6 @@ export default function ServiceRecordsPage() {
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<ServiceRecord | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -133,19 +130,6 @@ export default function ServiceRecordsPage() {
     }
     return list;
   }, [filter, search, records]);
-
-  // Pagination logic
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginatedRecords = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filtered.slice(startIndex, endIndex);
-  }, [filtered, currentPage, itemsPerPage]);
-
-  // Reset to page 1 when filter or search changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filter, search]);
 
   const statusCounts = useMemo(() => {
     return records.reduce(
@@ -356,7 +340,7 @@ export default function ServiceRecordsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {paginatedRecords.map((rec) => (
+                    {filtered.map((rec) => (
                       <tr
                         key={rec.id}
                         onClick={() => setSelected(rec)}
@@ -424,19 +408,6 @@ export default function ServiceRecordsPage() {
                 </table>
               )}
             </div>
-
-            {/* Pagination */}
-            {!loading && filtered.length > 0 && (
-              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                  itemsPerPage={itemsPerPage}
-                  totalItems={filtered.length}
-                />
-              </div>
-            )}
           </div>
         </main>
       </div>
