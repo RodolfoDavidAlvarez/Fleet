@@ -16,6 +16,7 @@ import {
   X,
   Copy,
   Edit,
+  FileText,
 } from "lucide-react";
 import { RepairReport, RepairRequest } from "@/types";
 import { formatDate } from "@/lib/utils";
@@ -75,27 +76,51 @@ export default function RepairsPage() {
     alert("Link copied to clipboard"); 
   };
 
+  const getRepairFormLink = () => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${baseUrl}/repair`;
+  };
+
+  const copyRepairFormLink = () => {
+    const link = getRepairFormLink();
+    navigator.clipboard.writeText(link);
+    alert("Repair submission form link copied to clipboard!");
+  };
+
+  const openRepairForm = () => {
+    window.open(getRepairFormLink(), '_blank');
+  };
+
   const sendBookingLink = async (request: RepairRequest) => {
     try {
       setSendingId(request.id);
+      // Build request body, only including defined values
+      const body: any = {};
+      if (request.aiCategory) body.serviceType = request.aiCategory;
+      if (request.scheduledDate) body.suggestedDate = request.scheduledDate;
+      if (request.scheduledTime) body.suggestedTime = request.scheduledTime;
+
       const res = await fetch(`/api/repair-requests/${request.id}/schedule`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          serviceType: request.aiCategory,
-          suggestedDate: request.scheduledDate,
-          suggestedTime: request.scheduledTime,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send link");
+      if (!res.ok) {
+        const errorMsg = data.error || data.details ? JSON.stringify(data.details || data.error) : "Failed to send link";
+        throw new Error(errorMsg);
+      }
 
       // Refetch to get updated status
       refetch();
+      if (selected && selected.id === request.id) {
+        setSelected({ ...selected, ...data.request });
+      }
       alert("Booking link sent to driver.");
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : "Failed to send booking link");
+      const errorMessage = err instanceof Error ? err.message : "Failed to send booking link";
+      alert(errorMessage);
     } finally {
       setSendingId(null);
     }
@@ -202,13 +227,32 @@ export default function RepairsPage() {
                 <h1 className="text-3xl font-bold text-gray-900">Repair requests</h1>
                 <p className="text-gray-600">Manage repair requests, triage issues, and schedule bookings.</p>
               </div>
-              <button
-                onClick={() => refetch()}
-                className="btn-secondary px-4 py-2 flex items-center gap-2"
-              >
-                <Loader2 className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={copyRepairFormLink}
+                  className="btn btn-secondary flex items-center gap-2"
+                  title="Copy repair submission form link"
+                >
+                  <Copy className="h-4 w-4" />
+                  Copy Form Link
+                </button>
+                <button
+                  onClick={openRepairForm}
+                  className="btn btn-primary flex items-center gap-2"
+                  title="Open repair submission form"
+                >
+                  <FileText className="h-4 w-4" />
+                  New Repair Request
+                </button>
+                <button
+                  onClick={() => refetch()}
+                  className="btn btn-secondary flex items-center gap-2"
+                  disabled={isLoading}
+                >
+                  <Loader2 className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
             </div>
 
             {/* Filters and Search */}
@@ -312,7 +356,7 @@ export default function RepairsPage() {
                                             {req.bookingLink && (
                                                 <button 
                                                     onClick={() => copyLink(req.bookingLink)}
-                                                    className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                                    className="btn btn-ghost btn-icon"
                                                     title="Copy Booking Link"
                                                 >
                                                     <Copy className="h-4 w-4" />
@@ -320,7 +364,7 @@ export default function RepairsPage() {
                                             )}
                                             <button 
                                                 onClick={() => setSelected(req)}
-                                                className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline p-1.5"
+                                                className="btn btn-ghost text-sm"
                                             >
                                                 View
                                             </button>
@@ -355,118 +399,174 @@ export default function RepairsPage() {
                 exit={{ x: "100%" }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
-                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white z-10">
-                <div>
-                    <h2 className="text-lg font-bold text-gray-900">Request Details</h2>
-                    <p className="text-sm text-gray-500">ID: {selected.id.slice(0, 8)}</p>
+                <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white flex items-center justify-between sticky top-0 z-10 shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center">
+                        <Wrench className="h-5 w-5 text-primary-600" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900">Request Details</h2>
+                        <p className="text-xs text-gray-500 font-mono">ID: {selected.id.slice(0, 8)}</p>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    {selected.bookingLink && (
-                        <button 
-                            onClick={() => copyLink(selected.bookingLink)}
-                            className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
-                        >
-                            <Copy className="h-3 w-3" /> Copy Link
-                        </button>
-                    )}
                     <button
                         onClick={() => setSelected(null)}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                        className="btn btn-ghost btn-icon"
+                        aria-label="Close"
                     >
-                        <X className="h-6 w-6" />
+                        <X className="h-5 w-5" />
                     </button>
                 </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50">
                 {/* Header Info */}
-                <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${selected.urgency === 'critical' || selected.urgency === 'high' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                        <Wrench className="h-5 w-5" />
+                <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                    <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-4">
+                            <div className={`h-12 w-12 rounded-xl flex items-center justify-center shadow-sm ${
+                                selected.urgency === 'critical' || selected.urgency === 'high' 
+                                    ? 'bg-gradient-to-br from-red-100 to-red-50 text-red-600' 
+                                    : 'bg-gradient-to-br from-blue-100 to-blue-50 text-blue-600'
+                            }`}>
+                                <Wrench className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <p className="text-base font-bold text-gray-900">{selected.driverName}</p>
+                                <p className="text-sm text-gray-500 mt-0.5">{formatDate(selected.createdAt)}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border-2 ${statusStyles[selected.status]}`}>
+                                {selected.status.replace("_", " ")}
+                            </span>
+                            {!editing && (
+                                <button
+                                    onClick={() => openEdit(selected)}
+                                    className="btn btn-ghost btn-sm flex items-center gap-1.5"
+                                >
+                                    <Edit className="h-4 w-4" /> Edit
+                                </button>
+                            )}
+                        </div>
                     </div>
-                    <div>
-                    <p className="text-sm font-semibold text-gray-900">{selected.driverName}</p>
-                    <p className="text-xs text-gray-500">{formatDate(selected.createdAt)}</p>
+                    <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                        <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
+                            selected.urgency === 'critical' ? 'bg-red-100 text-red-700 border border-red-200' :
+                            selected.urgency === 'high' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
+                            selected.urgency === 'medium' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
+                            'bg-gray-100 text-gray-700 border border-gray-200'
+                        }`}>
+                            {selected.urgency?.toUpperCase() || 'MEDIUM'}
+                        </span>
+                        {selected.aiCategory && (
+                            <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                {selected.aiCategory}
+                            </span>
+                        )}
                     </div>
-                    <span className={`ml-auto px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${statusStyles[selected.status]}`}>
-                    {selected.status.replace("_", " ")}
-                    </span>
-                    {!editing && (
-                    <button
-                        onClick={() => openEdit(selected)}
-                        className="ml-3 text-sm font-medium text-primary-600 hover:text-primary-700"
-                    >
-                        Edit
-                    </button>
-                    )}
                 </div>
 
                 {!editing ? (
                     <>
                     {/* Read Only View */}
-                    <section>
-                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <ClipboardList className="h-4 w-4" /> Issue Description
+                    <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg bg-primary-100 flex items-center justify-center">
+                                <ClipboardList className="h-4 w-4 text-primary-600" />
+                            </div>
+                            Issue Description
                         </h3>
-                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-                        {selected.description}
+                        <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 border border-gray-200 rounded-lg p-5 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap shadow-inner">
+                            {selected.description}
                         </div>
                     </section>
                     
                     {selected.thumbUrls?.length > 0 && (
-                        <section>
-                            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                <Camera className="h-4 w-4" /> Photos
+                        <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                                    <Camera className="h-4 w-4 text-purple-600" />
+                                </div>
+                                Photos ({selected.thumbUrls.length})
                             </h3>
-                            <div className="flex gap-2 overflow-x-auto pb-2">
+                            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                                 {selected.thumbUrls.map((url, i) => (
-                                <a key={i} href={selected.photoUrls[i] || url} target="_blank" rel="noopener noreferrer">
-                                    <img src={url} alt={`Evidence ${i+1}`} className="h-24 w-24 rounded-lg object-cover border hover:opacity-90 transition-opacity" />
+                                <a 
+                                    key={i} 
+                                    href={selected.photoUrls[i] || url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="group relative flex-shrink-0"
+                                >
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-xl transition-colors z-10" />
+                                    <img 
+                                        src={url} 
+                                        alt={`Evidence ${i+1}`} 
+                                        className="h-32 w-32 rounded-xl object-cover border-2 border-gray-200 group-hover:border-primary-300 shadow-md group-hover:shadow-lg transition-all" 
+                                    />
+                                    <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                                        View Full
+                                    </div>
                                 </a>
                                 ))}
                             </div>
                         </section>
                     )}
 
-                    <section>
-                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <Wrench className="h-4 w-4" /> Vehicle & Contact
+                    <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg bg-green-100 flex items-center justify-center">
+                                <Wrench className="h-4 w-4 text-green-600" />
+                            </div>
+                            Vehicle & Contact
                         </h3>
-                        <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
-                        <div>
-                            <p className="text-xs text-gray-500 mb-1">Vehicle</p>
-                            <p className="font-medium text-gray-900">{selected.vehicleIdentifier || "—"}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500 mb-1">Odometer</p>
-                            <p className="font-medium text-gray-900">{selected.odometer ? `${selected.odometer.toLocaleString()} mi` : "—"}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500 mb-1">Phone</p>
-                            <p className="font-medium text-gray-900">{selected.driverPhone || "—"}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500 mb-1">Location</p>
-                            <p className="font-medium text-gray-900">{selected.location || "—"}</p>
-                        </div>
+                        <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-5 grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle</p>
+                                <p className="text-base font-bold text-gray-900">{selected.vehicleIdentifier || <span className="text-gray-400 italic">Not specified</span>}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Odometer</p>
+                                <p className="text-base font-bold text-gray-900">{selected.odometer ? `${selected.odometer.toLocaleString()} mi` : <span className="text-gray-400 italic">—</span>}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Phone</p>
+                                <a 
+                                    href={`tel:${selected.driverPhone}`}
+                                    className="text-base font-bold text-primary-600 hover:text-primary-700 hover:underline"
+                                >
+                                    {selected.driverPhone || <span className="text-gray-400 italic">—</span>}
+                                </a>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Location</p>
+                                <p className="text-base font-bold text-gray-900">{selected.location || <span className="text-gray-400 italic">—</span>}</p>
+                            </div>
                         </div>
                     </section>
                     
                     {/* Actions */}
-                    <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
-                        <p className="text-sm font-bold text-gray-900">Actions</p>
-                        <div className="flex gap-3">
+                    <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                                <CheckCircle className="h-4 w-4 text-indigo-600" />
+                            </div>
+                            Actions
+                        </h3>
+                        <div className="flex flex-col sm:flex-row gap-3">
                             <button
                                 onClick={() => sendBookingLink(selected)}
                                 disabled={sendingId === selected.id}
-                                className="btn-primary flex-1 justify-center flex items-center gap-2"
+                                className="btn btn-primary flex-1 flex items-center gap-2"
                             >
                                 {sendingId === selected.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 Resend Booking Link
                             </button>
                             <button
                                 onClick={() => openReport(selected)}
-                                className="btn-secondary flex-1 justify-center flex items-center gap-2"
+                                className="btn btn-secondary flex-1 flex items-center gap-2"
                             >
                                 <CheckCircle className="h-4 w-4" />
                                 Complete & Report
@@ -552,14 +652,14 @@ export default function RepairsPage() {
                     <div className="flex gap-3">
                         <button
                         onClick={() => setEditing(false)}
-                        className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                        className="btn btn-secondary flex-1"
                         disabled={updateRepair.isPending}
                         >
                         Cancel
                         </button>
                         <button
                         onClick={submitEdit}
-                        className="flex-1 btn-primary py-2.5 justify-center flex items-center gap-2 shadow-lg shadow-primary-500/20"
+                        className="btn btn-primary flex-1 flex items-center gap-2 justify-center"
                         disabled={updateRepair.isPending}
                         >
                         {updateRepair.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
@@ -582,8 +682,12 @@ export default function RepairsPage() {
                 <p className="text-sm text-gray-500">Report for</p>
                 <h3 className="text-lg font-semibold text-gray-900">{selected.driverName}</h3>
               </div>
-              <button className="text-gray-500 hover:text-gray-800" onClick={() => setReportModalOpen(false)}>
-                ✕
+              <button 
+                className="btn btn-ghost btn-icon" 
+                onClick={() => setReportModalOpen(false)}
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
               </button>
             </div>
 
@@ -637,11 +741,18 @@ export default function RepairsPage() {
             </div>
 
             <div className="flex gap-2">
-              <button onClick={submitReport} className="btn-primary flex-1 justify-center flex items-center gap-2">
+              <button 
+                onClick={submitReport} 
+                className="btn btn-primary flex-1 flex items-center gap-2 justify-center"
+                disabled={submitReportMutation.isPending}
+              >
                 {submitReportMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                 Save report
               </button>
-              <button onClick={() => setReportModalOpen(false)} className="btn-secondary flex-1 justify-center flex items-center gap-2">
+              <button 
+                onClick={() => setReportModalOpen(false)} 
+                className="btn btn-secondary flex-1 flex items-center gap-2 justify-center"
+              >
                 Cancel
               </button>
             </div>
