@@ -24,6 +24,16 @@ function rowToVehicle(row: any): Vehicle {
     driverEmail: row.driver_email || row.driver?.email,
     driverAssignedDate: row.assigned_date,
     photoUrl: row.photo_url,
+    // Enhanced fields mapping
+    department: row.department,
+    supervisor: row.supervisor,
+    vehicleNumber: row.vehicle_num || row.vehicle_number, // Handle both alias and raw column
+    tagExpiry: row.tag_expiry,
+    loanLender: row.loan_lender,
+    firstAidFire: row.first_aid_fire,
+    title: row.title,
+    photoUrls: row.photo_urls || [],
+    airtableId: row.airtable_id,
     createdAt: row.created_at,
   };
 }
@@ -292,7 +302,40 @@ export const vehicleDB = {
       return undefined;
     }
 
-    return rowToVehicle(data);
+    // Fetch service history
+    const { data: serviceHistory } = await supabase
+      .from("service_records")
+      .select("*")
+      .eq("vehicle_id", id)
+      .order("date", { ascending: false });
+
+    // Fetch repair requests (try matching by exact ID first, then fallback to identifiers)
+    // Note: Repair requests from Airtable might only have text identifiers
+    const { data: repairRequests } = await supabase
+      .from("repair_requests")
+      .select("*")
+      .or(`vehicle_id.eq.${id},vehicle_identifier.eq.${data.vin},vehicle_identifier.eq.${data.vehicle_number || 'fallback'}`)
+      .order("created_at", { ascending: false });
+
+    const vehicle = rowToVehicle(data);
+    
+    vehicle.serviceHistory = (serviceHistory || []).map((record: any) => ({
+        id: record.id,
+        vehicleId: record.vehicle_id,
+        date: record.date,
+        serviceType: record.service_type,
+        description: record.description,
+        cost: record.cost,
+        mechanicId: record.mechanic_id,
+        mechanicName: record.mechanic_name,
+        status: record.status,
+        mileage: record.mileage,
+        nextServiceDue: record.next_service_due
+    }));
+
+    vehicle.repairRequests = (repairRequests || []).map(rowToRepairRequest);
+
+    return vehicle;
   },
 
   create: async (vehicle: Omit<Vehicle, "id" | "createdAt">): Promise<Vehicle> => {

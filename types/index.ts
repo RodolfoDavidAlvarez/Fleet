@@ -30,7 +30,18 @@ export interface Vehicle {
   driverEmail?: string
   driverAssignedDate?: string
   photoUrl?: string
+  // Enhanced Airtable Fields
+  department?: string
+  supervisor?: string
+  vehicleNumber?: string
+  tagExpiry?: string
+  loanLender?: string
+  firstAidFire?: string
+  title?: string
+  photoUrls?: string[]
+  airtableId?: string
   createdAt: string
+  repairRequests?: RepairRequest[]
 }
 
 export interface ServiceRecord {
@@ -41,7 +52,11 @@ export interface ServiceRecord {
   description: string
   cost: number
   mechanicId?: string
+  mechanicName?: string
   partsUsed?: Part[]
+  status?: string
+  mileage?: number
+  nextServiceDue?: string
 }
 
 export interface Part {

@@ -213,58 +213,59 @@ export default function DriversPage() {
             </div>
 
             {formOpen && (
-              <div className="card-surface rounded-xl border border-gray-200 p-6 mb-6">
-                <div className="flex items-start justify-between mb-4">
+              <div className="card-surface rounded-2xl border border-gray-200 p-6 mb-6 shadow-sm animate-in slide-in-from-top-4 duration-200">
+                <div className="flex items-start justify-between mb-6 border-b border-gray-100 pb-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">New driver</h2>
-                    <p className="text-sm text-gray-600">Create a driver profile to assign vehicles.</p>
+                    <h2 className="text-lg font-bold text-gray-900">Add New Driver</h2>
+                    <p className="text-sm text-gray-600 mt-1">Create a driver profile to assign vehicles.</p>
                   </div>
                   <button
-                    className="text-gray-500 hover:text-gray-800"
+                    className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
                     onClick={() => setFormOpen(false)}
                     aria-label="Close"
                   >
                     <X className="h-5 w-5" />
                   </button>
                 </div>
-                <form onSubmit={handleCreateDriver} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <form onSubmit={handleCreateDriver} className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Name</label>
+                    <label className="text-sm font-medium text-gray-700">Full Name <span className="text-red-500">*</span></label>
                     <input
                       required
                       value={driverForm.name}
                       onChange={(e) => setDriverForm({ ...driverForm, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="Jamie Driver"
+                      className="input-field w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                      placeholder="e.g. Jamie Driver"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Email</label>
+                    <label className="text-sm font-medium text-gray-700">Email Address <span className="text-red-500">*</span></label>
                     <input
                       required
                       type="email"
                       value={driverForm.email}
                       onChange={(e) => setDriverForm({ ...driverForm, email: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="driver@example.com"
+                      className="input-field w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                      placeholder="e.g. driver@example.com"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Phone</label>
+                    <label className="text-sm font-medium text-gray-700">Phone Number</label>
                     <input
                       value={driverForm.phone}
                       onChange={(e) => setDriverForm({ ...driverForm, phone: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="+1 (555) 123-4567"
+                      className="input-field w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                      placeholder="e.g. +1 (555) 123-4567"
                     />
                   </div>
-                  <div className="md:col-span-3 flex justify-end">
+                  <div className="md:col-span-3 flex justify-end pt-2">
                     <button
                       type="submit"
                       disabled={saving}
-                      className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                      className="btn-primary px-6 py-2.5 rounded-lg flex items-center gap-2 shadow-lg shadow-primary-900/20"
                     >
-                      {saving ? 'Saving...' : 'Save Driver'}
+                      <Plus className="h-4 w-4" />
+                      {saving ? 'Saving...' : 'Create Driver Profile'}
                     </button>
                   </div>
                 </form>
@@ -286,73 +287,69 @@ export default function DriversPage() {
                 <p className="text-gray-500 text-lg">No drivers found.</p>
               </div>
             ) : viewMode === 'list' ? (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="card-surface rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-medium">
-                        <th className="px-6 py-4">Driver</th>
-                        <th className="px-6 py-4">Contact Info</th>
+                      <tr className="bg-gray-50 border-b border-gray-100 text-xs font-bold uppercase text-gray-500 tracking-wider">
+                        <th className="px-6 py-4">Driver Profile</th>
+                        <th className="px-6 py-4">Contact Details</th>
+                        <th className="px-6 py-4">Role & Status</th>
                         <th className="px-6 py-4 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100 bg-white">
                       {drivers.map((driver) => (
-                        <tr key={driver.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="bg-primary-100 p-2 rounded-full">
-                                <Users className="h-5 w-5 text-primary-600" />
+                        <tr 
+                          key={driver.id} 
+                          onClick={() => handleEditClick(driver)}
+                          className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                        >
+                          <td className="px-6 py-4 align-middle">
+                            <div className="flex items-center space-x-4">
+                              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center text-primary-700 font-bold shadow-sm">
+                                {driver.name.charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <h3 className="text-sm font-semibold text-gray-900">{driver.name}</h3>
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                  Driver
-                                </span>
+                                <h3 className="text-sm font-bold text-gray-900 group-hover:text-primary-700 transition-colors">{driver.name}</h3>
+                                <p className="text-xs text-gray-500">ID: {driver.id.slice(0, 6)}</p>
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-4 align-middle">
                             <div className="space-y-1">
                               <div className="flex items-center text-sm text-gray-600">
-                                <Mail className="h-4 w-4 mr-2 text-gray-400" />
+                                <Mail className="h-3.5 w-3.5 mr-2 text-gray-400" />
                                 {driver.email}
                               </div>
-                              {driver.phone && (
+                              {driver.phone ? (
                                 <div className="flex items-center text-sm text-gray-600">
-                                  <Phone className="h-4 w-4 mr-2 text-gray-400" />
+                                  <Phone className="h-3.5 w-3.5 mr-2 text-gray-400" />
                                   {driver.phone}
+                                </div>
+                              ) : (
+                                <div className="flex items-center text-sm text-gray-400 italic">
+                                  <Phone className="h-3.5 w-3.5 mr-2 opacity-50" />
+                                  No phone
                                 </div>
                               )}
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-3">
-                              <button 
-                                onClick={() => router.push('/admin/vehicles')}
-                                className="text-gray-500 hover:text-primary-600 text-sm font-medium flex items-center gap-1 transition-colors"
-                                title="View Vehicles"
-                              >
-                                <Car className="h-4 w-4" />
-                                <span className="hidden lg:inline">Vehicles</span>
-                              </button>
-                              <button 
-                                onClick={() => handleEditClick(driver)}
-                                className="text-gray-500 hover:text-primary-600 text-sm font-medium flex items-center gap-1 transition-colors"
-                                title="Edit Driver"
-                              >
-                                <Edit className="h-4 w-4" />
-                                <span className="hidden lg:inline">Edit</span>
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteDriver(driver.id)}
-                                className="text-gray-500 hover:text-red-600 text-sm font-medium flex items-center gap-1 transition-colors"
-                                title="Delete Driver"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="hidden lg:inline">Delete</span>
-                              </button>
-                            </div>
+                          <td className="px-6 py-4 align-middle">
+                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100 uppercase tracking-wide">
+                                {driver.role}
+                             </span>
+                          </td>
+                          <td className="px-6 py-4 text-right align-middle">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditClick(driver);
+                              }}
+                              className="text-sm font-medium text-gray-500 hover:text-primary-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100"
+                            >
+                              View Profile
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -426,92 +423,123 @@ export default function DriversPage() {
 
             {editingDriver && (
               <div className="fixed inset-0 z-50 overflow-hidden">
-                <div className="absolute inset-0 bg-black bg-opacity-30 backdrop-blur-sm transition-opacity" onClick={() => setEditingDriver(null)} />
-                <div className="absolute inset-y-0 right-0 max-w-md w-full bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col h-full border-l border-gray-200">
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <div className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" onClick={() => setEditingDriver(null)} />
+                <div className="absolute inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl transform transition-transform duration-300 translate-x-0 flex flex-col h-full">
+                  {/* Header */}
+                  <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white z-10">
                     <div>
-                      <h2 className="text-xl font-bold text-gray-900">Edit Driver</h2>
-                      <p className="text-sm text-gray-500 mt-0.5">Update driver details and settings</p>
+                      <h2 className="text-lg font-bold text-gray-900">Driver Profile</h2>
+                      <p className="text-sm text-gray-500">Manage driver details and assignments</p>
                     </div>
-                    <button
-                      onClick={() => setEditingDriver(null)}
-                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <X className="h-5 w-5" />
+                    <button onClick={() => setEditingDriver(null)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+                      <X className="h-6 w-6" />
                     </button>
                   </div>
-                  
-                  <div className="flex-1 overflow-y-auto p-6">
+
+                  {/* Content */}
+                  <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                    {/* Hero Section */}
+                    <div className="flex flex-col items-center text-center mb-8">
+                      <div className="h-24 w-24 rounded-full bg-primary-100 flex items-center justify-center text-3xl font-bold text-primary-700 mb-4 ring-4 ring-white shadow-md">
+                        {editingDriver.name.charAt(0).toUpperCase()}
+                      </div>
+                      <h3 className="text-2xl font-bold text-gray-900">{editingDriver.name}</h3>
+                      <span className="mt-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wide border border-blue-100">
+                        {editingDriver.role}
+                      </span>
+                    </div>
+
                     <form id="edit-driver-form" onSubmit={handleUpdateDriver} className="space-y-6">
                       <div className="space-y-4">
-                        <h3 className="text-sm font-medium text-gray-900 uppercase tracking-wider">Personal Information</h3>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Full Name</label>
-                            <input
-                              required
-                              value={editForm.name}
-                              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                              placeholder="e.g. Jamie Driver"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Email Address</label>
-                            <input
-                              required
-                              type="email"
-                              value={editForm.email}
-                              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                              placeholder="e.g. driver@example.com"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Phone Number</label>
-                            <input
-                              value={editForm.phone}
-                              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                              placeholder="e.g. +1 (555) 123-4567"
-                            />
-                          </div>
+                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100 pb-2 mb-4">
+                          Contact Information
+                        </h4>
+                        
+                        <div className="space-y-3">
+                          <label className="block">
+                            <span className="text-sm font-medium text-gray-700 mb-1 block">Full Name</span>
+                            <div className="relative">
+                              <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <input
+                                required
+                                value={editForm.name}
+                                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                placeholder="Jamie Driver"
+                              />
+                            </div>
+                          </label>
+
+                          <label className="block">
+                            <span className="text-sm font-medium text-gray-700 mb-1 block">Email Address</span>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <input
+                                required
+                                type="email"
+                                value={editForm.email}
+                                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                placeholder="driver@example.com"
+                              />
+                            </div>
+                          </label>
+
+                          <label className="block">
+                            <span className="text-sm font-medium text-gray-700 mb-1 block">Phone Number</span>
+                            <div className="relative">
+                              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <input
+                                value={editForm.phone}
+                                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                placeholder="+1 (555) 123-4567"
+                              />
+                            </div>
+                          </label>
                         </div>
                       </div>
 
-                      <div className="pt-6 border-t border-gray-200">
-                         <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
-                            <div className="flex items-start">
-                               <div className="flex-shrink-0">
-                                  <Car className="h-5 w-5 text-blue-600" />
-                               </div>
-                               <div className="ml-3">
-                                  <h3 className="text-sm font-medium text-blue-800">Assigned Vehicles</h3>
-                                  <div className="mt-2 text-sm text-blue-700">
-                                     <p>To manage vehicle assignments, please go to the Vehicles page.</p>
-                                  </div>
-                               </div>
+                      <div className="pt-4">
+                         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+                            <div className="bg-white p-2 rounded-lg shadow-sm">
+                               <Car className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                               <h3 className="text-sm font-bold text-blue-900">Assigned Vehicles</h3>
+                               <p className="text-xs text-blue-700 mt-1 leading-relaxed">
+                                 Vehicle assignments are managed from the Fleet page. This driver currently has access to the fleet pool.
+                               </p>
+                               <button 
+                                 type="button"
+                                 onClick={() => router.push('/admin/vehicles')}
+                                 className="mt-3 text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                               >
+                                 Manage Assignments →
+                               </button>
                             </div>
                          </div>
                       </div>
                     </form>
                   </div>
 
-                  <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+                  {/* Footer */}
+                  <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-3">
                     <button
                       type="button"
-                      onClick={() => setEditingDriver(null)}
-                      className="px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-white hover:shadow-sm font-medium transition-all"
+                      onClick={() => handleDeleteDriver(editingDriver.id)}
+                      className="flex-1 px-4 py-2.5 border border-red-200 text-red-700 rounded-xl font-medium hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
                     >
-                      Cancel
+                      <Trash2 className="h-4 w-4" />
+                      Delete
                     </button>
                     <button
                       type="submit"
                       form="edit-driver-form"
                       disabled={updating}
-                      className="bg-primary-600 text-white px-6 py-2.5 rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium shadow-sm hover:shadow transition-all"
+                      className="flex-[2] btn-primary justify-center flex items-center gap-2 shadow-lg shadow-primary-900/10"
                     >
-                      {updating ? 'Saving Changes...' : 'Save Changes'}
+                      {updating ? 'Saving...' : 'Save Changes'}
                     </button>
                   </div>
                 </div>
