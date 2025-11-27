@@ -23,6 +23,22 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: "Repair request not found" }, { status: 404 });
     }
 
+    // Prevent duplicate sends - if already sent recently (within last 5 seconds), return existing
+    if (existing.bookingLinkSentAt) {
+      const sentAt = new Date(existing.bookingLinkSentAt);
+      const now = new Date();
+      const secondsSinceSent = (now.getTime() - sentAt.getTime()) / 1000;
+      
+      if (secondsSinceSent < 5) {
+        // Recently sent, return existing without sending again
+        return NextResponse.json({ 
+          request: existing, 
+          link: existing.bookingLink,
+          message: "Booking link was already sent recently"
+        });
+      }
+    }
+
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
       process.env.NEXTAUTH_URL ||
@@ -42,6 +58,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const updated = await repairRequestDB.update(existing.id, {
       status: "waiting_booking",
       bookingLink: bookingLink,
+      bookingLinkSentAt: new Date().toISOString(),
       scheduledDate: parsed.data.suggestedDate,
       scheduledTime: parsed.data.suggestedTime,
     });

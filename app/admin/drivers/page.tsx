@@ -7,9 +7,11 @@ import Header from '@/components/Header'
 import { Users, Plus, Mail, Phone, CheckCircle, Clock, X, Edit, Loader2, Save } from 'lucide-react'
 import { User } from '@/types'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useToast } from '@/components/ui/toast'
 
 export default function DriversPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const [user, setUser] = useState<any>(null)
   const [drivers, setDrivers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -91,10 +93,10 @@ export default function DriversPage() {
       setSelectedDriver(updatedDriver)
       setEditing(false)
       setEditForm({})
-      alert('Driver updated successfully!')
+      showToast('Driver updated successfully!', 'success')
     } catch (err) {
       console.error('Error updating driver:', err)
-      alert(err instanceof Error ? err.message : 'Failed to update driver')
+      showToast(err instanceof Error ? err.message : 'Failed to update driver', 'error')
     } finally {
       setSaving(false)
     }

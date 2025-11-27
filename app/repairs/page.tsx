@@ -17,12 +17,14 @@ import {
   Copy,
   Edit,
   FileText,
+  AlertCircle,
 } from "lucide-react";
 import { RepairReport, RepairRequest } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { useRepairs, useUpdateRepair, useSubmitRepairReport } from "@/hooks/use-repairs";
 import { TableRowSkeleton } from "@/components/ui/loading-states";
 import { motion, AnimatePresence } from "framer-motion";
+import { useToast } from "@/components/ui/toast";
 
 const statusStyles: Record<string, string> = {
   submitted: "bg-yellow-50 text-yellow-700 border-yellow-200",
@@ -36,6 +38,7 @@ const statusStyles: Record<string, string> = {
 
 export default function RepairsPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [user, setUser] = useState<any>(null);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -73,7 +76,7 @@ export default function RepairsPage() {
   const copyLink = (link?: string) => {
     if (!link) return;
     navigator.clipboard.writeText(link);
-    alert("Link copied to clipboard"); 
+    showToast("Link copied to clipboard", "success", 3000);
   };
 
   const getRepairFormLink = () => {
@@ -84,7 +87,7 @@ export default function RepairsPage() {
   const copyRepairFormLink = () => {
     const link = getRepairFormLink();
     navigator.clipboard.writeText(link);
-    alert("Repair submission form link copied to clipboard!");
+    showToast("Repair submission form link copied to clipboard!", "success", 3000);
   };
 
   const openRepairForm = () => {
@@ -112,15 +115,18 @@ export default function RepairsPage() {
       }
 
       // Refetch to get updated status
-      refetch();
+      await refetch();
       if (selected && selected.id === request.id) {
-        setSelected({ ...selected, ...data.request });
+        // Update selected with the response data which includes bookingLinkSentAt
+        const updatedRequest = data.request || { ...selected, bookingLinkSentAt: new Date().toISOString() };
+        setSelected(updatedRequest);
       }
-      alert("Booking link sent to driver.");
+      // Also update the request in the list if it's visible
+      showToast("Booking link sent to driver.", "success");
     } catch (err) {
       console.error(err);
       const errorMessage = err instanceof Error ? err.message : "Failed to send booking link";
-      alert(errorMessage);
+      showToast(errorMessage, "error");
     } finally {
       setSendingId(null);
     }
@@ -352,7 +358,13 @@ export default function RepairsPage() {
                                     {formatDate(req.createdAt)}
                                     </td>
                                     <td className="px-6 py-4 align-top text-right">
-                                        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex justify-end items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                            {req.bookingLinkSentAt && (
+                                                <span className="text-xs text-green-600 flex items-center gap-1" title={`Sent on ${new Date(req.bookingLinkSentAt).toLocaleString()}`}>
+                                                    <CheckCircle className="h-3 w-3" />
+                                                    Sent
+                                                </span>
+                                            )}
                                             {req.bookingLink && (
                                                 <button 
                                                     onClick={() => copyLink(req.bookingLink)}
@@ -546,6 +558,48 @@ export default function RepairsPage() {
                             </div>
                         </div>
                     </section>
+
+                    {/* Booking Link Status */}
+                    {selected.bookingLink && (
+                        <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                                    <Send className="h-4 w-4 text-blue-600" />
+                                </div>
+                                Booking Link
+                            </h3>
+                            <div className="bg-gradient-to-br from-blue-50 to-white border border-blue-200 rounded-lg p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        {selected.bookingLinkSentAt ? (
+                                            <>
+                                                <CheckCircle className="h-5 w-5 text-green-600" />
+                                                <span className="text-sm font-semibold text-green-700">Link Sent</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <AlertCircle className="h-5 w-5 text-yellow-600" />
+                                                <span className="text-sm font-semibold text-yellow-700">Not Sent</span>
+                                            </>
+                                        )}
+                                    </div>
+                                    {selected.bookingLinkSentAt && (
+                                        <span className="text-xs text-gray-500">
+                                            {new Date(selected.bookingLinkSentAt).toLocaleString()}
+                                        </span>
+                                    )}
+                                </div>
+                                {selected.scheduledDate && (
+                                    <div className="pt-2 border-t border-blue-200">
+                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Scheduled</p>
+                                        <p className="text-sm font-bold text-gray-900">
+                                            {selected.scheduledDate} {selected.scheduledTime && `• ${selected.scheduledTime}`}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    )}
                     
                     {/* Actions */}
                     <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
@@ -558,11 +612,31 @@ export default function RepairsPage() {
                         <div className="flex flex-col sm:flex-row gap-3">
                             <button
                                 onClick={() => sendBookingLink(selected)}
-                                disabled={sendingId === selected.id}
-                                className="btn btn-primary flex-1 flex items-center gap-2"
+                                disabled={sendingId === selected.id || !!selected.bookingLinkSentAt}
+                                className={`btn flex-1 flex items-center gap-2 transition-all ${
+                                    selected.bookingLinkSentAt 
+                                        ? 'btn-secondary opacity-75 cursor-not-allowed' 
+                                        : sendingId === selected.id
+                                        ? 'btn-primary opacity-75'
+                                        : 'btn-primary'
+                                }`}
                             >
-                                {sendingId === selected.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                Resend Booking Link
+                                {sendingId === selected.id ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Sending...
+                                    </>
+                                ) : selected.bookingLinkSentAt ? (
+                                    <>
+                                        <CheckCircle className="h-4 w-4" />
+                                        Sent
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send className="h-4 w-4" />
+                                        {selected.bookingLink ? 'Resend Booking Link' : 'Send Booking Link'}
+                                    </>
+                                )}
                             </button>
                             <button
                                 onClick={() => openReport(selected)}
@@ -572,6 +646,11 @@ export default function RepairsPage() {
                                 Complete & Report
                             </button>
                         </div>
+                        {selected.bookingLinkSentAt && (
+                            <p className="mt-2 text-xs text-gray-500 text-center">
+                                Sent on {new Date(selected.bookingLinkSentAt).toLocaleString()}
+                            </p>
+                        )}
                     </div>
                     </>
                 ) : (
