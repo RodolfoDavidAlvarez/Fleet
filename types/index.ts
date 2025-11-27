@@ -60,7 +60,7 @@ export interface ServiceRecord {
 }
 
 export interface Part {
-  id: string
+  id?: string
   name: string
   quantity: number
   cost: number
@@ -129,6 +129,10 @@ export interface DashboardStats {
   openRepairRequests: number
   waitingBookingRepairRequests: number
   completedRepairRequests: number
+  urgentRepairRequests: number
+  totalMaintenanceCost: number
+  recentBookings: Booking[]
+  vehiclesByStatus: Record<string, number>
 }
 
 export type RepairRequestStatus =
@@ -184,4 +188,28 @@ export interface RepairReport {
   partsCost?: number
   totalCost?: number
   createdAt: string
+}
+
+export type ServiceRecordStatus = 'in_progress' | 'completed' | 'cancelled' | 'open'
+
+export interface ServiceRecord {
+  id: string
+  repairRequestId?: string
+  vehicleId?: string
+  mechanicId?: string
+  mechanicName?: string
+  serviceType?: string
+  description?: string
+  cost?: number
+  mileage?: number
+  status?: ServiceRecordStatus
+  date?: string
+  nextServiceDue?: string
+  airtableId?: string
+  createdAt: string
+  vehicleIdentifier?: string
+  vehicleLabel?: string
+  division?: string
+  vehicleType?: string
+  makeModel?: string
 }
