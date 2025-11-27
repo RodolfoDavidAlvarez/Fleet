@@ -135,34 +135,75 @@ export async function POST(request: NextRequest) {
     
     // Import service records
     if (dataTypes.includes('all') || dataTypes.includes('serviceRecords')) {
+      let serviceRecordHasRepairLink = false
+      try {
+        const { data: cols } = await supabase
+          .from('information_schema.columns')
+          .select('column_name')
+          .eq('table_name', 'service_records')
+          .eq('column_name', 'repair_request_id')
+          .limit(1)
+        serviceRecordHasRepairLink = !!(cols && cols.length > 0)
+      } catch (err) {
+        console.warn('Could not verify repair_request_id column on service_records, continuing without link.', err)
+      }
+
       for (const record of extractedData.serviceRecords) {
         try {
           if (!dryRun) {
-            // Find vehicle ID from Airtable ID
-            const { data: vehicle } = await supabase
-              .from('vehicles')
-              .select('id')
-              .eq('airtable_id', record.vehicleId)
-              .single()
-            
-            if (vehicle) {
-              const { error } = await supabase
-                .from('service_records')
-                .upsert({
-                  vehicle_id: vehicle.id,
-                  date: record.serviceDate,
-                  service_type: record.serviceType,
-                  description: record.description,
-                  cost: record.cost,
-                  mileage: record.mileage,
-                  mechanic_name: record.mechanicName,
-                  status: record.status,
-                  next_service_due: record.nextServiceDue,
-                  airtable_id: record.airtableId,
-                }, { onConflict: 'airtable_id' })
-              
-              if (error) throw error
+            let vehicleId: string | null = null
+            let mechanicUserId: string | null = null
+            let repairRequestId: string | null = null
+
+            if (record.repairAirtableId) {
+              const { data: req } = await supabase
+                .from('repair_requests')
+                .select('id, vehicle_id')
+                .eq('airtable_id', record.repairAirtableId)
+                .maybeSingle()
+              if (req?.vehicle_id) vehicleId = req.vehicle_id
+              if (req?.id) repairRequestId = req.id
+            } else if (record.vehicleId) {
+              const { data: vehicle } = await supabase
+                .from('vehicles')
+                .select('id')
+                .eq('airtable_id', record.vehicleId)
+                .maybeSingle()
+              if (vehicle?.id) vehicleId = vehicle.id
             }
+
+            if (record.mechanicAirtableId) {
+              const { data: mech } = await supabase
+                .from('mechanics')
+                .select('user_id')
+                .eq('airtable_id', record.mechanicAirtableId)
+                .maybeSingle()
+              if (mech?.user_id) mechanicUserId = mech.user_id
+            }
+
+            const payload: any = {
+              vehicle_id: vehicleId,
+              date: record.serviceDate || record.checkedInDate,
+              service_type: record.problemClassification || record.serviceStatus || 'service',
+              description: record.repairs || record.serviceStatus,
+              cost: record.approxCost,
+              mileage: record.checkedInMileage,
+              mechanic_name: record.mechanicName,
+              mechanic_id: mechanicUserId,
+              status: mapServiceRecordStatus(record.serviceStatus),
+              next_service_due: record.nextServiceDue,
+              airtable_id: record.airtableId,
+            }
+
+            if (serviceRecordHasRepairLink && repairRequestId) {
+              payload.repair_request_id = repairRequestId
+            }
+
+            const { error } = await supabase
+              .from('service_records')
+              .upsert(payload, { onConflict: 'airtable_id' })
+            
+            if (error) throw error
           }
           results.serviceRecords.imported++
         } catch (error: any) {
@@ -365,4 +406,12 @@ function mapBookingStatus(airtableStatus: any): string {
   if (status.includes('complete')) return 'completed'
   if (status.includes('cancel')) return 'cancelled'
   return 'pending'
+}
+
+function mapServiceRecordStatus(status: any): string {
+  const s = (status?.toString() || '').toLowerCase()
+  if (s.includes('complete')) return 'completed'
+  if (s.includes('progress') || s.includes('open')) return 'in_progress'
+  if (s.includes('close')) return 'cancelled'
+  return 'completed'
 }
