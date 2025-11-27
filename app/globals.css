@@ -335,6 +335,12 @@ body {
     background: var(--surface-hover);
     border-color: var(--primary-300);
     box-shadow: var(--shadow);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
   }
 
   /* Ghost button */

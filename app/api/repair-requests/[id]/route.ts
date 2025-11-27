@@ -4,7 +4,16 @@ import { repairReportDB, repairRequestDB } from "@/lib/db";
 import { sendRepairCompletion } from "@/lib/twilio";
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-// ... existing GET ...
+  try {
+    const record = await repairRequestDB.getById(params.id);
+    if (!record) {
+      return NextResponse.json({ error: "Repair request not found" }, { status: 404 });
+    }
+    return NextResponse.json({ request: record });
+  } catch (error) {
+    console.error("Failed to fetch repair request", error);
+    return NextResponse.json({ error: "Failed to fetch repair request" }, { status: 500 });
+  }
 }
 
 const updateSchema = z.object({

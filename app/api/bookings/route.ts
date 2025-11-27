@@ -69,18 +69,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Send SMS confirmation if consented
-    if (parsed.data.smsConsent !== false) {
-      asyncNotifications.push(
-        sendBookingConfirmation(parsed.data.customerPhone, {
-          serviceType: parsed.data.serviceType,
-          date: parsed.data.scheduledDate,
-          time: parsed.data.scheduledTime,
-          bookingId: booking.id,
-        })
-      );
-    }
-
     // Send email confirmation to customer
     asyncNotifications.push(
       sendBookingConfirmationEmail(parsed.data.customerEmail, {
