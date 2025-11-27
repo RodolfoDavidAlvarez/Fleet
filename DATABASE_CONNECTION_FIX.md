@@ -84,9 +84,9 @@ Your `.env.local` should now contain:
 
 ```env
 # Twilio Configuration
-TWILIO_ACCOUNT_SID=AC3bb27ca18d1ce1ac5ba595a61c65e9e4
-TWILIO_AUTH_TOKEN=907c2b7f1ded5ef2d63eb304a0d1b2f4
-TWILIO_PHONE_NUMBER=+16028061439
+TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
+TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
+TWILIO_PHONE_NUMBER=your_twilio_phone_number_here
 ENABLE_SMS=true
 
 # Supabase Configuration
