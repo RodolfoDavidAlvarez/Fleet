@@ -29,15 +29,26 @@ export async function extractEnhancedVehicles() {
       yearAge: fields['Number of years old'] || 0,
       reminderNumber: fields['* Reminder Number'] || '',
       uniqueId: fields['* Unique ID'] || '',
+
+      // Admin info
+      loanLender: fields['Loan Lender'] || '',
+      tagExp: parseDate(fields['Tag Expiration'] || fields['Tag Exp']),
+      firstAidFire: fields['First Aid/Fire'] || '',
+      title: fields['Title'] || '',
       
       // Driver information (linked record)
       driverId: Array.isArray(fields.Driver) ? fields.Driver[0] : fields.Driver,
+      driverName: fields['Driver Name'] || '',
+      driverEmail: fields['Driver Email'] || '',
+      driverPhone: fields['Driver Phone'] || '',
       
       // Photo handling
       photoUrls: extractPhotoUrls(fields.Photos || fields.Images),
       
       // Service information
-      nextServiceDue: calculateNextService(null, fields['* Current Mileage']),
+      nextServiceDue: calculateNextService(undefined, fields['* Current Mileage']),
+      lastInspectionDate: parseDate(fields['Last Inspection Date'] || fields['Last Service']),
+      supervisor: fields['Supervisor'] || fields['Managed By'] || '',
       
       // Metadata
       airtableId: record.id,
@@ -102,17 +113,28 @@ export async function extractServiceRecords() {
     
     return records.map((record: any) => {
       const fields = record.fields
+      const repairAirtableId = Array.isArray(fields['Repair ID']) ? fields['Repair ID'][0] : fields['Repair ID']
+      const mechanicAirtableId = Array.isArray(fields['Mechanic Name']) ? fields['Mechanic Name'][0] : fields['Mechanic Name']
+      const serviceDate = parseDate(fields['Maintenance Date'] || fields.Date)
+      const checkedInDate = parseDateTime(fields['Checked in Date'])
       
       return {
         vehicleId: fields['Vehicle ID'] || fields.Vehicle || '',
-        serviceDate: parseDate(fields.Date || fields['Service Date']),
-        serviceType: fields['Service Type'] || fields.Type || '',
-        description: fields.Description || fields.Notes || '',
-        mileage: parseFloat(fields.Mileage || '0'),
-        cost: parseFloat(fields.Cost || '0'),
-        mechanicName: fields.Mechanic || fields.Technician || '',
-        status: fields.Status || 'completed',
+        repairAirtableId,
+        mechanicAirtableId,
+        mechanicName: fields['Mechanic Name'] || '',
+        serviceStatus: fields['Service status'] || fields.Status || '',
+        serviceDate,
+        checkedInDate,
+        checkedInMileage: parseFloat(fields['Checked in Mileage'] || '0'),
+        approxCost: parseFloat(fields['Approx. Repair Cost'] || '0'),
+        repairs: fields['Repairs'] || fields.Description || fields.Notes || '',
+        maintenanceDate: serviceDate,
+        activeStatus: fields['Active status'] || '',
         nextServiceDue: parseDate(fields['Next Service Due']),
+        problemClassification: Array.isArray(fields['Problem classification (from Repair ID)']) 
+          ? fields['Problem classification (from Repair ID)'][0] 
+          : fields['Problem classification (from Repair ID)'] || '',
         airtableId: record.id,
       }
     })

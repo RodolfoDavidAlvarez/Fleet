@@ -12,3 +12,4 @@
 Full files make the app bulky unnecessarily. Git is the proper place for full file contents and version history.
 
 
+

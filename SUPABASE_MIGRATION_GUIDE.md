@@ -179,3 +179,4 @@ After migrations are applied:
 **Status:** Ready to apply migrations!  
 **Recommended Method:** Supabase SQL Editor (Method 1)
 
+

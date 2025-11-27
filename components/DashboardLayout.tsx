@@ -33,8 +33,9 @@ export default function DashboardLayout({ children, userName, userRole }: Dashbo
         />
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-[var(--bg-secondary)]">
-          <div className="container py-6">
+        <main className="flex-1 overflow-y-auto bg-[var(--bg-secondary)] relative">
+          <div className="absolute inset-0 pattern-dots opacity-[0.4] pointer-events-none mix-blend-multiply dark:mix-blend-screen" />
+          <div className="container py-6 relative z-10">
             {children}
           </div>
         </main>

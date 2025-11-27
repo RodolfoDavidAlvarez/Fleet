@@ -79,3 +79,4 @@ async function applyMigrations() {
 
 applyMigrations().catch(console.error);
 
+

@@ -279,6 +279,7 @@ export default function RepairsPage() {
                         <thead className="bg-gray-50 border-b border-gray-100">
                             <tr>
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Request Details</th>
+                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Photos</th>
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Vehicle & Driver</th>
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Urgency & Status</th>
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
@@ -310,8 +311,63 @@ export default function RepairsPage() {
                                                 <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
                                                     <Clock className="h-3 w-3" /> {formatDate(req.createdAt)}
                                                 </p>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {req.division && (
+                                                        <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                                                            {req.division}
+                                                        </span>
+                                                    )}
+                                                    {req.vehicleType && (
+                                                        <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                            {req.vehicleType}
+                                                        </span>
+                                                    )}
+                                                    {req.makeModel && (
+                                                        <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                            {req.makeModel}
+                                                        </span>
+                                                    )}
+                                                    {req.incidentDate && (
+                                                        <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+                                                            Reported {formatDate(req.incidentDate)}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-4 align-top">
+                                        {req.photoUrls && req.photoUrls.length > 0 ? (
+                                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex -space-x-2">
+                                                    {(req.thumbUrls && req.thumbUrls.length > 0 ? req.thumbUrls : req.photoUrls).slice(0, 3).map((url, idx) => (
+                                                        <div 
+                                                            key={idx}
+                                                            className="relative w-12 h-12 rounded-lg border-2 border-white overflow-hidden bg-gray-100 shadow-sm group/photo"
+                                                        >
+                                                            <img 
+                                                                src={url} 
+                                                                alt={`Photo ${idx + 1}`}
+                                                                className="w-full h-full object-cover transition-transform duration-200 group-hover/photo:scale-110 cursor-pointer"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    window.open(req.photoUrls[idx] || url, '_blank');
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                {req.photoUrls.length > 3 && (
+                                                    <span className="text-xs font-medium text-gray-500 ml-1">
+                                                        +{req.photoUrls.length - 3}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gray-50 border border-gray-200">
+                                                <Camera className="h-5 w-5 text-gray-300" />
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 align-top">
                                         <div className="space-y-1">
@@ -325,10 +381,16 @@ export default function RepairsPage() {
                                                     <span className="text-xs">{req.vehicleIdentifier}</span>
                                                 </div>
                                             )}
-                                            {req.location && (
+                                            {(req.location || req.division) && (
                                                 <div className="flex items-center gap-2 text-gray-500">
                                                     <MapPin className="h-3.5 w-3.5" />
-                                                    <span className="text-xs truncate max-w-[150px]">{req.location}</span>
+                                                    <span className="text-xs truncate max-w-[180px]">{req.location || req.division}</span>
+                                                </div>
+                                            )}
+                                            {req.driverPhone && (
+                                                <div className="flex items-center gap-2 text-gray-500">
+                                                    <Phone className="h-3.5 w-3.5" />
+                                                    <span className="text-xs truncate max-w-[180px]">{req.driverPhone}</span>
                                                 </div>
                                             )}
                                         </div>
@@ -381,16 +443,21 @@ export default function RepairsPage() {
                     {/* Status Banner */}
                     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
                         <div className="flex items-center gap-3">
-                            <div className={`h-3 w-3 rounded-full ${
-                                selectedRequest.status === 'completed' ? 'bg-green-500' : 
-                                selectedRequest.status === 'in_progress' ? 'bg-indigo-500' : 'bg-yellow-500'
-                            }`} />
-                            <span className="font-semibold text-gray-900 capitalize">{selectedRequest.status.replace('_', ' ')}</span>
-                        </div>
-                        <div className="flex gap-2">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${urgencyStyles[selectedRequest.urgency]}`}>
-                                {selectedRequest.urgency} Priority
+                        <div className={`h-3 w-3 rounded-full ${
+                            selectedRequest.status === 'completed' ? 'bg-green-500' : 
+                            selectedRequest.status === 'in_progress' ? 'bg-indigo-500' : 'bg-yellow-500'
+                        }`} />
+                        <span className="font-semibold text-gray-900 capitalize">{selectedRequest.status.replace('_', ' ')}</span>
+                        {selectedRequest.isImmediate && (
+                            <span className="ml-3 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-100">
+                                <AlertTriangle className="h-3.5 w-3.5" /> Needs immediate attention
                             </span>
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${urgencyStyles[selectedRequest.urgency]}`}>
+                            {selectedRequest.urgency} Priority
+                        </span>
                         </div>
                     </div>
 
@@ -399,14 +466,18 @@ export default function RepairsPage() {
                         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <User className="h-4 w-4" /> Driver Information
                         </h3>
-                        <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
+                        <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <p className="text-xs text-gray-500 mb-1">Name</p>
-                                <p className="font-medium text-gray-900">{selectedRequest.driverName}</p>
+                                <p className="font-medium text-gray-900">{selectedRequest.driverName || '—'}</p>
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500 mb-1">Contact</p>
-                                <p className="font-medium text-gray-900">{selectedRequest.driverPhone || selectedRequest.driverEmail || '—'}</p>
+                                <p className="text-xs text-gray-500 mb-1">Phone</p>
+                                <p className="font-medium text-gray-900">{selectedRequest.driverPhone || '—'}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Email</p>
+                                <p className="font-medium text-gray-900">{selectedRequest.driverEmail || '—'}</p>
                             </div>
                         </div>
                     </section>
@@ -416,7 +487,7 @@ export default function RepairsPage() {
                         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <Car className="h-4 w-4" /> Vehicle Context
                         </h3>
-                        <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-3 gap-4">
+                        <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <p className="text-xs text-gray-500 mb-1">Identifier</p>
                                 <p className="font-medium text-gray-900">{selectedRequest.vehicleIdentifier || '—'}</p>
@@ -428,6 +499,39 @@ export default function RepairsPage() {
                             <div>
                                 <p className="text-xs text-gray-500 mb-1">Location</p>
                                 <p className="font-medium text-gray-900 truncate" title={selectedRequest.location}>{selectedRequest.location || '—'}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Make & Model</p>
+                                <p className="font-medium text-gray-900">{selectedRequest.makeModel || '—'}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Vehicle Type</p>
+                                <p className="font-medium text-gray-900">{selectedRequest.vehicleType || '—'}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Division</p>
+                                <p className="font-medium text-gray-900">{selectedRequest.division || '—'}</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Timeline */}
+                    <section>
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <Clock className="h-4 w-4" /> Timeline
+                        </h3>
+                        <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Reported</p>
+                                <p className="font-medium text-gray-900">{selectedRequest.incidentDate ? formatDate(selectedRequest.incidentDate) : '—'}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Logged</p>
+                                <p className="font-medium text-gray-900">{selectedRequest.createdAt ? formatDate(selectedRequest.createdAt) : '—'}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Status updated</p>
+                                <p className="font-medium text-gray-900">{selectedRequest.updatedAt ? formatDate(selectedRequest.updatedAt) : '—'}</p>
                             </div>
                         </div>
                     </section>

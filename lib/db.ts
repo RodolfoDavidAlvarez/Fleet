@@ -330,7 +330,8 @@ export const vehicleDB = {
         mechanicName: record.mechanic_name,
         status: record.status,
         mileage: record.mileage,
-        nextServiceDue: record.next_service_due
+        nextServiceDue: record.next_service_due,
+        createdAt: record.created_at
     }));
 
     vehicle.repairRequests = (repairRequests || []).map(rowToRepairRequest);
@@ -801,6 +802,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { count: openRepairRequests },
     { count: waitingBookingRepairRequests },
     { count: completedRepairRequests },
+    { count: urgentRepairRequests },
+    { data: jobsData },
+    { data: recentBookingsData },
+    { data: vehiclesData },
   ] = await Promise.all([
     supabase.from("vehicles").select("*", { count: "exact", head: true }),
     supabase.from("vehicles").select("*", { count: "exact", head: true }).eq("status", "active"),
@@ -817,7 +822,24 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .in("status", ["submitted", "triaged", "waiting_booking", "scheduled", "in_progress"]),
     supabase.from("repair_requests").select("*", { count: "exact", head: true }).eq("status", "waiting_booking"),
     supabase.from("repair_requests").select("*", { count: "exact", head: true }).eq("status", "completed"),
+    supabase
+      .from("repair_requests")
+      .select("*", { count: "exact", head: true })
+      .in("urgency", ["high", "critical"])
+      .neq("status", "completed"),
+    supabase.from("jobs").select("total_cost").eq("status", "completed"),
+    supabase.from("bookings").select("*").order("created_at", { ascending: false }).limit(5),
+    supabase.from("vehicles").select("status"),
   ]);
+
+  const totalMaintenanceCost = (jobsData || []).reduce((sum, job) => sum + (job.total_cost || 0), 0);
+  const recentBookings = (recentBookingsData || []).map(rowToBooking);
+
+  const vehiclesByStatus: Record<string, number> = {};
+  (vehiclesData || []).forEach((v) => {
+    const status = v.status || "unknown";
+    vehiclesByStatus[status] = (vehiclesByStatus[status] || 0) + 1;
+  });
 
   return {
     totalVehicles: totalVehicles || 0,
@@ -832,5 +854,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     openRepairRequests: openRepairRequests || 0,
     waitingBookingRepairRequests: waitingBookingRepairRequests || 0,
     completedRepairRequests: completedRepairRequests || 0,
+    urgentRepairRequests: urgentRepairRequests || 0,
+    totalMaintenanceCost,
+    recentBookings,
+    vehiclesByStatus,
   };
 }
