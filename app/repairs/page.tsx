@@ -8,6 +8,7 @@ import { BadgeCheck, Calendar, Camera, CheckCircle, ClipboardList, Loader2, MapP
 import { RepairReport, RepairRequest } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { VehicleCardSkeleton } from "@/components/ui/loading-states";
+import { Pagination } from "@/components/ui/pagination";
 
 const statusStyles: Record<string, string> = {
   submitted: "bg-yellow-50 text-yellow-700 border-yellow-200",
@@ -35,6 +36,8 @@ export default function RepairsPage() {
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [selectedRequest, setSelectedRequest] = useState<RepairRequest | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -166,6 +169,19 @@ export default function RepairsPage() {
     return filtered;
   }, [filter, search, requests]);
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
+  const paginatedRequests = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredRequests.slice(startIndex, endIndex);
+  }, [filteredRequests, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, search]);
+
   const statusCounts = useMemo(() => {
     const counts = {
       pending: 0,
@@ -286,7 +302,7 @@ export default function RepairsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {filteredRequests.map((req) => (
+                            {paginatedRequests.map((req) => (
                                 <tr 
                                     key={req.id} 
                                     onClick={() => setSelectedRequest(req)}
@@ -416,6 +432,19 @@ export default function RepairsPage() {
                     </table>
                 )}
             </div>
+
+            {/* Pagination */}
+            {!loading && filteredRequests.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={filteredRequests.length}
+                />
+              </div>
+            )}
           </div>
         </main>
       </div>

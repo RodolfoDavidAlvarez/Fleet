@@ -11,12 +11,15 @@ import { useVehicles, useDrivers, useCreateVehicle, useUpdateVehicle, useCreateD
 import { PageTransition } from '@/components/ui/smooth-transitions'
 import { VehicleCardSkeleton } from '@/components/ui/loading-states'
 import { useDebounce } from '@/hooks/use-debounce'
+import { Pagination } from '@/components/ui/pagination'
 
 export default function VehiclesPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const debouncedSearch = useDebounce(searchTerm, 300)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(12)
   
   const { data: vehicles = [], isLoading: vehiclesLoading, error: vehiclesError } = useVehicles()
   const { data: drivers = [], isLoading: driversLoading } = useDrivers()
@@ -104,6 +107,19 @@ export default function VehiclesPage() {
       return (a.make || '').localeCompare(b.make || '');
     })
   }, [vehicles, debouncedSearch])
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredAndSortedVehicles.length / itemsPerPage)
+  const paginatedVehicles = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return filteredAndSortedVehicles.slice(startIndex, endIndex)
+  }, [filteredAndSortedVehicles, currentPage, itemsPerPage])
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -558,7 +574,7 @@ export default function VehiclesPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
-                        {filteredAndSortedVehicles.map((vehicle) => (
+                        {paginatedVehicles.map((vehicle) => (
                           <tr
                             key={vehicle.id}
                             className="hover:bg-gray-50 cursor-pointer"
@@ -647,7 +663,7 @@ export default function VehiclesPage() {
                     </table>
                   </div>
                   <div className="md:hidden divide-y divide-gray-200">
-                    {filteredAndSortedVehicles.map((vehicle) => (
+                    {paginatedVehicles.map((vehicle) => (
                       <button
                         key={vehicle.id}
                         onClick={() => setSelectedVehicle(vehicle)}
@@ -676,6 +692,19 @@ export default function VehiclesPage() {
                 </>
               )}
             </div>
+
+            {/* Pagination */}
+            {!loading && filteredAndSortedVehicles.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={filteredAndSortedVehicles.length}
+                />
+              </div>
+            )}
 
             {/* Vehicle Details Slide-Over */}
             {selectedVehicle && (

@@ -1,11 +1,12 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import { Users, Plus, Mail, Phone, Car, X, Edit, Trash2, LayoutGrid, List } from 'lucide-react'
 import { User } from '@/types'
+import { Pagination } from '@/components/ui/pagination'
 
 export default function DriversPage() {
   const router = useRouter()
@@ -20,6 +21,8 @@ export default function DriversPage() {
   const [driverForm, setDriverForm] = useState({ name: '', email: '', phone: '' })
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' })
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(12)
 
   useEffect(() => {
     const savedView = localStorage.getItem('driversViewMode')
@@ -152,6 +155,19 @@ export default function DriversPage() {
       setError(err instanceof Error ? err.message : 'Failed to delete driver')
     }
   }
+
+  // Pagination logic
+  const totalPages = Math.ceil(drivers.length / itemsPerPage)
+  const paginatedDrivers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return drivers.slice(startIndex, endIndex)
+  }, [drivers, currentPage, itemsPerPage])
+
+  // Reset to page 1 when view mode changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [viewMode])
 
   if (!user) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
@@ -299,7 +315,7 @@ export default function DriversPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
-                      {drivers.map((driver) => (
+                      {paginatedDrivers.map((driver) => (
                         <tr 
                           key={driver.id} 
                           onClick={() => handleEditClick(driver)}
@@ -359,7 +375,7 @@ export default function DriversPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {drivers.map((driver) => (
+                {paginatedDrivers.map((driver) => (
                   <div
                     key={driver.id}
                     className="card-surface rounded-xl p-6 hover:shadow-lg transition-shadow"
@@ -418,6 +434,19 @@ export default function DriversPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {!loading && drivers.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm mt-6">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={drivers.length}
+                />
               </div>
             )}
 

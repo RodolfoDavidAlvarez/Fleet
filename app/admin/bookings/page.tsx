@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import { Search, Filter, Eye, RefreshCw, Info, Mail, Phone } from 'lucide-react'
 import { Booking } from '@/types'
 import { getStatusColor } from '@/lib/utils'
+import { Pagination } from '@/components/ui/pagination'
 
 export default function BookingsPage() {
   const router = useRouter()
@@ -18,6 +19,8 @@ export default function BookingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -83,6 +86,18 @@ export default function BookingsPage() {
     const matchesStatus = statusFilter === 'all' || booking.status === statusFilter
     return matchesSearch && matchesStatus
   })
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredBookings.length / itemsPerPage)
+  const paginatedBookings = filteredBookings.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  // Reset to page 1 when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter])
 
   if (!user) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
@@ -202,7 +217,7 @@ export default function BookingsPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
-                        {filteredBookings.map((booking) => (
+                        {paginatedBookings.map((booking) => (
                           <tr
                             key={booking.id}
                             className="hover:bg-gray-50 cursor-pointer"
@@ -259,7 +274,7 @@ export default function BookingsPage() {
                     </table>
                   </div>
                   <div className="md:hidden divide-y divide-gray-200">
-                    {filteredBookings.map((booking) => (
+                    {paginatedBookings.map((booking) => (
                       <button
                         key={booking.id}
                         onClick={() => setSelectedBooking(booking)}
@@ -286,6 +301,19 @@ export default function BookingsPage() {
                 </>
               )}
             </div>
+
+            {/* Pagination */}
+            {!loading && filteredBookings.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={filteredBookings.length}
+                />
+              </div>
+            )}
 
             {selectedBooking && (
               <div className="card-surface rounded-2xl p-6 flex flex-col md:flex-row gap-6">
