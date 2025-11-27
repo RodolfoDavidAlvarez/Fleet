@@ -33,3 +33,4 @@ WHERE conrelid = 'users'::regclass
 -- UPDATE users SET role = 'driver' WHERE email = 'simon.carrasco@fleet.local';
 
 
+

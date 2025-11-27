@@ -50,7 +50,9 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-secondary)] flex flex-col p-4 pattern-dots">
+    <div className="relative min-h-screen bg-gradient-to-br from-[var(--primary-50)] via-[var(--bg-secondary)] to-[var(--bg-secondary)] flex flex-col p-4 overflow-hidden">
+      <div className="pointer-events-none absolute -top-20 -left-24 w-80 h-80 bg-[var(--primary-200)] opacity-40 blur-3xl rounded-full" />
+      <div className="pointer-events-none absolute -bottom-24 -right-10 w-96 h-96 bg-[var(--primary-300)] opacity-30 blur-3xl rounded-full" />
       <div className="flex-1 flex items-center justify-center">
         <div className="max-w-md w-full animate-scale-in">
           <div className="card-glass p-8 md:p-10">

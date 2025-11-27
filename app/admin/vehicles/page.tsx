@@ -598,8 +598,8 @@ export default function VehiclesPage() {
                               {vehicle.mileage.toLocaleString()} mi
                             </td>
                             <td className="px-4 py-3 align-top">
-                              <span className={`px-2 py-1 text-[11px] font-semibold rounded-full ${getStatusColor(vehicle.status)}`}>
-                                {vehicle.status.replace('_', ' ')}
+                              <span className={`px-2 py-1 text-[11px] font-semibold rounded-full ${getStatusColor(vehicle.status || '')}`}>
+                                {vehicle.status ? vehicle.status.replace('_', ' ') : 'Unknown'}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900 align-top">
@@ -655,8 +655,8 @@ export default function VehiclesPage() {
                             <p className="font-semibold text-gray-900">{vehicle.make} {vehicle.model}</p>
                             <p className="text-sm text-gray-600">{vehicle.year} • {vehicle.licensePlate}</p>
                           </div>
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(vehicle.status)}`}>
-                            {vehicle.status.replace('_', ' ')}
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(vehicle.status || '')}`}>
+                            {vehicle.status ? vehicle.status.replace('_', ' ') : 'Unknown'}
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">VIN: {vehicle.vin}</p>
@@ -700,8 +700,8 @@ export default function VehiclesPage() {
                     <div>VIN: <span className="font-semibold text-gray-900">{selectedVehicle.vin}</span></div>
                     <div>Plate: <span className="font-semibold text-gray-900">{selectedVehicle.licensePlate}</span></div>
                     <div>Mileage: <span className="font-semibold text-gray-900">{selectedVehicle.mileage.toLocaleString()} mi</span></div>
-                    <div>Status: <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(selectedVehicle.status)}`}>
-                      {selectedVehicle.status.replace('_', ' ')}
+                    <div>Status: <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(selectedVehicle.status || '')}`}>
+                      {selectedVehicle.status ? selectedVehicle.status.replace('_', ' ') : 'Unknown'}
                     </span></div>
                     <div>Last service: <span className="font-semibold text-gray-900">{selectedVehicle.lastServiceDate || 'N/A'}</span></div>
                     <div>Next due: <span className="font-semibold text-gray-900">{selectedVehicle.nextServiceDue || 'N/A'}</span></div>

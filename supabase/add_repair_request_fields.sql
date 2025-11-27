@@ -7,3 +7,4 @@ ADD COLUMN IF NOT EXISTS incident_date DATE,
 ADD COLUMN IF NOT EXISTS is_immediate BOOLEAN DEFAULT false;
 
 
+

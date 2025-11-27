@@ -69,3 +69,4 @@ If you don't see a "Secret keys" section:
 4. The service role key might be labeled differently in newer Supabase projects
 
 
+

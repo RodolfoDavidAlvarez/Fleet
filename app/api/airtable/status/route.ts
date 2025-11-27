@@ -79,19 +79,28 @@ export async function GET(request: NextRequest) {
         .limit(5),
       supabase
         .from('users')
-        .select('email, count:count(*)')
-        .not('email', 'is', null)
-        .group('email'),
+        .select('email')
+        .not('email', 'is', null),
       supabase
         .from('vehicles')
-        .select('vin, count:count(*)')
+        .select('vin')
         .not('vin', 'is', null)
-        .not('vin', 'eq', '')
-        .group('vin'),
+        .not('vin', 'eq', ''),
     ])
 
-    const duplicateEmails = (duplicateEmailsResult.data || []).filter((row: any) => (row.count || 0) > 1)
-    const duplicateVINs = (duplicateVINsResult.data || []).filter((row: any) => (row.count || 0) > 1)
+    const dedupe = (items: string[]) => {
+      const counts: Record<string, number> = {}
+      items.forEach((item) => {
+        if (!item) return
+        counts[item] = (counts[item] || 0) + 1
+      })
+      return Object.entries(counts)
+        .filter(([, count]) => count > 1)
+        .map(([value, count]) => ({ value, count }))
+    }
+
+    const duplicateEmails = dedupe((duplicateEmailsResult.data || []).map((row: any) => row.email))
+    const duplicateVINs = dedupe((duplicateVINsResult.data || []).map((row: any) => row.vin))
 
     return NextResponse.json({
       summary: {

@@ -70,3 +70,4 @@ If you're still getting "Invalid API key" errors:
 5. **Run** `node test-db-connection.js` to see detailed error messages
 
 
+

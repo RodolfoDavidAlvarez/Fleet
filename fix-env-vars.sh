@@ -65,3 +65,4 @@ echo "2. Restart your dev server: npm run dev"
 echo "3. Test the connection: node test-db-connection.js"
 
 
+
