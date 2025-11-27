@@ -1,16 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Car, Plus, User as UserIcon, Wrench, Calendar, Gauge, X, Loader2, Save } from 'lucide-react'
+import { Car, Plus, User as UserIcon, Wrench, Calendar, Gauge, X, Loader2, Save, Grid3x3, List } from 'lucide-react'
 import { Vehicle } from '@/types'
 import { getStatusColor, formatDate } from '@/lib/utils'
 import { useVehicles, useCreateVehicle } from '@/hooks/use-vehicles'
 import { VehicleCardSkeleton } from '@/components/ui/loading-states'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/ui/toast'
+import { Pagination } from '@/components/ui/pagination'
 
 export default function VehiclesPage() {
   const router = useRouter()
@@ -31,6 +32,9 @@ export default function VehiclesPage() {
   })
   const activeCount = vehicles.filter((v) => v.status === 'active').length
   const inServiceCount = vehicles.filter((v) => v.status === 'in_service').length
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(12)
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -45,6 +49,53 @@ export default function VehiclesPage() {
     }
     setUser(parsedUser)
   }, [router])
+
+  // Load view preference from localStorage
+  useEffect(() => {
+    const savedView = localStorage.getItem('vehicles-view-mode')
+    if (savedView === 'grid' || savedView === 'list') {
+      setViewMode(savedView)
+    }
+    const savedItemsPerPage = localStorage.getItem('vehicles-items-per-page')
+    if (savedItemsPerPage) {
+      const parsed = parseInt(savedItemsPerPage, 10)
+      if (!isNaN(parsed) && parsed > 0) {
+        setItemsPerPage(parsed)
+      }
+    }
+  }, [])
+
+  // Save view preference to localStorage
+  const handleViewModeChange = (mode: 'grid' | 'list') => {
+    setViewMode(mode)
+    localStorage.setItem('vehicles-view-mode', mode)
+  }
+
+  // Calculate pagination
+  const paginatedVehicles = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return vehicles.slice(startIndex, endIndex)
+  }, [vehicles, currentPage, itemsPerPage])
+
+  const totalPages = Math.ceil(vehicles.length / itemsPerPage)
+
+  // Reset to page 1 when items per page changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [itemsPerPage])
+
+  // Reset to page 1 if current page is out of bounds
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1)
+    }
+  }, [currentPage, totalPages])
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    localStorage.setItem('vehicles-items-per-page', newItemsPerPage.toString())
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -94,6 +145,30 @@ export default function VehiclesPage() {
                   <p className="text-xs text-gray-500">In Service</p>
                   <p className="text-lg font-semibold text-gray-900">{inServiceCount}</p>
                 </div>
+                <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-gray-200">
+                  <button
+                    onClick={() => handleViewModeChange('grid')}
+                    className={`p-2 rounded-md transition-all ${
+                      viewMode === 'grid'
+                        ? 'bg-white text-primary-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    aria-label="Grid view"
+                  >
+                    <Grid3x3 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleViewModeChange('list')}
+                    className={`p-2 rounded-md transition-all ${
+                      viewMode === 'list'
+                        ? 'bg-white text-primary-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    aria-label="List view"
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
+                </div>
                 <button 
                   onClick={() => setShowAddModal(true)}
                   className="btn btn-primary flex items-center gap-2"
@@ -111,143 +186,236 @@ export default function VehiclesPage() {
             )}
 
             {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-3'}>
                 {Array.from({ length: 6 }).map((_, i) => (
                   <VehicleCardSkeleton key={i} />
                 ))}
               </div>
             ) : (
-              <motion.div 
-                layout 
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
-                <AnimatePresence>
-                  {vehicles.map((vehicle, i) => (
-                    <motion.div
-                      key={vehicle.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.2, delay: i * 0.05 }}
-                      className="card-surface rounded-xl p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-200/60 group cursor-pointer"
-                      onClick={() => router.push(`/admin/vehicles/${vehicle.id}`)}
-                    >
-                      <div className="flex items-start justify-between mb-5">
-                        <div className="flex items-start space-x-4 flex-1">
-                          <div className="bg-gradient-to-br from-primary-500 to-primary-600 p-3.5 rounded-xl shadow-sm group-hover:shadow-md transition-shadow">
-                            <Car className="h-6 w-6 text-white" />
+              <>
+                {viewMode === 'grid' ? (
+                  <motion.div 
+                    layout 
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  >
+                    <AnimatePresence>
+                      {paginatedVehicles.map((vehicle, i) => (
+                        <motion.div
+                          key={vehicle.id}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.2, delay: i * 0.05 }}
+                          className="card-surface rounded-xl p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-200/60 group cursor-pointer"
+                          onClick={() => router.push(`/admin/vehicles/${vehicle.id}`)}
+                        >
+                          <div className="flex items-start justify-between mb-5">
+                            <div className="flex items-start space-x-4 flex-1">
+                              <div className="bg-gradient-to-br from-primary-500 to-primary-600 p-3.5 rounded-xl shadow-sm group-hover:shadow-md transition-shadow">
+                                <Car className="h-6 w-6 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-bold text-gray-900 mb-1 leading-tight group-hover:text-primary-700 transition-colors">
+                                  {vehicle.make && vehicle.model
+                                    ? `${vehicle.make} ${vehicle.model}`
+                                    : vehicle.vehicleNumber || vehicle.vin}
+                                </h3>
+                                {vehicle.year && (
+                                  <p className="text-sm font-medium text-gray-500">{vehicle.year}</p>
+                                )}
+                              </div>
+                            </div>
+                            <span className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap ml-2 ${getStatusColor(vehicle.status)}`}>
+                              {vehicle.status?.replace('_', ' ')}
+                            </span>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-bold text-gray-900 mb-1 leading-tight group-hover:text-primary-700 transition-colors">
-                              {vehicle.make && vehicle.model
-                                ? `${vehicle.make} ${vehicle.model}`
-                                : vehicle.vehicleNumber || vehicle.vin}
-                            </h3>
-                            {vehicle.year && (
-                              <p className="text-sm font-medium text-gray-500">{vehicle.year}</p>
+
+                          <div className="grid grid-cols-2 gap-3 mb-4">
+                            {vehicle.licensePlate && (
+                              <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Plate</p>
+                                <p className="text-sm font-bold text-gray-900 font-mono">{vehicle.licensePlate}</p>
+                              </div>
+                            )}
+                            {vehicle.vin && (
+                              <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">VIN</p>
+                                <p className="text-xs font-mono text-gray-900 truncate" title={vehicle.vin}>{vehicle.vin}</p>
+                              </div>
                             )}
                           </div>
-                        </div>
-                        <span className={`px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap ml-2 ${getStatusColor(vehicle.status)}`}>
-                          {vehicle.status?.replace('_', ' ')}
-                        </span>
-                      </div>
 
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        {vehicle.licensePlate && (
-                          <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Plate</p>
-                            <p className="text-sm font-bold text-gray-900 font-mono">{vehicle.licensePlate}</p>
-                          </div>
-                        )}
-                        {vehicle.vin && (
-                          <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">VIN</p>
-                            <p className="text-xs font-mono text-gray-900 truncate" title={vehicle.vin}>{vehicle.vin}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-4 mb-4 pb-4 border-b border-gray-100">
-                        {vehicle.mileage !== undefined && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <div className="bg-primary-50 p-1.5 rounded-lg">
-                              <Gauge className="h-4 w-4 text-primary-600" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Mileage</p>
-                              <p className="text-sm font-semibold text-gray-900">{vehicle.mileage.toLocaleString()} mi</p>
-                            </div>
-                          </div>
-                        )}
-                        {vehicle.driverName && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <div className="bg-primary-50 p-1.5 rounded-lg">
-                              <UserIcon className="h-4 w-4 text-primary-600" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Driver</p>
-                              <p className="text-sm font-semibold text-gray-900 truncate max-w-[120px]" title={vehicle.driverName}>{vehicle.driverName}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {(vehicle.nextServiceDue || vehicle.lastServiceDate) && (
-                        <div className="mb-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-100 space-y-2">
-                          {vehicle.nextServiceDue && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <div className="bg-white p-1.5 rounded-lg shadow-sm">
-                                <Calendar className="h-4 w-4 text-blue-600" />
+                          <div className="flex items-center gap-4 mb-4 pb-4 border-b border-gray-100">
+                            {vehicle.mileage !== undefined && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <div className="bg-primary-50 p-1.5 rounded-lg">
+                                  <Gauge className="h-4 w-4 text-primary-600" />
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500">Mileage</p>
+                                  <p className="text-sm font-semibold text-gray-900">{vehicle.mileage.toLocaleString()} mi</p>
+                                </div>
                               </div>
-                              <div className="flex-1">
-                                <p className="text-xs text-blue-600 font-medium">Next Service</p>
-                                <p className="text-sm font-semibold text-gray-900">{formatDate(vehicle.nextServiceDue)}</p>
+                            )}
+                            {vehicle.driverName && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <div className="bg-primary-50 p-1.5 rounded-lg">
+                                  <UserIcon className="h-4 w-4 text-primary-600" />
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500">Driver</p>
+                                  <p className="text-sm font-semibold text-gray-900 truncate max-w-[120px]" title={vehicle.driverName}>{vehicle.driverName}</p>
+                                </div>
                               </div>
+                            )}
+                          </div>
+
+                          {(vehicle.nextServiceDue || vehicle.lastServiceDate) && (
+                            <div className="mb-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-100 space-y-2">
+                              {vehicle.nextServiceDue && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <div className="bg-white p-1.5 rounded-lg shadow-sm">
+                                    <Calendar className="h-4 w-4 text-blue-600" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-xs text-blue-600 font-medium">Next Service</p>
+                                    <p className="text-sm font-semibold text-gray-900">{formatDate(vehicle.nextServiceDue)}</p>
+                                  </div>
+                                </div>
+                              )}
+                              {vehicle.lastServiceDate && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <div className="bg-white p-1.5 rounded-lg shadow-sm">
+                                    <Wrench className="h-4 w-4 text-indigo-600" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-xs text-indigo-600 font-medium">Last Service</p>
+                                    <p className="text-sm font-semibold text-gray-900">{formatDate(vehicle.lastServiceDate)}</p>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
-                          {vehicle.lastServiceDate && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <div className="bg-white p-1.5 rounded-lg shadow-sm">
-                                <Wrench className="h-4 w-4 text-indigo-600" />
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-xs text-indigo-600 font-medium">Last Service</p>
-                                <p className="text-sm font-semibold text-gray-900">{formatDate(vehicle.lastServiceDate)}</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
 
-                      <div className="flex items-center justify-between pt-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
-                          <span className="text-sm text-gray-600 font-medium">
-                            {vehicle.serviceHistory?.length || 0} service {vehicle.serviceHistory?.length === 1 ? 'record' : 'records'}
-                          </span>
-                        </div>
-                        <button 
-                          className="text-primary-600 hover:text-primary-700 text-sm font-semibold flex items-center gap-1 group-hover:gap-2 transition-all duration-200"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            router.push(`/admin/vehicles/${vehicle.id}`)
-                          }}
+                          <div className="flex items-center justify-between pt-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
+                              <span className="text-sm text-gray-600 font-medium">
+                                {vehicle.serviceHistory?.length || 0} service {vehicle.serviceHistory?.length === 1 ? 'record' : 'records'}
+                              </span>
+                            </div>
+                            <button 
+                              className="text-primary-600 hover:text-primary-700 text-sm font-semibold flex items-center gap-1 group-hover:gap-2 transition-all duration-200"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/admin/vehicles/${vehicle.id}`)
+                              }}
+                            >
+                              View Details
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                    {vehicles.length === 0 && (
+                      <div className="p-6 text-center text-gray-500 col-span-full">
+                        No vehicles found.
+                      </div>
+                    )}
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    layout
+                    className="space-y-3"
+                  >
+                    <AnimatePresence>
+                      {paginatedVehicles.map((vehicle, i) => (
+                        <motion.div
+                          key={vehicle.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2, delay: i * 0.03 }}
+                          className="card-surface rounded-xl p-4 hover:shadow-lg transition-all duration-300 border border-gray-200/60 group cursor-pointer"
+                          onClick={() => router.push(`/admin/vehicles/${vehicle.id}`)}
                         >
-                          View Details
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
+                          <div className="flex items-center gap-4">
+                            <div className="bg-gradient-to-br from-primary-500 to-primary-600 p-3 rounded-lg shadow-sm flex-shrink-0">
+                              <Car className="h-5 w-5 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                              <div className="md:col-span-2">
+                                <h3 className="text-base font-bold text-gray-900 mb-1 group-hover:text-primary-700 transition-colors">
+                                  {vehicle.make && vehicle.model
+                                    ? `${vehicle.make} ${vehicle.model}`
+                                    : vehicle.vehicleNumber || vehicle.vin}
+                                </h3>
+                                <div className="flex items-center gap-3 text-sm text-gray-600">
+                                  {vehicle.year && <span>{vehicle.year}</span>}
+                                  {vehicle.licensePlate && (
+                                    <span className="font-mono font-semibold">{vehicle.licensePlate}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm">
+                                {vehicle.mileage !== undefined && (
+                                  <div className="flex items-center gap-1.5">
+                                    <Gauge className="h-4 w-4 text-gray-400" />
+                                    <span className="text-gray-700">{vehicle.mileage.toLocaleString()} mi</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-sm">
+                                {vehicle.driverName && (
+                                  <div className="flex items-center gap-1.5">
+                                    <UserIcon className="h-4 w-4 text-gray-400" />
+                                    <span className="text-gray-700 truncate max-w-[150px]" title={vehicle.driverName}>{vehicle.driverName}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className={`px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(vehicle.status)}`}>
+                                  {vehicle.status?.replace('_', ' ')}
+                                </span>
+                                <button 
+                                  className="text-primary-600 hover:text-primary-700 text-sm font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    router.push(`/admin/vehicles/${vehicle.id}`)
+                                  }}
+                                >
+                                  View
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                    {vehicles.length === 0 && (
+                      <div className="p-6 text-center text-gray-500">
+                        No vehicles found.
                       </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-                {vehicles.length === 0 && (
-                  <div className="p-6 text-center text-gray-500 col-span-full">
-                    No vehicles found.
-                  </div>
+                    )}
+                  </motion.div>
                 )}
-              </motion.div>
+                
+                {/* Pagination */}
+                {vehicles.length > 0 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    itemsPerPage={itemsPerPage}
+                    totalItems={vehicles.length}
+                    onItemsPerPageChange={handleItemsPerPageChange}
+                  />
+                )}
+              </>
             )}
           </div>
         </main>

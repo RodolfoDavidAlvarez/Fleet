@@ -135,6 +135,8 @@ export default function RepairsPage() {
       status: formData.status,
       date: formData.date,
       repairRequestId: selected.id,
+      notifyDriver: formData.notifyDriver ?? true,
+      notificationStatus: formData.notificationStatus || "completed_ready_for_pickup",
     };
 
     try {

@@ -140,8 +140,8 @@ export default function AdminSettingsPage() {
 
   const loadUsers = async () => {
     try {
-      // Fetch all users
-      const res = await fetch("/api/admin/users");
+      // Fetch only admins and mechanics
+      const res = await fetch("/api/admin/users?role=admin,mechanic");
       if (!res.ok) throw new Error("Failed to load users");
       const data = await res.json();
       setUsers(data.users || []);
@@ -337,8 +337,6 @@ export default function AdminSettingsPage() {
                       <option value="all">All Roles</option>
                       <option value="admin">Admin</option>
                       <option value="mechanic">Mechanic</option>
-                      <option value="driver">Driver</option>
-                      <option value="customer">Customer</option>
                     </select>
 
                     <select
@@ -367,6 +365,8 @@ export default function AdminSettingsPage() {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {users
                         .filter((u) => {
+                          // Only show admins and mechanics
+                          if (u.role !== "admin" && u.role !== "mechanic") return false;
                           if (filterRole !== "all" && u.role !== filterRole) return false;
                           if (filterStatus !== "all" && u.approval_status !== filterStatus) return false;
                           return true;

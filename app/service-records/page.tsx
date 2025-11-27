@@ -173,6 +173,8 @@ export default function ServiceRecordsPage() {
       status: formData.status,
       date: formData.date,
       repairRequestId: formData.repairRequestId || undefined,
+      notifyDriver: formData.notifyDriver ?? false,
+      notificationStatus: formData.notificationStatus || "completed_ready_for_pickup",
     };
 
     createRecord.mutate(payload, {

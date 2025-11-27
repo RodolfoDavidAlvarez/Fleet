@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Users, Plus, Mail, Phone, CheckCircle, Clock, X, Edit, Loader2, Save } from 'lucide-react'
+import { Users, Plus, Mail, Phone, X, Edit, Loader2, Save, Grid3x3, List } from 'lucide-react'
 import { User } from '@/types'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/ui/toast'
@@ -20,7 +20,7 @@ export default function DriversPage() {
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState<Partial<User>>({})
   const [saving, setSaving] = useState(false)
-  const approvedCount = drivers.filter((d) => d.approval_status === 'approved').length
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -53,6 +53,20 @@ export default function DriversPage() {
 
     loadDrivers()
   }, [router])
+
+  // Load view preference from localStorage
+  useEffect(() => {
+    const savedView = localStorage.getItem('drivers-view-mode')
+    if (savedView === 'grid' || savedView === 'list') {
+      setViewMode(savedView)
+    }
+  }, [])
+
+  // Save view preference to localStorage
+  const handleViewModeChange = (mode: 'grid' | 'list') => {
+    setViewMode(mode)
+    localStorage.setItem('drivers-view-mode', mode)
+  }
 
   const openEdit = (driver: User) => {
     setEditing(true)
@@ -120,9 +134,29 @@ export default function DriversPage() {
                 <p className="text-gray-600">Manage and view all registered drivers.</p>
               </div>
               <div className="flex items-center gap-3">
-                <div className="card-surface p-3 rounded-xl text-sm">
-                  <p className="text-xs text-gray-500">Approved</p>
-                  <p className="text-lg font-semibold text-gray-900">{approvedCount}</p>
+                <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-gray-200">
+                  <button
+                    onClick={() => handleViewModeChange('grid')}
+                    className={`p-2 rounded-md transition-all ${
+                      viewMode === 'grid'
+                        ? 'bg-white text-primary-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    aria-label="Grid view"
+                  >
+                    <Grid3x3 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleViewModeChange('list')}
+                    className={`p-2 rounded-md transition-all ${
+                      viewMode === 'list'
+                        ? 'bg-white text-primary-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    aria-label="List view"
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
                 </div>
                 <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
                   <Plus className="h-5 w-5 mr-2" />
@@ -140,77 +174,133 @@ export default function DriversPage() {
             {loading ? (
               <div className="p-8 text-center text-gray-600">Loading drivers...</div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {drivers.map((driver) => (
-                  <div
-                    key={driver.id}
-                    onClick={() => setSelectedDriver(driver)}
-                    className="card-surface rounded-xl p-6 hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="bg-primary-100 p-3 rounded-full">
-                          <Users className="h-6 w-6 text-primary-600" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">{driver.name}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            {driver.approval_status === 'approved' ? (
-                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700 flex items-center gap-1">
-                                <CheckCircle className="h-3 w-3" />
-                                Approved
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Pending
-                              </span>
-                            )}
-                            {driver.isOnline && (
-                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
-                                Online
-                              </span>
-                            )}
+              <>
+                {viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {drivers.map((driver) => (
+                      <motion.div
+                        key={driver.id}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={() => setSelectedDriver(driver)}
+                        className="card-surface rounded-xl p-6 hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-primary-100 p-3 rounded-full">
+                              <Users className="h-6 w-6 text-primary-600" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">{driver.name}</h3>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
 
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Mail className="h-4 w-4 mr-2" />
-                        {driver.email}
-                      </div>
-                      {driver.phone && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Phone className="h-4 w-4 mr-2" />
-                          {driver.phone}
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center text-sm text-gray-600">
+                            <Mail className="h-4 w-4 mr-2" />
+                            {driver.email}
+                          </div>
+                          {driver.phone && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Phone className="h-4 w-4 mr-2" />
+                              {driver.phone}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                      <div className="text-sm text-gray-500">
-                        Joined {new Date(driver.createdAt).toLocaleDateString()}
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                          <div className="text-sm text-gray-500">
+                            Joined {new Date(driver.createdAt).toLocaleDateString()}
+                          </div>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedDriver(driver)
+                            }}
+                            className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                    {drivers.length === 0 && (
+                      <div className="p-6 text-center text-gray-500 col-span-full">
+                        No drivers found.
                       </div>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedDriver(driver)
-                        }}
-                        className="text-primary-600 hover:text-primary-700 text-sm font-medium"
-                      >
-                        View Details
-                      </button>
-                    </div>
+                    )}
                   </div>
-                ))}
-                {drivers.length === 0 && (
-                  <div className="p-6 text-center text-gray-500 col-span-full">
-                    No drivers found.
-                  </div>
+                ) : (
+                  <motion.div 
+                    layout
+                    className="space-y-3"
+                  >
+                    <AnimatePresence>
+                      {drivers.map((driver, i) => (
+                        <motion.div
+                          key={driver.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2, delay: i * 0.03 }}
+                          onClick={() => setSelectedDriver(driver)}
+                          className="card-surface rounded-xl p-4 hover:shadow-lg transition-all duration-300 border border-gray-200/60 group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="bg-gradient-to-br from-primary-500 to-primary-600 p-3 rounded-lg shadow-sm flex-shrink-0">
+                              <Users className="h-5 w-5 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                              <div className="md:col-span-2">
+                                <h3 className="text-base font-bold text-gray-900 mb-1 group-hover:text-primary-700 transition-colors">
+                                  {driver.name}
+                                </h3>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm">
+                                <Mail className="h-4 w-4 text-gray-400" />
+                                <span className="text-gray-700 truncate max-w-[200px]" title={driver.email}>{driver.email}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm">
+                                {driver.phone ? (
+                                  <>
+                                    <Phone className="h-4 w-4 text-gray-400" />
+                                    <span className="text-gray-700">{driver.phone}</span>
+                                  </>
+                                ) : (
+                                  <span className="text-gray-400">No phone</span>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-xs text-gray-500">
+                                  {new Date(driver.createdAt).toLocaleDateString()}
+                                </span>
+                                <button 
+                                  className="text-primary-600 hover:text-primary-700 text-sm font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setSelectedDriver(driver)
+                                  }}
+                                >
+                                  View
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                    {drivers.length === 0 && (
+                      <div className="p-6 text-center text-gray-500">
+                        No drivers found.
+                      </div>
+                    )}
+                  </motion.div>
                 )}
-              </div>
+              </>
             )}
           </div>
         </main>
@@ -282,24 +372,6 @@ export default function DriversPage() {
                         </div>
                         <div>
                           <h3 className="text-2xl font-bold text-gray-900">{selectedDriver.name}</h3>
-                          <div className="flex items-center gap-2 mt-2">
-                            {selectedDriver.approval_status === 'approved' ? (
-                              <span className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border-2 bg-green-50 text-green-700 border-green-200">
-                                <CheckCircle className="h-3 w-3 inline mr-1" />
-                                Approved
-                              </span>
-                            ) : (
-                              <span className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border-2 bg-yellow-50 text-yellow-700 border-yellow-200">
-                                <Clock className="h-3 w-3 inline mr-1" />
-                                Pending
-                              </span>
-                            )}
-                            {selectedDriver.isOnline && (
-                              <span className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border-2 bg-blue-50 text-blue-700 border-blue-200">
-                                Online
-                              </span>
-                            )}
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -312,17 +384,6 @@ export default function DriversPage() {
                           value={editForm.name || ''}
                           onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                         />
-                      </label>
-                      <label className="space-y-1.5 block">
-                        <span className="text-sm font-semibold text-gray-700">Approval Status</span>
-                        <select
-                          className="input-field w-full"
-                          value={editForm.approval_status || 'pending'}
-                          onChange={(e) => setEditForm({ ...editForm, approval_status: e.target.value as any })}
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="approved">Approved</option>
-                        </select>
                       </label>
                     </div>
                   )}
@@ -402,12 +463,6 @@ export default function DriversPage() {
                           month: 'long', 
                           day: 'numeric' 
                         })}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</p>
-                      <p className="text-base font-bold text-gray-900 capitalize">
-                        {selectedDriver.approval_status || 'Pending'}
                       </p>
                     </div>
                   </div>
