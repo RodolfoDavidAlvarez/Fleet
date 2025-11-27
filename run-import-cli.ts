@@ -248,7 +248,7 @@ async function runImport() {
             const { error } = await supabase
               .from('repair_requests')
               .upsert({
-                driver_name: request.driverName,
+                driver_name: request.driverName || 'Unspecified',
                 driver_phone: request.driverPhone,
                 driver_email: request.driverEmail,
                 vehicle_identifier: request.vehicleIdentifier,
@@ -259,6 +259,15 @@ async function runImport() {
                 odometer: request.odometer,
                 photo_urls: request.photoUrls,
                 ai_category: request.aiCategory,
+                ai_tags: request.aiTags,
+                ai_summary: request.aiSummary,
+                division: request.division,
+                vehicle_type: request.vehicleType,
+                make_model: request.makeModel,
+                incident_date: request.incidentDate,
+                is_immediate: request.isImmediate,
+                created_at: request.createdAt,
+                updated_at: request.updatedAt || request.createdAt,
                 airtable_id: request.airtableId,
               }, { onConflict: 'airtable_id' })
             
