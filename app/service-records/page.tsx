@@ -443,6 +443,7 @@ export default function ServiceRecordsPage() {
                 >
                   {statusLabels[selected.status || "in_progress"]}
                 </span>
+                {/* Edit disabled per requirements: system effectiveness implies records should not be modified
                 {!editing && (
                   <button
                     onClick={() => openEdit(selected)}
@@ -451,6 +452,7 @@ export default function ServiceRecordsPage() {
                     Edit
                   </button>
                 )}
+                */}
               </div>
 
               {!editing ? (
