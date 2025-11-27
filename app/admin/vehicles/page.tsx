@@ -4,7 +4,7 @@ import { FormEvent, useMemo, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Car, Plus, Edit, Trash2, Search, Info, UserPlus, X, Upload, Camera } from 'lucide-react'
+import { Car, Plus, Edit, Trash2, Search, Info, UserPlus, X, Upload, Camera, Wrench, Calendar, DollarSign, FileText, CheckCircle, Clock, AlertTriangle } from 'lucide-react'
 import { Vehicle, User } from '@/types'
 import { getStatusColor } from '@/lib/utils'
 import { useVehicles, useDrivers, useCreateVehicle, useUpdateVehicle, useCreateDriver } from '@/hooks/use-vehicles'
@@ -47,6 +47,8 @@ export default function VehiclesPage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [driverForm, setDriverForm] = useState({ name: '', email: '', phone: '' })
+  const [selectedRecord, setSelectedRecord] = useState<any>(null)
+  const [selectedRepairRequest, setSelectedRepairRequest] = useState<any>(null)
   const [form, setForm] = useState({
     make: '',
     model: '',
@@ -674,60 +676,431 @@ export default function VehiclesPage() {
               )}
             </div>
 
+            {/* Vehicle Details Slide-Over */}
             {selectedVehicle && (
-              <div className="card-surface rounded-2xl p-6 flex flex-col md:flex-row gap-6">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    {selectedVehicle.photoUrl ? (
-                      <img 
-                        src={selectedVehicle.photoUrl} 
-                        alt={`${selectedVehicle.make} ${selectedVehicle.model}`}
-                        className="w-16 h-16 rounded-xl object-cover"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 rounded-xl bg-primary-50 flex items-center justify-center">
-                        <Car className="h-8 w-8 text-primary-700" />
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-sm text-gray-500">Vehicle details</p>
-                      <h3 className="text-xl font-semibold text-gray-900">
-                        {selectedVehicle.year} {selectedVehicle.make} {selectedVehicle.model}
-                      </h3>
+              <div className="fixed inset-0 z-40 overflow-hidden">
+                <div 
+                  className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity opacity-100" 
+                  onClick={() => setSelectedVehicle(null)}
+                />
+                <div className="absolute inset-y-0 right-0 w-full max-w-xl bg-white shadow-2xl transform transition-transform duration-300 translate-x-0 flex flex-col h-full">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white z-10">
+                    <h2 className="text-lg font-bold text-gray-900">Vehicle Details</h2>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => handleEditClick(selectedVehicle)}
+                        className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                        title="Edit Vehicle"
+                      >
+                        <Edit className="h-5 w-5" />
+                      </button>
+                      <button 
+                        onClick={() => setSelectedVehicle(null)}
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <X className="h-6 w-6" />
+                      </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm text-gray-700">
-                    <div>VIN: <span className="font-semibold text-gray-900">{selectedVehicle.vin}</span></div>
-                    <div>Plate: <span className="font-semibold text-gray-900">{selectedVehicle.licensePlate}</span></div>
-                    <div>Mileage: <span className="font-semibold text-gray-900">{selectedVehicle.mileage.toLocaleString()} mi</span></div>
-                    <div>Status: <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(selectedVehicle.status || '')}`}>
-                      {selectedVehicle.status ? selectedVehicle.status.replace('_', ' ') : 'Unknown'}
-                    </span></div>
-                    <div>Last service: <span className="font-semibold text-gray-900">{selectedVehicle.lastServiceDate || 'N/A'}</span></div>
-                    <div>Next due: <span className="font-semibold text-gray-900">{selectedVehicle.nextServiceDue || 'N/A'}</span></div>
-                    <div className="col-span-2">Driver: <span className="font-semibold text-gray-900">{selectedVehicle.driverName || 'Unassigned'}</span></div>
+
+                  {/* Scrollable Content */}
+                  <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+                    {/* Hero Section */}
+                    <div className="flex flex-col items-center text-center space-y-4">
+                      <div className="relative group w-full aspect-video rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 shadow-sm">
+                        {selectedVehicle.photoUrl ? (
+                          <img 
+                            src={selectedVehicle.photoUrl} 
+                            alt={`${selectedVehicle.make} ${selectedVehicle.model}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                            <Car className="h-16 w-16 mb-2 opacity-50" />
+                            <span className="text-sm font-medium">No photo available</span>
+                          </div>
+                        )}
+                        <div className="absolute top-3 right-3">
+                           <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded-full shadow-sm border ${getStatusColor(selectedVehicle.status || '')} bg-white`}>
+                              {selectedVehicle.status ? selectedVehicle.status.replace('_', ' ') : 'Unknown'}
+                           </span>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="text-2xl font-bold text-gray-900">
+                          {selectedVehicle.year} {selectedVehicle.make} {selectedVehicle.model}
+                        </h3>
+                        {selectedVehicle.vehicleNumber && (
+                          <p className="text-sm font-medium text-primary-600 mt-1">
+                            Fleet ID: #{selectedVehicle.vehicleNumber}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quick Stats Grid */}
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                           <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Mileage</p>
+                           <p className="font-bold text-gray-900">{selectedVehicle.mileage.toLocaleString()}</p>
+                        </div>
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                           <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">License</p>
+                           <p className="font-bold text-gray-900">{selectedVehicle.licensePlate}</p>
+                        </div>
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                           <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Next Service</p>
+                           <p className="font-bold text-gray-900">{selectedVehicle.nextServiceDue || '—'}</p>
+                        </div>
+                    </div>
+
+                    {/* Detailed Specs */}
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2 border-b border-gray-100 pb-2">
+                        <Info className="h-4 w-4 text-primary-600" />
+                        Specifications & Assignment
+                      </h4>
+                      <div className="grid grid-cols-2 gap-y-4 gap-x-8 text-sm">
+                         <div>
+                            <p className="text-xs text-gray-500 mb-0.5">VIN</p>
+                            <p className="font-medium text-gray-900 font-mono">{selectedVehicle.vin}</p>
+                         </div>
+                         <div>
+                            <p className="text-xs text-gray-500 mb-0.5">Department</p>
+                            <p className="font-medium text-gray-900">{selectedVehicle.department || '—'}</p>
+                         </div>
+                         <div>
+                            <p className="text-xs text-gray-500 mb-0.5">Supervisor</p>
+                            <p className="font-medium text-gray-900">{selectedVehicle.supervisor || '—'}</p>
+                         </div>
+                         <div>
+                            <p className="text-xs text-gray-500 mb-0.5">Tag Expiry</p>
+                            <p className="font-medium text-gray-900">{selectedVehicle.tagExpiry || '—'}</p>
+                         </div>
+                         <div className="col-span-2">
+                            <p className="text-xs text-gray-500 mb-0.5">Assigned Driver</p>
+                            <div className="flex items-center gap-2">
+                               <div className="h-6 w-6 rounded-full bg-primary-100 flex items-center justify-center text-xs font-bold text-primary-700">
+                                  {(selectedVehicle.driverName || 'U')[0]}
+                               </div>
+                               <p className="font-medium text-gray-900">{selectedVehicle.driverName || 'Unassigned'}</p>
+                            </div>
+                         </div>
+                      </div>
+                    </div>
+
+                    {/* Service History Section */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                         <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                           <Wrench className="h-4 w-4 text-primary-600" />
+                           Service History
+                         </h4>
+                         <span className="text-xs text-gray-500">{selectedVehicle.serviceHistory?.length || 0} Records</span>
+                      </div>
+                      
+                      {selectedVehicle.serviceHistory && selectedVehicle.serviceHistory.length > 0 ? (
+                        <div className="space-y-3">
+                          {selectedVehicle.serviceHistory.map((record: any) => (
+                            <button 
+                              key={record.id} 
+                              onClick={() => setSelectedRecord(record)}
+                              className="w-full text-left bg-white rounded-xl p-4 border border-gray-200 shadow-sm hover:shadow-md hover:border-primary-200 hover:bg-primary-50/30 transition-all group"
+                            >
+                              <div className="flex justify-between items-start mb-2">
+                                <span className="font-semibold text-gray-900 group-hover:text-primary-700">{record.serviceType}</span>
+                                <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{record.date}</span>
+                              </div>
+                              <p className="text-gray-600 text-sm mb-3 line-clamp-2 leading-relaxed">{record.description}</p>
+                              <div className="flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100 pt-3 mt-1">
+                                <div className="flex items-center gap-1">
+                                    <Car className="h-3 w-3" />
+                                    <span>{record.mileage ? `${record.mileage.toLocaleString()}` : '—'}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <DollarSign className="h-3 w-3" />
+                                    <span>{record.cost?.toLocaleString() ?? 0}</span>
+                                </div>
+                                <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${
+                                    record.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {record.status || 'Completed'}
+                                </span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                          <Wrench className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500 font-medium">No service history found</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Repair Requests Section */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                         <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                           <AlertTriangle className="h-4 w-4 text-amber-600" />
+                           Repair Requests
+                         </h4>
+                         <span className="text-xs text-gray-500">{selectedVehicle.repairRequests?.length || 0} Requests</span>
+                      </div>
+                      
+                      {selectedVehicle.repairRequests && selectedVehicle.repairRequests.length > 0 ? (
+                        <div className="space-y-3">
+                          {selectedVehicle.repairRequests.map((request: any) => (
+                            <button 
+                              key={request.id} 
+                              onClick={() => setSelectedRepairRequest(request)}
+                              className="w-full text-left bg-white rounded-xl p-4 border border-gray-200 shadow-sm hover:shadow-md hover:border-amber-200 hover:bg-amber-50/30 transition-all group"
+                            >
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className={`h-2 w-2 rounded-full ${
+                                    request.urgency === 'critical' ? 'bg-red-500' : 
+                                    request.urgency === 'high' ? 'bg-orange-500' : 'bg-blue-500'
+                                  }`} />
+                                  <span className="font-semibold text-gray-900 group-hover:text-amber-800">
+                                    {request.driverName || 'Driver Report'}
+                                  </span>
+                                </div>
+                                <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                  {new Date(request.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <p className="text-gray-600 text-sm mb-3 line-clamp-2 leading-relaxed">{request.description}</p>
+                              <div className="flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100 pt-3 mt-1">
+                                <div className="flex items-center gap-1">
+                                    <Car className="h-3 w-3" />
+                                    <span>{request.odometer ? `${request.odometer.toLocaleString()}` : '—'}</span>
+                                </div>
+                                {request.aiCategory && (
+                                  <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-medium truncate max-w-[120px]">
+                                    {request.aiCategory}
+                                  </span>
+                                )}
+                                <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${
+                                    request.status === 'completed' ? 'bg-green-100 text-green-700' : 
+                                    request.status === 'submitted' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {request.status || 'Submitted'}
+                                </span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                          <AlertTriangle className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500 font-medium">No repair requests found</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Footer Actions */}
+                  <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-3">
+                     <button className="flex-1 btn-secondary justify-center">Assign Job</button>
+                     <button className="flex-1 btn-primary justify-center" onClick={() => handleEditClick(selectedVehicle)}>Edit Vehicle</button>
                   </div>
                 </div>
-                <div className="md:w-64 space-y-3 bg-gray-50 border border-gray-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                    <Info className="h-4 w-4 text-primary-700" />
-                    Quick actions
+              </div>
+            )}
+
+            {/* Repair Request Details Modal */}
+            {selectedRepairRequest && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+                  <div className="bg-gray-50 border-b border-gray-100 p-6 flex items-start justify-between shrink-0">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-bold text-gray-900">Repair Request</h3>
+                        <span className={`px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide rounded-full border ${
+                          selectedRepairRequest.urgency === 'critical' ? 'bg-red-50 text-red-700 border-red-100' : 
+                          selectedRepairRequest.urgency === 'high' ? 'bg-orange-50 text-orange-700 border-orange-100' : 'bg-blue-50 text-blue-700 border-blue-100'
+                        }`}>
+                          {selectedRepairRequest.urgency || 'Normal'} Priority
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(selectedRepairRequest.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedRepairRequest(null)}
+                      className="text-gray-400 hover:text-gray-600 hover:bg-gray-200 p-1.5 rounded-full transition-colors"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
                   </div>
-                  <button 
-                    onClick={() => handleEditClick(selectedVehicle)}
-                    className="btn-primary w-full px-4 py-2.5 text-sm"
-                  >
-                    Edit Vehicle
-                  </button>
-                  <button className="btn-secondary w-full px-4 py-2.5 text-sm">
-                    Assign job
-                  </button>
-                  <button
-                    className="w-full px-4 py-2.5 text-sm text-primary-700 font-semibold hover:bg-primary-50 rounded-xl transition-colors"
-                    onClick={() => setSelectedVehicle(null)}
-                  >
-                    Close
-                  </button>
+                  
+                  <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                    {/* Driver & Vehicle Context */}
+                    <div className="flex items-center p-4 bg-gray-50 rounded-xl border border-gray-100 gap-4">
+                      <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+                        {(selectedRepairRequest.driverName || 'U')[0]}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">{selectedRepairRequest.driverName}</p>
+                        <p className="text-xs text-gray-500">{selectedRepairRequest.driverPhone || selectedRepairRequest.driverEmail || 'No contact info'}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">{selectedRepairRequest.odometer ? `${selectedRepairRequest.odometer.toLocaleString()} mi` : '—'}</p>
+                        <p className="text-xs text-gray-500">Odometer</p>
+                      </div>
+                    </div>
+
+                    {/* AI Category Badge */}
+                    {selectedRepairRequest.aiCategory && (
+                      <div className="flex items-start gap-3 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
+                        <div className="mt-0.5">
+                          <div className="h-5 w-5 rounded-full bg-blue-100 flex items-center justify-center">
+                            <div className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wide text-blue-700 mb-1">AI Analysis</p>
+                          <p className="text-sm text-blue-900 font-medium">{selectedRepairRequest.aiCategory}</p>
+                          {selectedRepairRequest.aiSummary && (
+                            <p className="text-xs text-blue-700 mt-1 leading-relaxed">{selectedRepairRequest.aiSummary}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Description */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                        <FileText className="h-4 w-4 text-gray-500" />
+                        Problem Description
+                      </div>
+                      <div className="bg-white p-4 text-sm text-gray-800 leading-relaxed border border-gray-200 rounded-xl shadow-sm">
+                        {selectedRepairRequest.description}
+                      </div>
+                    </div>
+
+                    {/* Photos Grid */}
+                    {selectedRepairRequest.photoUrls && selectedRepairRequest.photoUrls.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                          <Camera className="h-4 w-4 text-gray-500" />
+                          Attached Photos ({selectedRepairRequest.photoUrls.length})
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {selectedRepairRequest.photoUrls.map((url: string, idx: number) => (
+                            <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group bg-gray-100">
+                              <img 
+                                src={url} 
+                                alt={`Evidence ${idx + 1}`} 
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer"
+                                onClick={() => window.open(url, '_blank')}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Modal Footer */}
+                  <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 shrink-0">
+                    <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 shadow-sm">
+                      Mark Complete
+                    </button>
+                    <button className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 shadow-sm">
+                      Schedule Repair
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Service Record Details Modal */}
+            {selectedRecord && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                  <div className="bg-gray-50 border-b border-gray-100 p-6 flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-lg font-bold text-gray-900">{selectedRecord.serviceType}</h3>
+                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full border ${
+                          selectedRecord.status === 'completed' ? 'bg-green-50 text-green-700 border-green-100' : 
+                          'bg-gray-100 text-gray-700 border-gray-200'
+                        }`}>
+                          {selectedRecord.status || 'Completed'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Calendar className="h-4 w-4" />
+                        {selectedRecord.date}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedRecord(null)}
+                      className="text-gray-400 hover:text-gray-600 hover:bg-gray-200 p-1.5 rounded-full transition-colors"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  
+                  <div className="p-6 space-y-6">
+                    {/* Key Stats */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-primary-50 rounded-xl p-4 border border-primary-100">
+                        <div className="flex items-center gap-2 text-primary-700 mb-1">
+                          <DollarSign className="h-4 w-4" />
+                          <span className="text-xs font-semibold uppercase tracking-wide">Total Cost</span>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900">${selectedRecord.cost?.toLocaleString() ?? 0}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <div className="flex items-center gap-2 text-gray-600 mb-1">
+                          <Car className="h-4 w-4" />
+                          <span className="text-xs font-semibold uppercase tracking-wide">Mileage</span>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {selectedRecord.mileage ? selectedRecord.mileage.toLocaleString() : '—'}
+                          <span className="text-sm font-normal text-gray-500 ml-1">mi</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                        <FileText className="h-4 w-4 text-gray-500" />
+                        Service Details
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700 leading-relaxed border border-gray-100">
+                        {selectedRecord.description || 'No description provided.'}
+                      </div>
+                    </div>
+
+                    {/* Footer Info */}
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold text-xs">
+                          {(selectedRecord.mechanicName || 'M')[0]}
+                        </div>
+                        <div className="text-sm">
+                          <p className="font-medium text-gray-900">{selectedRecord.mechanicName || 'External Mechanic'}</p>
+                          <p className="text-xs text-gray-500">Performed Service</p>
+                        </div>
+                      </div>
+                      
+                      {selectedRecord.nextServiceDue && (
+                        <div className="flex items-center gap-2 text-xs font-medium text-amber-700 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100">
+                          <Clock className="h-3 w-3" />
+                          Next Due: {selectedRecord.nextServiceDue}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
