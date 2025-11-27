@@ -5,24 +5,13 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { ServiceRecord, RepairRequest } from "@/types";
-import {
-  Wrench,
-  ClipboardList,
-  Plus,
-  Loader2,
-  Search,
-  DollarSign,
-  Gauge,
-  Calendar,
-  User,
-  FileText,
-  BadgeCheck,
-  X,
-} from "lucide-react";
+import { Wrench, ClipboardList, Plus, Loader2, Search, DollarSign, Gauge, Calendar, User, FileText, BadgeCheck, X } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useServiceRecords, useCreateServiceRecord, useUpdateServiceRecord } from "@/hooks/use-service-records";
 import { TableRowSkeleton } from "@/components/ui/loading-states";
 import { motion, AnimatePresence } from "framer-motion";
+import ServiceReportForm, { ServiceReportFormData } from "@/components/ServiceReportForm";
+import Select from "@/components/ui/Select";
 
 const statusLabels: Record<string, string> = {
   in_progress: "In Progress",
@@ -41,7 +30,7 @@ const statusStyles: Record<string, string> = {
 export default function ServiceRecordsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  
+
   // React Query Hooks
   const { data: records = [], isLoading, refetch } = useServiceRecords();
   const createRecord = useCreateServiceRecord();
@@ -61,16 +50,6 @@ export default function ServiceRecordsPage() {
     mileage: "",
     status: "in_progress",
     date: "",
-  });
-  const [form, setForm] = useState({
-    mechanicName: "",
-    serviceType: "",
-    description: "",
-    cost: "",
-    mileage: "",
-    status: "in_progress",
-    date: new Date().toISOString().split("T")[0],
-    repairRequestId: "",
   });
 
   useEffect(() => {
@@ -134,16 +113,6 @@ export default function ServiceRecordsPage() {
   }, [records]);
 
   const openCreate = () => {
-    setForm({
-      mechanicName: "",
-      serviceType: "",
-      description: "",
-      cost: "",
-      mileage: "",
-      status: "in_progress",
-      date: new Date().toISOString().split("T")[0],
-      repairRequestId: "",
-    });
     setCreateOpen(true);
   };
 
@@ -163,24 +132,24 @@ export default function ServiceRecordsPage() {
   const submitEdit = async () => {
     if (!selected) return;
     const payload = {
-        mechanicName: editForm.mechanicName,
-        serviceType: editForm.serviceType,
-        description: editForm.description,
-        cost: editForm.cost ? Number(editForm.cost) : undefined,
-        mileage: editForm.mileage ? Number(editForm.mileage) : undefined,
-        status: editForm.status,
-        date: editForm.date,
+      mechanicName: editForm.mechanicName,
+      serviceType: editForm.serviceType,
+      description: editForm.description,
+      cost: editForm.cost ? Number(editForm.cost) : undefined,
+      mileage: editForm.mileage ? Number(editForm.mileage) : undefined,
+      status: editForm.status,
+      date: editForm.date,
     };
-    
+
     updateRecord.mutate(
-        { id: selected.id, data: payload },
-        {
-            onSuccess: (data) => {
-                setSelected({ ...selected, ...data.record });
-                setEditing(false);
-            }
-        }
-    )
+      { id: selected.id, data: payload },
+      {
+        onSuccess: (data) => {
+          setSelected({ ...selected, ...data.record });
+          setEditing(false);
+        },
+      }
+    );
   };
 
   const mechanicLabel = (name?: string) => {
@@ -194,22 +163,22 @@ export default function ServiceRecordsPage() {
     return name;
   };
 
-  const submitForm = async () => {
+  const submitServiceReport = async (formData: ServiceReportFormData) => {
     const payload = {
-        mechanicName: form.mechanicName,
-        serviceType: form.serviceType,
-        description: form.description,
-        cost: form.cost ? Number(form.cost) : undefined,
-        mileage: form.mileage ? Number(form.mileage) : undefined,
-        status: form.status,
-        date: form.date,
-        repairRequestId: form.repairRequestId || undefined,
+      mechanicName: formData.mechanicName,
+      serviceType: formData.serviceType,
+      description: formData.description,
+      cost: formData.totalCost ? Number(formData.totalCost) : formData.cost ? Number(formData.cost) : undefined,
+      mileage: formData.mileage ? Number(formData.mileage) : undefined,
+      status: formData.status,
+      date: formData.date,
+      repairRequestId: formData.repairRequestId || undefined,
     };
-    
+
     createRecord.mutate(payload, {
-        onSuccess: () => {
-            setCreateOpen(false);
-        }
+      onSuccess: () => {
+        setCreateOpen(false);
+      },
     });
   };
 
@@ -229,18 +198,14 @@ export default function ServiceRecordsPage() {
                 <p className="text-xs text-primary-700 font-semibold uppercase tracking-[0.08em]">Service</p>
                 <div className="flex items-center gap-3">
                   <h1 className="text-2xl font-bold text-gray-900">Service Records</h1>
-                  <span className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded-full">
-                    {records.length} total
-                  </span>
+                  <span className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded-full">{records.length} total</span>
                 </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  Technician-completed repairs with mileage, cost, and status.
-                </p>
+                <p className="text-sm text-gray-600 mt-1">Technician-completed repairs with mileage, cost, and status.</p>
               </div>
               <div className="flex items-center gap-3">
                 <button onClick={() => refetch()} className="btn-secondary px-4 py-2 flex items-center gap-2">
-                    <Loader2 className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                    Refresh
+                  <Loader2 className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                  Refresh
                 </button>
                 <button onClick={openCreate} className="btn-primary px-4 py-2 flex items-center gap-2">
                   <Plus className="h-4 w-4" />
@@ -284,150 +249,135 @@ export default function ServiceRecordsPage() {
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm min-h-[400px]">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                    <thead className="bg-gray-50 border-b border-gray-100">
+                  <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
-                        <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Repair</th>
-                        <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Mechanic</th>
-                        <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Cost & Mileage</th>
-                        <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Repair</th>
+                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Mechanic</th>
+                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Cost & Mileage</th>
+                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                     </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
                     {isLoading ? (
-                        Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={5} />)
+                      Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={5} />)
                     ) : filtered.length === 0 ? (
-                        <tr>
-                            <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                                <div className="flex flex-col items-center justify-center">
-                                    <ClipboardList className="h-12 w-12 mb-3 opacity-20" />
-                                    <p>No service records yet.</p>
-                                </div>
-                            </td>
-                        </tr>
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                          <div className="flex flex-col items-center justify-center">
+                            <ClipboardList className="h-12 w-12 mb-3 opacity-20" />
+                            <p>No service records yet.</p>
+                          </div>
+                        </td>
+                      </tr>
                     ) : (
-                        <AnimatePresence>
+                      <AnimatePresence>
                         {filtered.map((rec, i) => (
-                        <motion.tr
+                          <motion.tr
                             key={rec.id}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: i * 0.05 }}
                             onClick={() => setSelected(rec)}
                             className="group hover:bg-gray-50 cursor-pointer transition-colors"
-                        >
+                          >
                             <td className="px-6 py-4 align-top">
-                            <div className="space-y-1">
+                              <div className="space-y-1">
                                 <div className="flex items-center gap-2">
-                                <Wrench className="h-4 w-4 text-gray-400" />
-                                <p className="text-sm font-semibold text-gray-900 line-clamp-1">
-                                    {rec.serviceType || rec.makeModel || "Service"}
-                                </p>
+                                  <Wrench className="h-4 w-4 text-gray-400" />
+                                  <p className="text-sm font-semibold text-gray-900 line-clamp-1">{rec.serviceType || rec.makeModel || "Service"}</p>
                                 </div>
-                                <p className="text-xs text-gray-500 line-clamp-2">
-                                {rec.description || "—"}
-                                </p>
+                                <p className="text-xs text-gray-500 line-clamp-2">{rec.description || "—"}</p>
                                 <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                                <Calendar className="h-3 w-3" /> {rec.date ? formatDate(rec.date) : "—"}
+                                  <Calendar className="h-3 w-3" /> {rec.date ? formatDate(rec.date) : "—"}
                                 </p>
-                            </div>
+                              </div>
                             </td>
                             <td className="px-6 py-4 align-top">
-                            <div className="space-y-1">
+                              <div className="space-y-1">
                                 <div className="flex items-center gap-2">
-                                <User className="h-3.5 w-3.5 text-gray-400" />
-                                <span className="text-sm font-medium text-gray-900">{mechanicLabel(rec.mechanicName)}</span>
+                                  <User className="h-3.5 w-3.5 text-gray-400" />
+                                  <span className="text-sm font-medium text-gray-900">{mechanicLabel(rec.mechanicName)}</span>
                                 </div>
-                                {rec.vehicleLabel && (
-                                <p className="text-xs text-gray-500 truncate">{rec.vehicleLabel}</p>
-                                )}
-                                {rec.vehicleIdentifier && (
-                                <p className="text-xs text-gray-500">ID: {rec.vehicleIdentifier}</p>
-                                )}
-                            </div>
+                                {rec.vehicleLabel && <p className="text-xs text-gray-500 truncate">{rec.vehicleLabel}</p>}
+                                {rec.vehicleIdentifier && <p className="text-xs text-gray-500">ID: {rec.vehicleIdentifier}</p>}
+                              </div>
                             </td>
                             <td className="px-6 py-4 align-top">
-                            <div className="space-y-1 text-sm text-gray-800">
+                              <div className="space-y-1 text-sm text-gray-800">
                                 <div className="flex items-center gap-2">
-                                <DollarSign className="h-3.5 w-3.5 text-gray-400" />
-                                <span>{rec.cost !== undefined ? `$${rec.cost.toFixed(2)}` : "—"}</span>
+                                  <DollarSign className="h-3.5 w-3.5 text-gray-400" />
+                                  <span>{rec.cost !== undefined ? `$${rec.cost.toFixed(2)}` : "—"}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                <Gauge className="h-3.5 w-3.5 text-gray-400" />
-                                <span>{rec.mileage !== undefined ? `${rec.mileage.toLocaleString()} mi` : "—"}</span>
+                                  <Gauge className="h-3.5 w-3.5 text-gray-400" />
+                                  <span>{rec.mileage !== undefined ? `${rec.mileage.toLocaleString()} mi` : "—"}</span>
                                 </div>
-                            </div>
+                              </div>
                             </td>
                             <td className="px-6 py-4 align-top">
-                            <span
+                              <span
                                 className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                                statusStyles[rec.status || "in_progress"] || "bg-gray-100 text-gray-700"
+                                  statusStyles[rec.status || "in_progress"] || "bg-gray-100 text-gray-700"
                                 }`}
-                            >
+                              >
                                 {statusLabels[rec.status || "in_progress"] || rec.status}
-                            </span>
+                              </span>
                             </td>
                             <td className="px-6 py-4 align-top text-right">
-                            <button className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline">
-                                View details
-                            </button>
+                              <button className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline">View details</button>
                             </td>
-                        </motion.tr>
+                          </motion.tr>
                         ))}
-                        </AnimatePresence>
+                      </AnimatePresence>
                     )}
-                    </tbody>
+                  </tbody>
                 </table>
-               </div>
+              </div>
             </div>
           </div>
         </main>
       </div>
 
       <AnimatePresence>
-      {selected && (
-         <motion.div 
-            className="fixed inset-0 z-50 overflow-hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-        >
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" onClick={() => setSelected(null)} />
-          <motion.div 
-            className="absolute inset-y-0 right-0 w-full max-w-2xl bg-white shadow-2xl flex flex-col h-full"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        >
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white z-10">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">Service details</h2>
-                <p className="text-sm text-gray-500">Record ID: {selected.id.slice(0, 8)}</p>
-              </div>
-              <button
-                onClick={() => setSelected(null)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-8">
-              <div className="flex items-center gap-3">
-                <BadgeCheck className="h-5 w-5 text-indigo-600" />
+        {selected && (
+          <motion.div className="fixed inset-0 z-50 overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" onClick={() => setSelected(null)} />
+            <motion.div
+              className="absolute inset-y-0 right-0 w-full max-w-2xl bg-white shadow-2xl flex flex-col h-full"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            >
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white z-10">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{selected.serviceType || "Service"}</p>
-                  <p className="text-xs text-gray-500">{selected.date ? formatDate(selected.date) : "—"}</p>
+                  <h2 className="text-lg font-bold text-gray-900">Service details</h2>
+                  <p className="text-sm text-gray-500">Record ID: {selected.id.slice(0, 8)}</p>
                 </div>
-                <span
-                  className={`ml-auto px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${
-                    statusStyles[selected.status || "in_progress"]
-                  }`}
+                <button
+                  onClick={() => setSelected(null)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
                 >
-                  {statusLabels[selected.status || "in_progress"]}
-                </span>
-                {/* Edit disabled per requirements
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                <div className="flex items-center gap-3">
+                  <BadgeCheck className="h-5 w-5 text-indigo-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{selected.serviceType || "Service"}</p>
+                    <p className="text-xs text-gray-500">{selected.date ? formatDate(selected.date) : "—"}</p>
+                  </div>
+                  <span
+                    className={`ml-auto px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${
+                      statusStyles[selected.status || "in_progress"]
+                    }`}
+                  >
+                    {statusLabels[selected.status || "in_progress"]}
+                  </span>
+                  {/* Edit disabled per requirements
                 {!editing && (
                   <button
                     onClick={() => openEdit(selected)}
@@ -437,182 +387,77 @@ export default function ServiceRecordsPage() {
                   </button>
                 )}
                 */}
-              </div>
-
-              {!editing ? (
-                <>
-                  <section>
-                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                      <User className="h-4 w-4" /> Mechanic
-                    </h3>
-                    <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Name</p>
-                        <p className="font-medium text-gray-900">{mechanicLabel(selected.mechanicName)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Vehicle</p>
-                        <p className="font-medium text-gray-900">{selected.vehicleLabel || selected.vehicleIdentifier || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Division</p>
-                        <p className="font-medium text-gray-900">{selected.division || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Type</p>
-                        <p className="font-medium text-gray-900">{selected.vehicleType || "—"}</p>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section>
-                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                      <FileText className="h-4 w-4" /> Work performed
-                    </h3>
-                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-                      {selected.description || "—"}
-                    </div>
-                  </section>
-
-                  <section>
-                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                      <Gauge className="h-4 w-4" /> Costs & mileage
-                    </h3>
-                    <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Approx. cost</p>
-                        <p className="font-medium text-gray-900">
-                          {selected.cost !== undefined ? `$${selected.cost.toFixed(2)}` : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Mileage</p>
-                        <p className="font-medium text-gray-900">
-                          {selected.mileage !== undefined ? `${selected.mileage.toLocaleString()} mi` : "—"}
-                        </p>
-                      </div>
-                    </div>
-                  </section>
-                </>
-              ) : (
-                <div className="space-y-6">
-                  {/* Edit form content (hidden but kept in code structure) */}
                 </div>
-              )}
-            </div>
+
+                {!editing ? (
+                  <>
+                    <section>
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <User className="h-4 w-4" /> Mechanic
+                      </h3>
+                      <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Name</p>
+                          <p className="font-medium text-gray-900">{mechanicLabel(selected.mechanicName)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Vehicle</p>
+                          <p className="font-medium text-gray-900">{selected.vehicleLabel || selected.vehicleIdentifier || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Division</p>
+                          <p className="font-medium text-gray-900">{selected.division || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Type</p>
+                          <p className="font-medium text-gray-900">{selected.vehicleType || "—"}</p>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section>
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <FileText className="h-4 w-4" /> Work performed
+                      </h3>
+                      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                        {selected.description || "—"}
+                      </div>
+                    </section>
+
+                    <section>
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <Gauge className="h-4 w-4" /> Costs & mileage
+                      </h3>
+                      <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Approx. cost</p>
+                          <p className="font-medium text-gray-900">{selected.cost !== undefined ? `$${selected.cost.toFixed(2)}` : "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Mileage</p>
+                          <p className="font-medium text-gray-900">
+                            {selected.mileage !== undefined ? `${selected.mileage.toLocaleString()} mi` : "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </section>
+                  </>
+                ) : (
+                  <div className="space-y-6">{/* Edit form content (hidden but kept in code structure) */}</div>
+                )}
+              </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
+        )}
       </AnimatePresence>
 
       {createOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            {/* Create Modal content */}
-             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">New service record</p>
-                <h3 className="text-lg font-bold text-gray-900">Log mechanic work</h3>
-              </div>
-              <button className="text-gray-400 hover:text-gray-600 p-1" onClick={() => setCreateOpen(false)}>
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className="space-y-1.5 block">
-                <span className="text-sm font-semibold text-gray-700">Mechanic name</span>
-                <input
-                  className="input-field w-full"
-                  value={form.mechanicName}
-                  onChange={(e) => setForm({ ...form, mechanicName: e.target.value })}
-                  placeholder="Who performed the work"
-                />
-              </label>
-              {/* ... Rest of form inputs ... */}
-               <label className="space-y-1.5 block">
-                <span className="text-sm font-semibold text-gray-700">Service type</span>
-                <input
-                  className="input-field w-full"
-                  value={form.serviceType}
-                  onChange={(e) => setForm({ ...form, serviceType: e.target.value })}
-                  placeholder="Oil change, brakes, inspection..."
-                />
-              </label>
-               <label className="space-y-1.5 block">
-                <span className="text-sm font-semibold text-gray-700">Date</span>
-                <input
-                  type="date"
-                  className="input-field w-full"
-                  value={form.date}
-                  onChange={(e) => setForm({ ...form, date: e.target.value })}
-                />
-              </label>
-              <label className="space-y-1.5 block">
-                <span className="text-sm font-semibold text-gray-700">Approx. cost</span>
-                <input
-                  className="input-field w-full"
-                  type="number"
-                  step="0.01"
-                  value={form.cost}
-                  onChange={(e) => setForm({ ...form, cost: e.target.value })}
-                  placeholder="0.00"
-                />
-              </label>
-              <label className="space-y-1.5 block">
-                <span className="text-sm font-semibold text-gray-700">Mileage</span>
-                <input
-                  className="input-field w-full"
-                  type="number"
-                  value={form.mileage}
-                  onChange={(e) => setForm({ ...form, mileage: e.target.value })}
-                  placeholder="0"
-                />
-              </label>
-               <label className="space-y-1.5 block">
-                <span className="text-sm font-semibold text-gray-700">Status</span>
-                <select
-                  className="input-field w-full"
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
-                >
-                  <option value="in_progress">In progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                  <option value="open">Open</option>
-                </select>
-              </label>
-            </div>
-
-             <label className="space-y-1.5 block">
-              <span className="text-sm font-semibold text-gray-700">Repairs & notes</span>
-              <textarea
-                className="input-field w-full min-h-[120px]"
-                placeholder="Describe the work performed and findings..."
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-              />
-            </label>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => setCreateOpen(false)}
-                className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-                disabled={saving}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitForm}
-                className="flex-1 btn-primary py-2.5 justify-center flex items-center gap-2 shadow-lg shadow-primary-500/20"
-                disabled={saving || createRecord.isPending}
-              >
-                {createRecord.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Save record
-              </button>
-            </div>
-          </div>
-        </div>
+        <ServiceReportForm
+          repairOptions={repairOptions}
+          onClose={() => setCreateOpen(false)}
+          onSubmit={submitServiceReport}
+          isSubmitting={createRecord.isPending}
+        />
       )}
     </div>
   );
