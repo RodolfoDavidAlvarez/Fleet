@@ -41,3 +41,4 @@ async function inspectVehicles() {
 inspectVehicles().then(() => process.exit(0));
 
 
+

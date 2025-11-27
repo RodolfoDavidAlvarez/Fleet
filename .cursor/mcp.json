@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "/Users/rodolfoalvarez/.npm-global/bin/supabase-db-mcp",
+      "env": {
+        "SUPABASE_URL": "https://kxcixjiafdohbpwijfmd.supabase.co",
+        "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}"
+      }
+    }
+  }
+}

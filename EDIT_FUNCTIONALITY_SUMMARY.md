@@ -114,3 +114,4 @@ ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS photo_url TEXT;
 Everything is connected to the database and ready to use!
 
 
+

@@ -3,18 +3,52 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import DashboardLayout from '@/components/DashboardLayout'
 import { Car, Calendar, Users, CheckCircle, MessageSquare, Wrench, BarChart3, TrendingUp, AlertTriangle, Clock } from 'lucide-react'
 import { DashboardStats, RepairRequest } from '@/types'
 
+function StatCardSkeleton() {
+  return (
+    <div className="card p-6 animate-pulse">
+      <div className="flex items-center justify-between mb-4">
+        <div className="w-12 h-12 rounded-xl bg-[var(--bg-tertiary)]" />
+        <div className="w-6 h-6 rounded-full bg-[var(--bg-tertiary)]" />
+      </div>
+      <div className="space-y-2">
+        <div className="h-6 w-20 bg-[var(--bg-tertiary)] rounded" />
+        <div className="h-4 w-24 bg-[var(--bg-tertiary)] rounded" />
+        <div className="h-3 w-16 bg-[var(--bg-tertiary)] rounded" />
+      </div>
+    </div>
+  )
+}
+
+function ListSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: rows }).map((_, idx) => (
+        <div key={idx} className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-tertiary)] animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[var(--surface)]" />
+            <div className="space-y-2">
+              <div className="h-4 w-32 bg-[var(--surface)] rounded" />
+              <div className="h-3 w-24 bg-[var(--surface)] rounded" />
+            </div>
+          </div>
+          <div className="w-20 h-6 bg-[var(--surface)] rounded-full" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function UnifiedDashboard() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [user, setUser] = useState<any>(null)
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [jobs, setJobs] = useState<any[]>([])
-  const [bookings, setBookings] = useState<any[]>([])
-  const [repairRequests, setRepairRequests] = useState<RepairRequest[]>([])
-  const [loading, setLoading] = useState(true)
+  const [authReady, setAuthReady] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -28,51 +62,122 @@ export default function UnifiedDashboard() {
       return
     }
     setUser(parsedUser)
-
-    const loadData = async () => {
-      try {
-        const [statsRes, jobsRes, bookingsRes, repairsRes] = await Promise.all([
-          fetch('/api/dashboard'),
-          fetch('/api/jobs'),
-          fetch('/api/bookings'),
-          fetch('/api/repair-requests?limit=4'),
-        ])
-
-        if (statsRes.ok) {
-          const statsData = await statsRes.json()
-          setStats(statsData.stats)
-        }
-
-        if (jobsRes.ok) {
-          const jobsData = await jobsRes.json()
-          setJobs(jobsData.jobs || [])
-        }
-
-        if (bookingsRes.ok) {
-          const bookingsData = await bookingsRes.json()
-          setBookings((bookingsData.bookings || []).slice(0, 5))
-        }
-
-        if (repairsRes.ok) {
-          const repairsData = await repairsRes.json()
-          setRepairRequests(repairsData.requests || [])
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
+    setAuthReady(true)
   }, [router])
 
-  if (!user || loading) {
+  const {
+    data: statsData,
+    isLoading: statsLoading,
+    isFetching: statsFetching,
+    error: statsError,
+  } = useQuery<{ stats: DashboardStats }>({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/dashboard')
+      const data: { stats: DashboardStats; error?: string } = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to load dashboard stats.')
+      }
+      return data
+    },
+    enabled: authReady,
+    staleTime: 60 * 1000,
+    onSuccess: () => setLastUpdated(new Date()),
+  })
+
+  const {
+    data: jobsData,
+    isLoading: jobsLoading,
+    isFetching: jobsFetching,
+    error: jobsError,
+  } = useQuery<{ jobs: any[] }>({
+    queryKey: ['dashboard-jobs'],
+    queryFn: async () => {
+      const res = await fetch('/api/jobs')
+      const data: { jobs: any[]; error?: string } = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to load jobs.')
+      }
+      return data
+    },
+    enabled: authReady,
+    staleTime: 30 * 1000,
+    onSuccess: () => setLastUpdated(new Date()),
+  })
+
+  const {
+    data: bookingsData,
+    isLoading: bookingsLoading,
+    isFetching: bookingsFetching,
+    error: bookingsError,
+  } = useQuery<{ bookings: any[] }>({
+    queryKey: ['dashboard-bookings'],
+    queryFn: async () => {
+      const res = await fetch('/api/bookings')
+      const data: { bookings: any[]; error?: string } = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to load bookings.')
+      }
+      return data
+    },
+    enabled: authReady,
+    staleTime: 30 * 1000,
+    onSuccess: () => setLastUpdated(new Date()),
+  })
+
+  const {
+    data: repairsData,
+    isLoading: repairsLoading,
+    isFetching: repairsFetching,
+    error: repairsError,
+  } = useQuery<{ requests: RepairRequest[] }>({
+    queryKey: ['dashboard-repair-requests'],
+    queryFn: async () => {
+      const res = await fetch('/api/repair-requests?limit=4')
+      const data: { requests: RepairRequest[]; error?: string } = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to load repair requests.')
+      }
+      return data
+    },
+    enabled: authReady,
+    staleTime: 30 * 1000,
+    onSuccess: () => setLastUpdated(new Date()),
+  })
+
+  const stats = statsData?.stats || null
+  const jobs = jobsData?.jobs || []
+  const bookings = (bookingsData?.bookings || []).slice(0, 5)
+  const repairRequests = repairsData?.requests || []
+
+  const isInitialLoading =
+    (statsLoading && !stats) ||
+    (jobsLoading && jobs.length === 0) ||
+    (bookingsLoading && bookings.length === 0) ||
+    (repairsLoading && repairRequests.length === 0)
+
+  const isRefetching = statsFetching || jobsFetching || bookingsFetching || repairsFetching
+
+  const firstError = [statsError, jobsError, bookingsError, repairsError].find(Boolean) as Error | undefined
+
+  const showStatsSkeleton = !stats && (statsLoading || isInitialLoading)
+  const showBookingsSkeleton = bookings.length === 0 && (bookingsLoading || isInitialLoading)
+  const showRepairsSkeleton = repairRequests.length === 0 && (repairsLoading || isInitialLoading)
+  const showJobsSkeleton = jobs.length === 0 && (jobsLoading || isInitialLoading)
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-bookings'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-repair-requests'] })
+  }
+
+  if (!authReady || !user) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[var(--primary-200)] border-t-[var(--primary-500)] rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted">Loading dashboard...</p>
+      <div className="flex items-center justify-center h-screen bg-[var(--bg-secondary)]">
+        <div className="card p-6 flex items-center gap-3">
+          <div className="w-6 h-6 border-2 border-[var(--primary-200)] border-t-[var(--primary-600)] rounded-full animate-spin" />
+          <p className="text-sm text-[var(--text-secondary)]">Loading dashboard...</p>
         </div>
       </div>
     )
@@ -145,36 +250,72 @@ export default function UnifiedDashboard() {
               <span className="badge badge-primary">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
               </span>
+              {isRefetching && (
+                <span className="inline-flex items-center gap-2 text-xs text-muted">
+                  <span className="h-2 w-2 rounded-full bg-[var(--primary-500)] animate-ping" />
+                  Updating
+                </span>
+              )}
+              <button
+                onClick={handleRefresh}
+                className="btn btn-secondary btn-sm"
+                disabled={isRefetching}
+              >
+                {isRefetching ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-3 w-3 border-2 border-[var(--primary-200)] border-t-[var(--primary-600)] rounded-full animate-spin" />
+                    Refreshing
+                  </span>
+                ) : (
+                  'Refresh'
+                )}
+              </button>
             </div>
           </div>
+          {lastUpdated && (
+            <p className="text-xs text-muted mt-2">
+              Last updated {lastUpdated.toLocaleTimeString()}
+            </p>
+          )}
         </div>
+
+        {firstError && (
+          <div className="card border border-[var(--danger-200)] bg-[var(--danger-50)] text-[var(--danger-700)]">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-medium">Some data could not be refreshed: {firstError.message}</p>
+              <span className="text-xs text-[var(--text-secondary)]">Retry shortly</span>
+            </div>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 stagger">
-          {statCards.map((stat, index) => {
-            const Icon = stat.icon
-            return (
-              <div key={stat.title} className="card hover-lift group">
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                      <Icon className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {stat.trend === 'up' && <TrendingUp className="h-4 w-4 text-emerald-500" />}
-                      {stat.trend === 'down' && <TrendingUp className="h-4 w-4 text-danger-500 rotate-180" />}
-                      {stat.trend === 'stable' && <div className="h-4 w-4 rounded-full bg-[var(--warning-500)]" />}
+          {showStatsSkeleton
+            ? Array.from({ length: 4 }).map((_, idx) => <StatCardSkeleton key={idx} />)
+            : statCards.map((stat) => {
+                const Icon = stat.icon
+                return (
+                  <div key={stat.title} className="card hover-lift group">
+                    <div className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+                          <Icon className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {stat.trend === 'up' && <TrendingUp className="h-4 w-4 text-emerald-500" />}
+                          {stat.trend === 'down' && <TrendingUp className="h-4 w-4 text-danger-500 rotate-180" />}
+                          {stat.trend === 'stable' && <div className="h-4 w-4 rounded-full bg-[var(--warning-500)]" />}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-3xl font-bold">{stat.value}</p>
+                        <p className="text-sm font-medium text-muted">{stat.title}</p>
+                        <p className="text-xs text-subtle">{stat.change}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-3xl font-bold">{stat.value}</p>
-                    <p className="text-sm font-medium text-muted">{stat.title}</p>
-                    <p className="text-xs text-subtle">{stat.change}</p>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+                )
+              })}
         </div>
 
         {/* Main Content Grid */}
@@ -196,7 +337,9 @@ export default function UnifiedDashboard() {
                   </Link>
                 </div>
                 <div className="space-y-3">
-                  {bookings.length === 0 ? (
+                  {showBookingsSkeleton ? (
+                    <ListSkeleton rows={4} />
+                  ) : bookings.length === 0 ? (
                     <div className="text-center py-12 text-muted">
                       <Calendar className="h-12 w-12 mx-auto mb-3 opacity-20" />
                       <p>No bookings yet</p>
@@ -252,40 +395,78 @@ export default function UnifiedDashboard() {
                   </Link>
                 </div>
                 <div className="space-y-3">
-                  {repairRequests.length === 0 ? (
+                  {showRepairsSkeleton ? (
+                    <ListSkeleton rows={3} />
+                  ) : repairRequests.length === 0 ? (
                     <div className="text-center py-12 text-muted">
                       <AlertTriangle className="h-12 w-12 mx-auto mb-3 opacity-20" />
                       <p>No repair requests yet</p>
                     </div>
                   ) : (
-                    repairRequests.map((req, idx) => (
-                      <div
-                        key={req.id}
-                        className="group flex items-center justify-between p-4 rounded-xl hover:bg-[var(--surface-hover)] transition-all cursor-pointer"
-                        style={{ animationDelay: `${idx * 50}ms` }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[var(--warning-100)] flex items-center justify-center">
-                            <AlertTriangle className="h-5 w-5 text-[var(--warning-600)]" />
+                    repairRequests.map((req, idx) => {
+                      const infoLine = [
+                        req.vehicleIdentifier || 'Vehicle not listed',
+                        req.division,
+                        req.vehicleType,
+                      ].filter(Boolean).join(' • ')
+
+                      const tagLine = [
+                        req.makeModel,
+                        req.aiCategory || 'General repair',
+                      ].filter(Boolean).join(' • ')
+
+                      const incident = req.incidentDate
+                        ? new Date(req.incidentDate).toLocaleDateString()
+                        : undefined
+
+                      return (
+                        <div
+                          key={req.id}
+                          className="group flex items-center justify-between p-4 rounded-xl hover:bg-[var(--surface-hover)] transition-all cursor-pointer"
+                          style={{ animationDelay: `${idx * 50}ms` }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-[var(--warning-100)] flex items-center justify-center">
+                              <AlertTriangle className="h-5 w-5 text-[var(--warning-600)]" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{req.driverName || 'Unassigned'}</p>
+                                {req.isImmediate && (
+                                  <span className="badge badge-danger">Immediate</span>
+                                )}
+                                {req.urgency && (
+                                  <span className={`badge ${
+                                    req.urgency === 'critical' ? 'badge-danger' :
+                                    req.urgency === 'high' ? 'badge-warning' :
+                                    req.urgency === 'medium' ? 'badge-primary' : 'badge'
+                                  }`}>
+                                    {req.urgency}
+                                  </span>
+                                )}
+                              </div>
+                              {infoLine && (
+                                <p className="text-sm text-muted">{infoLine}</p>
+                              )}
+                              <p className="text-xs text-subtle">
+                                {tagLine}
+                                {incident ? ` • Incident: ${incident}` : ''}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{req.driverName}</p>
-                            <p className="text-sm text-muted">
-                              {(req.aiCategory || 'General repair')} • {req.vehicleIdentifier || 'Vehicle not listed'} •{' '}
-                              {new Date(req.createdAt).toLocaleDateString()}
-                            </p>
+                          <div className="flex items-center gap-2">
+                            <span className={`badge ${
+                              req.status === 'completed' ? 'badge-success' :
+                              req.status === 'waiting_booking' ? 'badge-warning' :
+                              req.status === 'scheduled' ? 'badge-primary' :
+                              'badge-primary'
+                            }`}>
+                              {req.status.replace('_', ' ')}
+                            </span>
                           </div>
                         </div>
-                        <span className={`badge ${
-                          req.status === 'completed' ? 'badge-success' :
-                          req.status === 'waiting_booking' ? 'badge-warning' :
-                          req.status === 'scheduled' ? 'badge-primary' :
-                          'badge-primary'
-                        }`}>
-                          {req.status.replace('_', ' ')}
-                        </span>
-                      </div>
-                    ))
+                      )
+                    })
                   )}
                 </div>
               </div>
@@ -306,7 +487,9 @@ export default function UnifiedDashboard() {
                     Open board →
                   </Link>
                 </div>
-                {jobs.length === 0 ? (
+                {showJobsSkeleton ? (
+                  <ListSkeleton rows={3} />
+                ) : jobs.length === 0 ? (
                   <div className="text-center py-12 text-muted">
                     <Wrench className="h-12 w-12 mx-auto mb-3 opacity-20" />
                     <p>No jobs {isMechanic ? 'assigned' : 'available'} yet</p>

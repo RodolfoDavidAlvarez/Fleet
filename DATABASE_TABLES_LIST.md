@@ -77,3 +77,4 @@ Based on the schema analysis, here are all the tables needed for the Fleet Manag
 - `vehicle_drivers` supports many-to-many relationships for multiple drivers per vehicle
 
 
+

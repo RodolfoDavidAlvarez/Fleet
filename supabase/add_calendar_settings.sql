@@ -20,3 +20,4 @@ ON CONFLICT (id) DO NOTHING;
 SELECT * FROM calendar_settings;
 
 
+
