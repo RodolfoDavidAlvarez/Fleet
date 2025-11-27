@@ -8,6 +8,8 @@ import { Car, Plus, User as UserIcon, Wrench, Calendar, Gauge } from 'lucide-rea
 import { Vehicle } from '@/types'
 import { getStatusColor, formatDate } from '@/lib/utils'
 import { useVehicles } from '@/hooks/use-vehicles'
+import { VehicleCardSkeleton } from '@/components/ui/loading-states'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function VehiclesPage() {
   const router = useRouter()
@@ -70,96 +72,108 @@ export default function VehiclesPage() {
             )}
 
             {isLoading ? (
-              <div className="p-8 text-center text-gray-600">Loading vehicles...</div>
-            ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {vehicles.map((vehicle) => (
-                  <div
-                    key={vehicle.id}
-                    className="card-surface rounded-xl p-6 hover:shadow-lg transition-shadow"
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="bg-primary-100 p-3 rounded-full">
-                          <Car className="h-6 w-6 text-primary-600" />
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <VehicleCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : (
+              <motion.div 
+                layout 
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              >
+                <AnimatePresence>
+                  {vehicles.map((vehicle, i) => (
+                    <motion.div
+                      key={vehicle.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.2, delay: i * 0.05 }}
+                      className="card-surface rounded-xl p-6 hover:shadow-lg transition-shadow"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="bg-primary-100 p-3 rounded-full">
+                            <Car className="h-6 w-6 text-primary-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {vehicle.make && vehicle.model
+                                ? `${vehicle.make} ${vehicle.model}`
+                                : vehicle.vehicleNumber || vehicle.vin}
+                            </h3>
+                            {vehicle.year && (
+                              <p className="text-sm text-gray-500">{vehicle.year}</p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {vehicle.make && vehicle.model
-                              ? `${vehicle.make} ${vehicle.model}`
-                              : vehicle.vehicleNumber || vehicle.vin}
-                          </h3>
-                          {vehicle.year && (
-                            <p className="text-sm text-gray-500">{vehicle.year}</p>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(vehicle.status)}`}>
+                          {vehicle.status}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        {vehicle.licensePlate && (
+                          <div className="flex items-center text-sm text-gray-600">
+                            <span className="font-medium mr-2">Plate:</span>
+                            {vehicle.licensePlate}
+                          </div>
+                        )}
+                        {vehicle.vin && (
+                          <div className="flex items-center text-sm text-gray-600">
+                            <span className="font-medium mr-2">VIN:</span>
+                            <span className="font-mono text-xs">{vehicle.vin}</span>
+                          </div>
+                        )}
+                        {vehicle.driverName && (
+                          <div className="flex items-center text-sm text-gray-600">
+                            <UserIcon className="h-4 w-4 mr-2" />
+                            {vehicle.driverName}
+                          </div>
+                        )}
+                        {vehicle.mileage !== undefined && (
+                          <div className="flex items-center text-sm text-gray-600">
+                            <Gauge className="h-4 w-4 mr-2" />
+                            {vehicle.mileage.toLocaleString()} miles
+                          </div>
+                        )}
+                      </div>
+
+                      {(vehicle.nextServiceDue || vehicle.lastServiceDate) && (
+                        <div className="mb-4 p-3 bg-gray-50 rounded-lg space-y-1">
+                          {vehicle.nextServiceDue && (
+                            <div className="flex items-center text-sm text-gray-700">
+                              <Calendar className="h-4 w-4 mr-2" />
+                              <span className="font-medium">Next Service:</span>
+                              <span className="ml-2">{formatDate(vehicle.nextServiceDue)}</span>
+                            </div>
+                          )}
+                          {vehicle.lastServiceDate && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Wrench className="h-4 w-4 mr-2" />
+                              <span>Last Service: {formatDate(vehicle.lastServiceDate)}</span>
+                            </div>
                           )}
                         </div>
-                      </div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(vehicle.status)}`}>
-                        {vehicle.status}
-                      </span>
-                    </div>
+                      )}
 
-                    <div className="space-y-2 mb-4">
-                      {vehicle.licensePlate && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <span className="font-medium mr-2">Plate:</span>
-                          {vehicle.licensePlate}
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                        <div className="text-sm text-gray-500">
+                          {vehicle.serviceHistory?.length || 0} service records
                         </div>
-                      )}
-                      {vehicle.vin && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <span className="font-medium mr-2">VIN:</span>
-                          <span className="font-mono text-xs">{vehicle.vin}</span>
-                        </div>
-                      )}
-                      {vehicle.driverName && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <UserIcon className="h-4 w-4 mr-2" />
-                          {vehicle.driverName}
-                        </div>
-                      )}
-                      {vehicle.mileage !== undefined && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Gauge className="h-4 w-4 mr-2" />
-                          {vehicle.mileage.toLocaleString()} miles
-                        </div>
-                      )}
-                    </div>
-
-                    {(vehicle.nextServiceDue || vehicle.lastServiceDate) && (
-                      <div className="mb-4 p-3 bg-gray-50 rounded-lg space-y-1">
-                        {vehicle.nextServiceDue && (
-                          <div className="flex items-center text-sm text-gray-700">
-                            <Calendar className="h-4 w-4 mr-2" />
-                            <span className="font-medium">Next Service:</span>
-                            <span className="ml-2">{formatDate(vehicle.nextServiceDue)}</span>
-                          </div>
-                        )}
-                        {vehicle.lastServiceDate && (
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Wrench className="h-4 w-4 mr-2" />
-                            <span>Last Service: {formatDate(vehicle.lastServiceDate)}</span>
-                          </div>
-                        )}
+                        <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
+                          View Details
+                        </button>
                       </div>
-                    )}
-
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                      <div className="text-sm text-gray-500">
-                        {vehicle.serviceHistory?.length || 0} service records
-                      </div>
-                      <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
                 {vehicles.length === 0 && (
                   <div className="p-6 text-center text-gray-500 col-span-full">
                     No vehicles found.
                   </div>
                 )}
-              </div>
+              </motion.div>
             )}
           </div>
         </main>

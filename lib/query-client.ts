@@ -32,6 +32,7 @@ export const queryKeys = {
   booking: (id: string) => ['booking', id] as const,
   repairRequests: (status?: string) => ['repair-requests', status] as const,
   repairRequest: (id: string) => ['repair-request', id] as const,
+  serviceRecords: ['service-records'] as const,
   dashboardStats: ['dashboard-stats'] as const,
   drivers: ['drivers'] as const,
 }
