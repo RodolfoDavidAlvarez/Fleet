@@ -47,6 +47,16 @@ export default function ServiceRecordsPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<ServiceRecord | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    mechanicName: "",
+    serviceType: "",
+    description: "",
+    cost: "",
+    mileage: "",
+    status: "in_progress",
+    date: "",
+  });
   const [form, setForm] = useState({
     mechanicName: "",
     serviceType: "",
@@ -146,6 +156,61 @@ export default function ServiceRecordsPage() {
       repairRequestId: "",
     });
     setCreateOpen(true);
+  };
+
+  const openEdit = (rec: ServiceRecord) => {
+    setEditing(true);
+    setEditForm({
+      mechanicName: rec.mechanicName || "",
+      serviceType: rec.serviceType || "",
+      description: rec.description || "",
+      cost: rec.cost !== undefined ? String(rec.cost) : "",
+      mileage: rec.mileage !== undefined ? String(rec.mileage) : "",
+      status: (rec.status as string) || "in_progress",
+      date: rec.date || "",
+    });
+  };
+
+  const submitEdit = async () => {
+    if (!selected) return;
+    try {
+      setSaving(true);
+      const payload = {
+        mechanicName: editForm.mechanicName,
+        serviceType: editForm.serviceType,
+        description: editForm.description,
+        cost: editForm.cost ? Number(editForm.cost) : undefined,
+        mileage: editForm.mileage ? Number(editForm.mileage) : undefined,
+        status: editForm.status,
+        date: editForm.date,
+      };
+      const res = await fetch(`/api/service-records/${selected.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update service record");
+      setRecords((prev) => prev.map((r) => (r.id === selected.id ? { ...r, ...data.record } : r)));
+      setSelected((prev) => (prev ? { ...prev, ...data.record } : prev));
+      setEditing(false);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Failed to update service record");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const mechanicLabel = (name?: string) => {
+    if (!name) return "—";
+    try {
+      const parsed = JSON.parse(name);
+      if (Array.isArray(parsed)) return parsed.join(", ");
+    } catch (_) {
+      // ignore parse errors
+    }
+    return name;
   };
 
   const submitForm = async () => {
@@ -378,60 +443,159 @@ export default function ServiceRecordsPage() {
                 >
                   {statusLabels[selected.status || "in_progress"]}
                 </span>
+                {!editing && (
+                  <button
+                    onClick={() => openEdit(selected)}
+                    className="ml-3 text-sm font-medium text-primary-600 hover:text-primary-700"
+                  >
+                    Edit
+                  </button>
+                )}
               </div>
 
-              <section>
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <User className="h-4 w-4" /> Mechanic
-                </h3>
-                <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Name</p>
-                    <p className="font-medium text-gray-900">{selected.mechanicName || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Vehicle</p>
-                    <p className="font-medium text-gray-900">{selected.vehicleLabel || selected.vehicleIdentifier || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Division</p>
-                    <p className="font-medium text-gray-900">{selected.division || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Type</p>
-                    <p className="font-medium text-gray-900">{selected.vehicleType || "—"}</p>
-                  </div>
-                </div>
-              </section>
+              {!editing ? (
+                <>
+                  <section>
+                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <User className="h-4 w-4" /> Mechanic
+                    </h3>
+                    <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Name</p>
+                        <p className="font-medium text-gray-900">{mechanicLabel(selected.mechanicName)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Vehicle</p>
+                        <p className="font-medium text-gray-900">{selected.vehicleLabel || selected.vehicleIdentifier || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Division</p>
+                        <p className="font-medium text-gray-900">{selected.division || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Type</p>
+                        <p className="font-medium text-gray-900">{selected.vehicleType || "—"}</p>
+                      </div>
+                    </div>
+                  </section>
 
-              <section>
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <FileText className="h-4 w-4" /> Work performed
-                </h3>
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-                  {selected.description || "—"}
-                </div>
-              </section>
+                  <section>
+                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <FileText className="h-4 w-4" /> Work performed
+                    </h3>
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                      {selected.description || "—"}
+                    </div>
+                  </section>
 
-              <section>
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Gauge className="h-4 w-4" /> Costs & mileage
-                </h3>
-                <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Approx. cost</p>
-                    <p className="font-medium text-gray-900">
-                      {selected.cost !== undefined ? `$${selected.cost.toFixed(2)}` : "—"}
-                    </p>
+                  <section>
+                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <Gauge className="h-4 w-4" /> Costs & mileage
+                    </h3>
+                    <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Approx. cost</p>
+                        <p className="font-medium text-gray-900">
+                          {selected.cost !== undefined ? `$${selected.cost.toFixed(2)}` : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Mileage</p>
+                        <p className="font-medium text-gray-900">
+                          {selected.mileage !== undefined ? `${selected.mileage.toLocaleString()} mi` : "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+                </>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="space-y-1.5 block">
+                      <span className="text-sm font-semibold text-gray-700">Mechanic name</span>
+                      <input
+                        className="input-field w-full"
+                        value={editForm.mechanicName}
+                        onChange={(e) => setEditForm({ ...editForm, mechanicName: e.target.value })}
+                      />
+                    </label>
+                    <label className="space-y-1.5 block">
+                      <span className="text-sm font-semibold text-gray-700">Service type</span>
+                      <input
+                        className="input-field w-full"
+                        value={editForm.serviceType}
+                        onChange={(e) => setEditForm({ ...editForm, serviceType: e.target.value })}
+                      />
+                    </label>
+                    <label className="space-y-1.5 block">
+                      <span className="text-sm font-semibold text-gray-700">Approx. cost</span>
+                      <input
+                        className="input-field w-full"
+                        type="number"
+                        step="0.01"
+                        value={editForm.cost}
+                        onChange={(e) => setEditForm({ ...editForm, cost: e.target.value })}
+                      />
+                    </label>
+                    <label className="space-y-1.5 block">
+                      <span className="text-sm font-semibold text-gray-700">Mileage</span>
+                      <input
+                        className="input-field w-full"
+                        type="number"
+                        value={editForm.mileage}
+                        onChange={(e) => setEditForm({ ...editForm, mileage: e.target.value })}
+                      />
+                    </label>
+                    <label className="space-y-1.5 block">
+                      <span className="text-sm font-semibold text-gray-700">Status</span>
+                      <select
+                        className="input-field w-full"
+                        value={editForm.status}
+                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                      >
+                        <option value="in_progress">In progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="open">Open</option>
+                      </select>
+                    </label>
+                    <label className="space-y-1.5 block">
+                      <span className="text-sm font-semibold text-gray-700">Date</span>
+                      <input
+                        type="date"
+                        className="input-field w-full"
+                        value={editForm.date}
+                        onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                      />
+                    </label>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Mileage</p>
-                    <p className="font-medium text-gray-900">
-                      {selected.mileage !== undefined ? `${selected.mileage.toLocaleString()} mi` : "—"}
-                    </p>
+                  <label className="space-y-1.5 block">
+                    <span className="text-sm font-semibold text-gray-700">Work performed</span>
+                    <textarea
+                      className="input-field w-full min-h-[120px]"
+                      value={editForm.description}
+                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    />
+                  </label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setEditing(false)}
+                      className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                      disabled={saving}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={submitEdit}
+                      className="flex-1 btn-primary py-2.5 justify-center flex items-center gap-2 shadow-lg shadow-primary-500/20"
+                      disabled={saving}
+                    >
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                      Save changes
+                    </button>
                   </div>
                 </div>
-              </section>
+              )}
             </div>
           </div>
         </div>
