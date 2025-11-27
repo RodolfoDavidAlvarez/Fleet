@@ -6,17 +6,17 @@ import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import { MessageSquare, Send, Users, Phone, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { User } from '@/types'
+import { useToast } from '@/components/ui/toast'
 
 export default function NotificationsPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const [user, setUser] = useState<any>(null)
   const [drivers, setDrivers] = useState<User[]>([])
   const [selectedDrivers, setSelectedDrivers] = useState<Set<string>>(new Set())
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
   const [results, setResults] = useState<{ driverId: string; driverName: string; success: boolean; error?: string }[]>([])
 
   useEffect(() => {
@@ -147,9 +147,9 @@ export default function NotificationsPage() {
       const failCount = resultsList.filter(r => !r.success).length
 
       if (successCount > 0) {
-        setSuccess(`Successfully sent ${successCount} message${successCount > 1 ? 's' : ''}${failCount > 0 ? ` (${failCount} failed)` : ''}`)
+        showToast(`Successfully sent ${successCount} message${successCount > 1 ? 's' : ''}${failCount > 0 ? ` (${failCount} failed)` : ''}`, 'success')
       } else {
-        setError(`Failed to send all messages. ${failCount} error${failCount > 1 ? 's' : ''} occurred.`)
+        showToast(`Failed to send all messages. ${failCount} error${failCount > 1 ? 's' : ''} occurred.`, 'error')
       }
 
       // Clear selection and message after successful send
@@ -159,7 +159,7 @@ export default function NotificationsPage() {
       }
     } catch (err) {
       console.error('Error sending SMS:', err)
-      setError(err instanceof Error ? err.message : 'Failed to send SMS notifications')
+      showToast(err instanceof Error ? err.message : 'Failed to send SMS notifications', 'error')
     } finally {
       setSending(false)
     }
@@ -188,17 +188,6 @@ export default function NotificationsPage() {
               </div>
             </div>
 
-            {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 text-red-800 px-4 py-3 rounded-r-lg shadow-sm">
-                <p className="font-medium">{error}</p>
-              </div>
-            )}
-
-            {success && (
-              <div className="bg-green-50 border-l-4 border-green-500 text-green-800 px-4 py-3 rounded-r-lg shadow-sm">
-                <p className="font-medium">{success}</p>
-              </div>
-            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Driver Selection Panel */}

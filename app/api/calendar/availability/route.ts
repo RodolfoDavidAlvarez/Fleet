@@ -63,9 +63,11 @@ export async function GET(request: NextRequest) {
     let availableSlots: string[] = []
     if (date) {
       const checkDate = new Date(date)
-      const dayOfWeek = checkDate.getDay()
+      // Use UTC day to avoid timezone shifts when parsing YYYY-MM-DD
+      const dayOfWeek = checkDate.getUTCDay()
       
-      if (workingDays.includes(dayOfWeek)) {
+      // Only generate slots if it's a working day AND we haven't reached the weekly limit
+      if (workingDays.includes(dayOfWeek) && bookingsRemaining > 0) {
         const [startHour, startMin] = startTime.split(':').map(Number)
         const [endHour, endMin] = endTime.split(':').map(Number)
         

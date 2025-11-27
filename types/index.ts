@@ -176,6 +176,7 @@ export interface RepairRequest {
   thumbUrls: string[]
   bookingId?: string
   bookingLink?: string
+  bookingLinkSentAt?: string
   scheduledDate?: string
   scheduledTime?: string
   division?: string

@@ -10,9 +10,11 @@ import { getStatusColor, formatDate } from '@/lib/utils'
 import { useVehicles, useCreateVehicle } from '@/hooks/use-vehicles'
 import { VehicleCardSkeleton } from '@/components/ui/loading-states'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useToast } from '@/components/ui/toast'
 
 export default function VehiclesPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const [user, setUser] = useState<any>(null)
   const { data: vehicles = [], isLoading, error: vehiclesError } = useVehicles()
   const createVehicle = useCreateVehicle()
@@ -59,10 +61,10 @@ export default function VehiclesPage() {
         status: 'active',
         vehicleNumber: '',
       })
-      alert('Vehicle added successfully!')
+      showToast('Vehicle added successfully!', 'success')
     } catch (error) {
       console.error('Error creating vehicle:', error)
-      alert('Failed to add vehicle. Please try again.')
+      showToast('Failed to add vehicle. Please try again.', 'error')
     }
   }
 

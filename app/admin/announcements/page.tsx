@@ -10,6 +10,7 @@ import {
   XCircle,
   Megaphone,
 } from 'lucide-react'
+import { useToast } from '@/components/ui/toast'
 
 interface User {
   id: string
@@ -20,6 +21,7 @@ interface User {
 
 export default function AnnouncementsPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const [user, setUser] = useState<any>(null)
   const [users, setUsers] = useState<User[]>([])
   const [notifications, setNotifications] = useState<any[]>([])
@@ -33,8 +35,6 @@ export default function AnnouncementsPage() {
     recipientRoles: [] as string[],
   })
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -79,8 +79,6 @@ export default function AnnouncementsPage() {
 
   const handleCreateNotification = async () => {
     setSaving(true)
-    setError(null)
-    setSuccess(null)
     try {
       const res = await fetch('/api/admin/notifications', {
         method: 'POST',
@@ -100,10 +98,9 @@ export default function AnnouncementsPage() {
         recipientRoles: [],
       })
       setShowNotificationForm(false)
-      setSuccess('Announcement created successfully')
-      setTimeout(() => setSuccess(null), 3000)
+      showToast('Announcement created successfully', 'success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create notification')
+      showToast(err instanceof Error ? err.message : 'Failed to create notification', 'error')
     } finally {
       setSaving(false)
     }
@@ -113,7 +110,6 @@ export default function AnnouncementsPage() {
     if (!confirm('Are you sure you want to delete this announcement?')) return
     
     setSaving(true)
-    setError(null)
     try {
       const res = await fetch(`/api/admin/notifications?id=${notificationId}`, {
         method: 'DELETE',
@@ -123,10 +119,9 @@ export default function AnnouncementsPage() {
         throw new Error(data.error || 'Failed to delete notification')
       }
       await loadNotifications()
-      setSuccess('Announcement deleted successfully')
-      setTimeout(() => setSuccess(null), 3000)
+      showToast('Announcement deleted successfully', 'success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete notification')
+      showToast(err instanceof Error ? err.message : 'Failed to delete notification', 'error')
     } finally {
       setSaving(false)
     }
@@ -157,17 +152,6 @@ export default function AnnouncementsPage() {
               </button>
             </div>
 
-            {/* Messages */}
-            {error && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 text-sm">{error}</p>
-              </div>
-            )}
-            {success && (
-              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-green-800 text-sm">{success}</p>
-              </div>
-            )}
 
             {/* Announcements List */}
             <div className="space-y-6">
