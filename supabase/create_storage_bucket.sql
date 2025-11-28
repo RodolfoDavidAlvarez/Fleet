@@ -18,28 +18,28 @@ CREATE POLICY IF NOT EXISTS "Public Access"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'public');
 
--- Allow authenticated users to upload
+-- Allow authenticated users and service role to upload
 CREATE POLICY IF NOT EXISTS "Authenticated users can upload"
 ON storage.objects FOR INSERT
 WITH CHECK (
   bucket_id = 'public' 
-  AND auth.role() = 'authenticated'
+  AND (auth.role() = 'authenticated' OR auth.role() = 'service_role')
 );
 
--- Allow authenticated users to update their own uploads
+-- Allow authenticated users and service role to update
 CREATE POLICY IF NOT EXISTS "Authenticated users can update"
 ON storage.objects FOR UPDATE
 USING (
   bucket_id = 'public' 
-  AND auth.role() = 'authenticated'
+  AND (auth.role() = 'authenticated' OR auth.role() = 'service_role')
 );
 
--- Allow authenticated users to delete their own uploads
+-- Allow authenticated users and service role to delete
 CREATE POLICY IF NOT EXISTS "Authenticated users can delete"
 ON storage.objects FOR DELETE
 USING (
   bucket_id = 'public' 
-  AND auth.role() = 'authenticated'
+  AND (auth.role() = 'authenticated' OR auth.role() = 'service_role')
 );
 
 -- Note: Since we're using service_role_key in the API, these policies
