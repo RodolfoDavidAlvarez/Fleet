@@ -849,6 +849,11 @@ export const mechanicDB = {
 export async function getDashboardStats(): Promise<DashboardStats> {
   const supabase = createServerClient();
 
+  // Date for 6 months ago for trend analysis
+  const date = new Date();
+  date.setMonth(date.getMonth() - 6);
+  const sixMonthsAgo = date.toISOString();
+
   const [
     { count: totalVehicles },
     { count: activeVehicles },
@@ -866,6 +871,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { data: jobsData },
     { data: recentBookingsData },
     { data: vehiclesData },
+    { data: bookingsTrendData },
   ] = await Promise.all([
     supabase.from("vehicles").select("*", { count: "exact", head: true }),
     supabase.from("vehicles").select("*", { count: "exact", head: true }).eq("status", "active"),
@@ -887,9 +893,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .select("*", { count: "exact", head: true })
       .in("urgency", ["high", "critical"])
       .neq("status", "completed"),
-    supabase.from("jobs").select("total_cost").eq("status", "completed"),
+    supabase.from("jobs").select("total_cost, created_at").eq("status", "completed"),
     supabase.from("bookings").select("*").order("created_at", { ascending: false }).limit(5),
     supabase.from("vehicles").select("status"),
+    supabase.from("bookings").select("created_at").gte("created_at", sixMonthsAgo),
   ]);
 
   const totalMaintenanceCost = (jobsData || []).reduce((sum, job) => sum + (job.total_cost || 0), 0);
@@ -900,6 +907,36 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const status = v.status || "unknown";
     vehiclesByStatus[status] = (vehiclesByStatus[status] || 0) + 1;
   });
+
+  // Helper for grouping by month (YYYY-MM)
+  const groupByMonth = (data: any[], dateField: string, valueField?: string) => {
+    const groups: Record<string, number> = {};
+    data.forEach((item) => {
+      if (!item[dateField]) return;
+      const date = new Date(item[dateField]);
+      // simple check to ensure we only include valid dates within the last ~6 months range if desired
+      // but the query for bookings already filtered. For jobs we filtered in JS below.
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      
+      if (valueField) {
+        groups[key] = (groups[key] || 0) + (item[valueField] || 0);
+      } else {
+        groups[key] = (groups[key] || 0) + 1;
+      }
+    });
+    
+    return Object.entries(groups)
+      .map(([date, value]) => ({ date, value }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  };
+
+  // Filter jobs for the last 6 months for the trend
+  const recentJobs = (jobsData || []).filter(job => job.created_at >= sixMonthsAgo);
+  const maintenanceCostTrend = groupByMonth(recentJobs, "created_at", "total_cost")
+    .map((item) => ({ date: item.date, cost: item.value }));
+
+  const bookingTrend = groupByMonth(bookingsTrendData || [], "created_at")
+    .map((item) => ({ date: item.date, count: item.value }));
 
   return {
     totalVehicles: totalVehicles || 0,
@@ -918,5 +955,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     totalMaintenanceCost,
     recentBookings,
     vehiclesByStatus,
+    maintenanceCostTrend,
+    bookingTrend,
   };
 }

@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Footer from '@/components/Footer'
-import { Mail, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react'
+import { Mail, ArrowLeft, CheckCircle, Loader2, AlertCircle } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
@@ -20,42 +21,25 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     try {
-      // First, find user by email to get userId
-      const findUserRes = await fetch('/api/admin/users', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+      const supabase = createClient()
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
       })
 
-      if (!findUserRes.ok) {
-        throw new Error('Failed to process request')
+      if (error) {
+        throw error
       }
 
-      const usersData = await findUserRes.json()
-      const user = usersData.users?.find((u: any) => u.email.toLowerCase() === email.toLowerCase())
-
-      if (!user) {
-        // Don't reveal if user exists for security
-        setSuccess('If an account exists with this email, a password reset link has been sent.')
-        setLoading(false)
-        return
+      setSuccess('If an account exists with this email, a password reset link has been sent.')
+    } catch (err: any) {
+      console.error('Reset error:', err)
+      // Show generic message for security, unless it's a rate limit
+      if (err.message?.includes('Rate limit')) {
+        setError('Too many requests. Please try again later.')
+      } else {
+        setError('An error occurred. Please try again.')
       }
-
-      // Send password reset email
-      const res = await fetch('/api/admin/users/password-reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, email: user.email }),
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send password reset email')
-      }
-
-      setSuccess(data.message || 'If an account exists with this email, a password reset link has been sent.')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to process request')
     } finally {
       setLoading(false)
     }
@@ -76,7 +60,8 @@ export default function ForgotPasswordPage() {
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
               {error}
             </div>
           )}

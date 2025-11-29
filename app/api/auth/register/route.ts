@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,10 +9,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Name, email, and password are required" }, { status: 400 });
     }
 
+    // Use the service role client (createServerClient from lib/supabase)
     const supabase = createServerClient();
 
-    // Check if user already exists
-    const { data: existingUser, error: existingError } = await supabase
+    // 1. Check if user already exists in public.users
+    const { data: existingUser } = await supabase
       .from("users")
       .select("id")
       .eq("email", email.toLowerCase())
@@ -23,26 +23,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User with this email already exists" }, { status: 400 });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
+    // 2. Create Auth User
+    // We auto-confirm the email for now to allow immediate "pending approval" state interaction.
+    // If you want email verification, set email_confirm: false.
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: email.toLowerCase(),
+      password: password,
+      email_confirm: true,
+      user_metadata: { name, phone }
+    });
 
-    // Create user
-    // Default role is 'driver' unless specified otherwise (but public registration should probably be 'driver' or 'customer')
-    // Actually, for now let's default to 'driver' as per typical flow, or 'customer'. 
-    // Since the user mentioned "admin changes status to user or admin", pending users might need to be generic.
-    // But the schema requires a valid role. Let's use 'driver' as a safe default or 'customer'.
-    // Given the context of fleet management, 'driver' seems common, but 'customer' is safer for public.
-    // Let's stick to 'driver' as it seems to be the main workforce, or maybe 'customer'.
-    // Checking schema: role IN ('admin', 'mechanic', 'customer', 'driver')
-    // Let's default to 'driver' as they are likely employees signing up.
-    
+    if (authError) {
+      console.error("Auth creation error:", authError);
+      return NextResponse.json({ error: authError.message }, { status: 400 });
+    }
+
+    if (!authData.user) {
+      return NextResponse.json({ error: "Failed to create auth user" }, { status: 500 });
+    }
+
+    // 3. Create Public User
     const { data: newUser, error: createError } = await supabase
       .from("users")
       .insert({
+        id: authData.user.id, // Link to Auth ID
         name,
         email: email.toLowerCase(),
-        password_hash: passwordHash,
         phone: phone || null,
         role: 'driver', // Default role
         approval_status: 'pending_approval'
@@ -51,8 +57,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (createError) {
-      console.error("Error creating user:", createError);
-      return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
+      console.error("Error creating public profile:", createError);
+      // Rollback auth user if profile creation fails?
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      return NextResponse.json({ error: "Failed to create user profile" }, { status: 500 });
     }
 
     return NextResponse.json({ user: newUser });

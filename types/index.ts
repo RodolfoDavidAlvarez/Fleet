@@ -152,6 +152,8 @@ export interface DashboardStats {
   totalMaintenanceCost: number
   recentBookings: Booking[]
   vehiclesByStatus: Record<string, number>
+  maintenanceCostTrend: { date: string; cost: number }[]
+  bookingTrend: { date: string; count: number }[]
 }
 
 export type RepairRequestStatus =
