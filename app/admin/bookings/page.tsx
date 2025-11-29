@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Calendar, Clock, User, Phone, Mail, Wrench, Plus, CheckCircle, XCircle, AlertCircle, Grid3x3, List, ChevronLeft, ChevronRight, X, Loader2, Search } from 'lucide-react'
+import { Calendar, Clock, User, Phone, Mail, Wrench, Plus, CheckCircle, XCircle, AlertCircle, Grid3x3, List, ChevronLeft, ChevronRight, X, Loader2, Search, Settings, Download } from 'lucide-react'
 import { Booking } from '@/types'
 import { getStatusColor, formatDate, formatDateTime } from '@/lib/utils'
+import { exportBookings } from '@/lib/export-utils'
 
 export default function BookingsPage() {
   const router = useRouter()
@@ -204,13 +205,29 @@ export default function BookingsPage() {
                     <Grid3x3 className="h-4 w-4" />
                   </button>
                 </div>
-              <button 
-                onClick={() => setShowNewBookingModal(true)}
-                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                New Booking
-              </button>
+                <button
+                  onClick={() => router.push('/admin/settings?tab=calendar')}
+                  className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center justify-center"
+                  aria-label="Booking settings"
+                  title="Booking Settings"
+                >
+                  <Settings className="h-5 w-5 text-gray-600" />
+                </button>
+                <button 
+                  onClick={() => exportBookings(filteredBookings)} 
+                  className="btn btn-secondary flex items-center gap-2"
+                  disabled={filteredBookings.length === 0}
+                >
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </button>
+                <button 
+                  onClick={() => setShowNewBookingModal(true)}
+                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  New Booking
+                </button>
               </div>
             </div>
 

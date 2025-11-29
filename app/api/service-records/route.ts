@@ -56,7 +56,12 @@ export async function GET(request: NextRequest) {
             .in("id", repairRequestIds)
         : { data: [] },
       vehicleIds.length ? supabase.from("vehicles").select("id, license_plate, make, model, vehicle_number").in("id", vehicleIds) : { data: [] },
-      mechanicIds.length ? supabase.from("mechanics").select("id, name, email, airtable_id, user_id").in("id", mechanicIds) : { data: [] },
+      mechanicIds.length 
+        ? supabase
+            .from("mechanics")
+            .select("id, name, email, airtable_id, user_id, users(role)")
+            .in("id", mechanicIds)
+        : { data: [] },
     ]);
 
     const repairMap = new Map(
@@ -95,12 +100,15 @@ export async function GET(request: NextRequest) {
       const mechanic = r.mechanic_id ? mechanicMap.get(r.mechanic_id) : null;
       const mechanicName = cleanMechanicName(r.mechanic_name, mechanic);
 
+      const mechanicRole = mechanic?.users?.role || (mechanic?.user_id ? 'mechanic' : undefined);
+
       return {
         id: r.id,
         repairRequestId: r.repair_request_id || undefined,
         vehicleId: r.vehicle_id || repair?.vehicleId || undefined,
         mechanicId: r.mechanic_id || undefined,
         mechanicName,
+        mechanicRole,
         serviceType: r.service_type || repair?.makeModel || "",
         description: r.description || "",
         cost: r.cost !== null && r.cost !== undefined ? Number(r.cost) : undefined,

@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { ServiceRecord, RepairRequest } from "@/types";
-import { Wrench, ClipboardList, Plus, Loader2, Search, DollarSign, Gauge, Calendar, User, FileText, BadgeCheck, X } from "lucide-react";
+import { Wrench, ClipboardList, Plus, Loader2, Search, DollarSign, Gauge, Calendar, User, FileText, BadgeCheck, X, Download } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useServiceRecords, useCreateServiceRecord, useUpdateServiceRecord } from "@/hooks/use-service-records";
+import { exportServiceRecords } from "@/lib/export-utils";
 import { TableRowSkeleton } from "@/components/ui/loading-states";
 import { motion, AnimatePresence } from "framer-motion";
 import ServiceReportForm, { ServiceReportFormData } from "@/components/ServiceReportForm";
@@ -245,6 +246,14 @@ export default function ServiceRecordsPage() {
                 <p className="text-sm text-gray-600 mt-1">Technician-completed repairs with mileage, cost, and status.</p>
               </div>
               <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => exportServiceRecords(filtered)} 
+                  className="btn-secondary px-4 py-2 flex items-center gap-2"
+                  disabled={filtered.length === 0}
+                >
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </button>
                 <button onClick={() => refetch()} className="btn-secondary px-4 py-2 flex items-center gap-2">
                   <Loader2 className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
                   Refresh

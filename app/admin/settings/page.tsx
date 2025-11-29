@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -22,6 +22,7 @@ interface User {
 
 export default function AdminSettingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +68,13 @@ export default function AdminSettingsPage() {
     setUser(parsedUser);
     loadUsers();
     loadCalendarSettings();
-  }, [router]);
+    
+    // Check for tab query parameter
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'calendar' || tabParam === 'notifications' || tabParam === 'users') {
+      setActiveTab(tabParam);
+    }
+  }, [router, searchParams]);
 
   const loadCalendarSettings = async () => {
     try {

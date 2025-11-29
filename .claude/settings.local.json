@@ -7,7 +7,12 @@
       "Bash(npx supabase:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(supabase db dump:*)",
+      "Bash(supabase status:*)",
+      "Bash(npm install:*)",
+      "Bash(node:*)",
+      "Bash(PGPASSWORD:*)"
     ],
     "deny": []
   }

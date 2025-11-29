@@ -1,14 +1,16 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Users, Plus, Mail, Phone, X, Edit, Loader2, Save, Grid3x3, List, Search } from 'lucide-react'
-import { User } from '@/types'
+import { Users, Plus, Mail, Phone, X, Edit, Loader2, Save, Grid3x3, List, Search, Car, UserPlus, UserMinus, ChevronDown, Check, Download } from 'lucide-react'
+import { User, Vehicle } from '@/types'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/ui/toast'
+import { useVehicles } from '@/hooks/use-vehicles'
 import { Pagination } from '@/components/ui/pagination'
+import { exportDrivers } from '@/lib/export-utils'
 
 export default function DriversPage() {
   const router = useRouter()
@@ -25,6 +27,15 @@ export default function DriversPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(12)
+  const [assignedVehicles, setAssignedVehicles] = useState<Vehicle[]>([])
+  const [loadingVehicles, setLoadingVehicles] = useState(false)
+  const [showVehicleSelector, setShowVehicleSelector] = useState(false)
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('')
+  const [assigningVehicle, setAssigningVehicle] = useState(false)
+  const [isVehicleDropdownOpen, setIsVehicleDropdownOpen] = useState(false)
+  const [vehicleSearch, setVehicleSearch] = useState('')
+  const vehicleDropdownRef = useRef<HTMLDivElement>(null)
+  const { data: allVehicles = [] } = useVehicles()
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -172,6 +183,126 @@ export default function DriversPage() {
     }
   }
 
+  // Load vehicles assigned to the selected driver
+  useEffect(() => {
+    if (selectedDriver) {
+      const loadAssignedVehicles = async () => {
+        try {
+          setLoadingVehicles(true)
+          // Get all vehicles and filter by driver_id
+          const assigned = allVehicles.filter(v => v.driverId === selectedDriver.id)
+          setAssignedVehicles(assigned)
+        } catch (err) {
+          console.error('Error loading assigned vehicles:', err)
+        } finally {
+          setLoadingVehicles(false)
+        }
+      }
+      loadAssignedVehicles()
+    } else {
+      setAssignedVehicles([])
+    }
+  }, [selectedDriver, allVehicles])
+
+  // Handle click outside for vehicle dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (vehicleDropdownRef.current && !vehicleDropdownRef.current.contains(event.target as Node)) {
+        setIsVehicleDropdownOpen(false)
+      }
+    }
+
+    if (isVehicleDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isVehicleDropdownOpen])
+
+  const assignVehicle = async () => {
+    if (!selectedDriver || !selectedVehicleId) return
+
+    try {
+      setAssigningVehicle(true)
+      const res = await fetch(`/api/vehicles/${selectedVehicleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driverId: selectedDriver.id }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to assign vehicle')
+      }
+
+      // Reload assigned vehicles
+      const assigned = allVehicles.filter(v => v.driverId === selectedDriver.id)
+      setAssignedVehicles(assigned)
+      setShowVehicleSelector(false)
+      setSelectedVehicleId('')
+      setIsVehicleDropdownOpen(false)
+      showToast('Vehicle assigned successfully!', 'success')
+    } catch (err) {
+      console.error('Error assigning vehicle:', err)
+      showToast(err instanceof Error ? err.message : 'Failed to assign vehicle', 'error')
+    } finally {
+      setAssigningVehicle(false)
+    }
+  }
+
+  const unassignVehicle = async (vehicleId: string) => {
+    if (!selectedDriver) return
+
+    try {
+      setAssigningVehicle(true)
+      const res = await fetch(`/api/vehicles/${vehicleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driverId: null }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to unassign vehicle')
+      }
+
+      // Reload assigned vehicles
+      const assigned = allVehicles.filter(v => v.driverId === selectedDriver.id)
+      setAssignedVehicles(assigned)
+      showToast('Vehicle unassigned successfully!', 'success')
+    } catch (err) {
+      console.error('Error unassigning vehicle:', err)
+      showToast(err instanceof Error ? err.message : 'Failed to unassign vehicle', 'error')
+    } finally {
+      setAssigningVehicle(false)
+    }
+  }
+
+  const filteredVehicles = useMemo(() => {
+    if (!vehicleSearch.trim()) {
+      return allVehicles
+    }
+    const searchLower = vehicleSearch.toLowerCase()
+    return allVehicles.filter((vehicle) => {
+      const make = (vehicle.make || '').toLowerCase()
+      const model = (vehicle.model || '').toLowerCase()
+      const vin = (vehicle.vin || '').toLowerCase()
+      const licensePlate = (vehicle.licensePlate || '').toLowerCase()
+      const vehicleNumber = (vehicle.vehicleNumber || '').toLowerCase()
+      
+      return (
+        make.includes(searchLower) ||
+        model.includes(searchLower) ||
+        vin.includes(searchLower) ||
+        licensePlate.includes(searchLower) ||
+        vehicleNumber.includes(searchLower) ||
+        `${make} ${model}`.includes(searchLower)
+      )
+    })
+  }, [allVehicles, vehicleSearch])
+
   if (!user) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
   }
@@ -214,6 +345,14 @@ export default function DriversPage() {
                     <List className="h-4 w-4" />
                   </button>
                 </div>
+                <button 
+                  onClick={() => exportDrivers(filteredDrivers)} 
+                  className="btn btn-secondary flex items-center gap-2"
+                  disabled={filteredDrivers.length === 0}
+                >
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </button>
                 <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
                   <Plus className="h-5 w-5 mr-2" />
                   Add Driver
@@ -586,6 +725,191 @@ export default function DriversPage() {
                       </p>
                     </div>
                   </div>
+                </div>
+
+                {/* Assigned Vehicles */}
+                <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <Car className="h-4 w-4 text-blue-600" />
+                      </div>
+                      Assigned Vehicles
+                    </h3>
+                    {!showVehicleSelector && (
+                      <button
+                        onClick={() => setShowVehicleSelector(true)}
+                        className="btn btn-sm btn-secondary flex items-center gap-1.5"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                        Assign Vehicle
+                      </button>
+                    )}
+                  </div>
+
+                  {showVehicleSelector ? (
+                    <div className="space-y-3">
+                      <label className="space-y-1.5 block">
+                        <span className="text-sm font-semibold text-gray-700">Select Vehicle</span>
+                        <div ref={vehicleDropdownRef} className="relative">
+                          <button
+                            type="button"
+                            onClick={() => !assigningVehicle && setIsVehicleDropdownOpen(!isVehicleDropdownOpen)}
+                            disabled={assigningVehicle}
+                            className={`
+                              w-full px-3 py-2.5 text-left bg-white border-2 border-gray-300 rounded-lg
+                              focus:ring-2 focus:ring-primary-500 focus:border-primary-500
+                              transition-all duration-200
+                              flex items-center justify-between
+                              ${assigningVehicle ? "opacity-50 cursor-not-allowed bg-gray-50" : "hover:border-gray-400 cursor-pointer"}
+                              ${isVehicleDropdownOpen ? "border-primary-500 ring-2 ring-primary-200" : ""}
+                            `}
+                          >
+                            <span className={selectedVehicleId ? "text-gray-900 font-medium" : "text-gray-500"}>
+                              {selectedVehicleId
+                                ? filteredVehicles.find(v => v.id === selectedVehicleId)?.make + ' ' + filteredVehicles.find(v => v.id === selectedVehicleId)?.model + ' (' + filteredVehicles.find(v => v.id === selectedVehicleId)?.licensePlate + ')'
+                                : "Select a vehicle"}
+                            </span>
+                            <ChevronDown
+                              className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isVehicleDropdownOpen ? "transform rotate-180" : ""}`}
+                            />
+                          </button>
+
+                          <AnimatePresence>
+                            {isVehicleDropdownOpen && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-10"
+                                  onClick={() => setIsVehicleDropdownOpen(false)}
+                                />
+                                <motion.div
+                                  initial={{ opacity: 0, y: -10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -10 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="absolute z-20 w-full mt-2 bg-white border-2 border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
+                                >
+                                  <div className="p-2 border-b border-gray-200 sticky top-0 bg-white">
+                                    <div className="relative">
+                                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                      <input
+                                        type="text"
+                                        placeholder="Search vehicles..."
+                                        value={vehicleSearch}
+                                        onChange={(e) => setVehicleSearch(e.target.value)}
+                                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                      />
+                                    </div>
+                                  </div>
+                                  {filteredVehicles.length === 0 ? (
+                                    <div className="p-3 text-sm text-gray-500 text-center">No vehicles available</div>
+                                  ) : (
+                                    filteredVehicles.map((vehicle) => (
+                                      <button
+                                        key={vehicle.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedVehicleId(vehicle.id)
+                                          setIsVehicleDropdownOpen(false)
+                                        }}
+                                        className={`
+                                          w-full px-3 py-2.5 text-left flex items-center justify-between
+                                          transition-colors duration-150
+                                          ${selectedVehicleId === vehicle.id ? "bg-primary-50 text-primary-900" : "hover:bg-gray-50 text-gray-900"}
+                                        `}
+                                      >
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-sm font-medium truncate">
+                                            {vehicle.make} {vehicle.model}
+                                          </div>
+                                          <div className="text-xs text-gray-500 truncate">
+                                            {vehicle.licensePlate} • {vehicle.vin}
+                                          </div>
+                                        </div>
+                                        {selectedVehicleId === vehicle.id && (
+                                          <Check className="h-4 w-4 text-primary-600 flex-shrink-0 ml-2" />
+                                        )}
+                                      </button>
+                                    ))
+                                  )}
+                                </motion.div>
+                              </>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={assignVehicle}
+                          className="btn btn-primary btn-sm flex-1 flex items-center gap-1.5"
+                          disabled={assigningVehicle || !selectedVehicleId}
+                        >
+                          {assigningVehicle ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              Assigning...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-3.5 w-3.5" />
+                              Assign
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowVehicleSelector(false)
+                            setSelectedVehicleId('')
+                            setIsVehicleDropdownOpen(false)
+                            setVehicleSearch('')
+                          }}
+                          className="btn btn-secondary btn-sm"
+                          disabled={assigningVehicle}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : loadingVehicles ? (
+                    <div className="p-4 text-center text-gray-500">
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                      Loading vehicles...
+                    </div>
+                  ) : assignedVehicles.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-gray-500 mb-3">No vehicles assigned to this driver</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {assignedVehicles.map((vehicle) => (
+                        <div
+                          key={vehicle.id}
+                          className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-4 flex items-center justify-between hover:shadow-sm transition-shadow"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Car className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                              <h4 className="text-sm font-semibold text-gray-900 truncate">
+                                {vehicle.make} {vehicle.model} ({vehicle.year})
+                              </h4>
+                            </div>
+                            <div className="text-xs text-gray-500 space-y-0.5">
+                              <p>License: {vehicle.licensePlate}</p>
+                              {vehicle.vehicleNumber && <p>Vehicle #: {vehicle.vehicleNumber}</p>}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => unassignVehicle(vehicle.id)}
+                            className="btn btn-sm btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50 flex items-center gap-1.5 ml-3"
+                            disabled={assigningVehicle}
+                          >
+                            <UserMinus className="h-3.5 w-3.5" />
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Edit Actions */}

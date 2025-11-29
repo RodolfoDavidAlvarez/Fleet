@@ -28,6 +28,7 @@ export interface Vehicle {
   driverName?: string
   driverPhone?: string
   driverEmail?: string
+  driverRole?: string
   driverAssignedDate?: string
   photoUrl?: string
   // Enhanced Airtable Fields
@@ -55,6 +56,7 @@ export interface ServiceRecord {
   cost: number
   mechanicId?: string
   mechanicName?: string
+  mechanicRole?: string
   partsUsed?: Part[]
   status?: string
   mileage?: number
