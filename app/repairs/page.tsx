@@ -35,7 +35,7 @@ export default function RepairsPage() {
   const [duplicatePhoneCheck, setDuplicatePhoneCheck] = useState<any[]>([]);
 
   // React Query Hooks
-  const { data: requestsData, isLoading, refetch } = useRepairs();
+  const { data: requestsData, isLoading, isRefetching, refetch } = useRepairs();
   const requests = Array.isArray(requestsData) ? requestsData : [];
   const updateRepair = useUpdateRepair();
   const submitReportMutation = useSubmitRepairReport();
@@ -345,8 +345,13 @@ export default function RepairsPage() {
                   <FileText className="h-4 w-4" />
                   New Repair Request
                 </button>
-                <button onClick={() => refetch()} className="btn btn-secondary flex items-center gap-2" disabled={isLoading}>
-                  <Loader2 className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                <button 
+                  onClick={() => refetch()} 
+                  className="btn btn-secondary flex items-center gap-2" 
+                  disabled={isRefetching || isLoading}
+                  title="Refresh repair requests"
+                >
+                  <Loader2 className={`h-4 w-4 ${isRefetching || isLoading ? "animate-spin" : ""}`} />
                   Refresh
                 </button>
               </div>

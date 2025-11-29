@@ -33,6 +33,13 @@ export interface ServiceReportFormData {
   notificationStatus?: string;
 }
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "mechanic" | "customer" | "driver";
+}
+
 export default function ServiceReportForm({
   repairRequest: initialRepairRequest,
   repairOptions = [],
@@ -43,6 +50,8 @@ export default function ServiceReportForm({
   const [selectedRepairRequest, setSelectedRepairRequest] = useState<RepairRequest | undefined>(initialRepairRequest);
   const [repairSearch, setRepairSearch] = useState("");
   const [showRepairSelector, setShowRepairSelector] = useState(false);
+  const [adminsAndMechanics, setAdminsAndMechanics] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
 
   const [form, setForm] = useState<ServiceReportFormData>({
     mechanicName: "",
@@ -60,6 +69,28 @@ export default function ServiceReportForm({
     notifyDriver: true, // Pre-selected by default
     notificationStatus: "completed_ready_for_pickup",
   });
+
+  // Fetch admins and mechanics on component mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoadingUsers(true);
+        const res = await fetch("/api/admin/users?role=admin,mechanic");
+        if (!res.ok) throw new Error("Failed to load users");
+        const data = await res.json();
+        // Filter to only approved users
+        const approvedUsers = (data.users || []).filter(
+          (user: User & { approval_status?: string }) => user.approval_status === "approved"
+        );
+        setAdminsAndMechanics(approvedUsers);
+      } catch (err) {
+        console.error("Error loading admins and mechanics:", err);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   // Update form when repair request is selected
   useEffect(() => {
@@ -96,6 +127,10 @@ export default function ServiceReportForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.mechanicName.trim()) {
+      alert("Please select who performed the work.");
+      return;
+    }
     if (!form.description.trim()) {
       alert("Please provide a description of the work performed.");
       return;
@@ -276,13 +311,26 @@ export default function ServiceReportForm({
                     <span className="text-sm font-semibold text-gray-700">
                       Mechanic name <span className="text-red-500">*</span>
                     </span>
-                    <input
-                      className="input-field w-full"
-                      value={form.mechanicName}
-                      onChange={(e) => setForm({ ...form, mechanicName: e.target.value })}
-                      placeholder="Who performed the work"
-                      required
-                    />
+                    {loadingUsers ? (
+                      <div className="input-field w-full flex items-center justify-center py-2.5">
+                        <span className="text-sm text-gray-500">Loading users...</span>
+                      </div>
+                    ) : adminsAndMechanics.length === 0 ? (
+                      <div className="input-field w-full flex flex-col items-start py-2.5 px-3 border-2 border-yellow-300 bg-yellow-50 rounded-lg">
+                        <span className="text-sm text-yellow-800 font-medium">No admins or mechanics available</span>
+                        <span className="text-xs text-yellow-600 mt-1">Add users in Admin Settings → Users → Invite User</span>
+                      </div>
+                    ) : (
+                      <Select
+                        value={form.mechanicName}
+                        onChange={(value) => setForm({ ...form, mechanicName: value })}
+                        options={adminsAndMechanics.map((user) => ({
+                          value: user.name,
+                          label: `${user.name} (${user.role.charAt(0).toUpperCase() + user.role.slice(1)})`,
+                        }))}
+                        placeholder="Who performed the work"
+                      />
+                    )}
                   </label>
 
                   <label className="space-y-1.5 block">

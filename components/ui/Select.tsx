@@ -91,7 +91,9 @@ export default function Select({
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       onChange(option.value);
                       setIsOpen(false);
                     }}
