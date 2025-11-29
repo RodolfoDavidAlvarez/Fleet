@@ -15,7 +15,6 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [showNewBookingModal, setShowNewBookingModal] = useState(false)
@@ -89,30 +88,80 @@ export default function BookingsPage() {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
   }
 
-  const filteredBookings = statusFilter === 'all' 
-    ? bookings 
-    : bookings.filter(b => b.status === statusFilter)
-
-  const statusCounts = {
-    all: bookings.length,
-    pending: bookings.filter(b => b.status === 'pending').length,
-    confirmed: bookings.filter(b => b.status === 'confirmed').length,
-    in_progress: bookings.filter(b => b.status === 'in_progress').length,
-    completed: bookings.filter(b => b.status === 'completed').length,
-    cancelled: bookings.filter(b => b.status === 'cancelled').length,
+  // Get effective status: repair request status if available, otherwise booking status
+  const getEffectiveStatus = (booking: any): string => {
+    // If repair request exists and is completed, show completed
+    if (booking.repairRequest?.status === 'completed') {
+      return 'completed'
+    }
+    // If repair request exists, use its status
+    if (booking.repairRequest?.status) {
+      return booking.repairRequest.status
+    }
+    // Otherwise use booking status
+    return booking.status || 'pending'
   }
 
-  const getStatusIcon = (status: string) => {
+  // Get status display info
+  const getStatusInfo = (booking: any) => {
+    const status = getEffectiveStatus(booking)
+    const isFromRepairRequest = !!booking.repairRequest
+    
+    let icon, colorClass, label
+    
     switch (status) {
       case 'completed':
-        return <CheckCircle className="h-4 w-4" />
+        icon = <CheckCircle className="h-4 w-4" />
+        colorClass = 'bg-green-100 text-green-700 border-green-200'
+        label = 'Completed'
+        break
       case 'cancelled':
-        return <XCircle className="h-4 w-4" />
+        icon = <XCircle className="h-4 w-4" />
+        colorClass = 'bg-gray-100 text-gray-700 border-gray-200'
+        label = 'Cancelled'
+        break
       case 'in_progress':
-        return <AlertCircle className="h-4 w-4" />
+        icon = <AlertCircle className="h-4 w-4" />
+        colorClass = 'bg-blue-100 text-blue-700 border-blue-200'
+        label = 'In Progress'
+        break
+      case 'scheduled':
+        icon = <Calendar className="h-4 w-4" />
+        colorClass = 'bg-purple-100 text-purple-700 border-purple-200'
+        label = 'Scheduled'
+        break
+      case 'waiting_booking':
+        icon = <Clock className="h-4 w-4" />
+        colorClass = 'bg-orange-100 text-orange-700 border-orange-200'
+        label = 'Waiting for Booking'
+        break
+      case 'triaged':
+        icon = <AlertCircle className="h-4 w-4" />
+        colorClass = 'bg-indigo-100 text-indigo-700 border-indigo-200'
+        label = 'Triaged'
+        break
+      case 'submitted':
+        icon = <Clock className="h-4 w-4" />
+        colorClass = 'bg-yellow-100 text-yellow-700 border-yellow-200'
+        label = 'Submitted'
+        break
+      case 'confirmed':
+        icon = <CheckCircle className="h-4 w-4" />
+        colorClass = 'bg-purple-100 text-purple-700 border-purple-200'
+        label = 'Confirmed'
+        break
+      case 'pending':
+        icon = <Clock className="h-4 w-4" />
+        colorClass = 'bg-yellow-100 text-yellow-700 border-yellow-200'
+        label = 'Pending'
+        break
       default:
-        return <Clock className="h-4 w-4" />
+        icon = <Clock className="h-4 w-4" />
+        colorClass = 'bg-gray-100 text-gray-700 border-gray-200'
+        label = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
     }
+    
+    return { icon, colorClass, label, isFromRepairRequest }
   }
 
   // Calendar helper functions
@@ -140,7 +189,7 @@ export default function BookingsPage() {
   }
 
   const getBookingsForDate = (dateString: string) => {
-    return filteredBookings.filter(booking => {
+    return bookings.filter(booking => {
       if (!booking.scheduledDate) return false
       const bookingDate = new Date(booking.scheduledDate).toISOString().split('T')[0]
       return bookingDate === dateString
@@ -214,9 +263,9 @@ export default function BookingsPage() {
                   <Settings className="h-5 w-5 text-gray-600" />
                 </button>
                 <button 
-                  onClick={() => exportBookings(filteredBookings)} 
+                  onClick={() => exportBookings(bookings)} 
                   className="btn btn-secondary flex items-center gap-2"
-                  disabled={filteredBookings.length === 0}
+                  disabled={bookings.length === 0}
                 >
                   <Download className="h-4 w-4" />
                   Export CSV
@@ -231,22 +280,6 @@ export default function BookingsPage() {
               </div>
             </div>
 
-            {/* Status Filter */}
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(statusCounts).map(([status, count]) => (
-                <button
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    statusFilter === status
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')} ({count})
-                </button>
-              ))}
-            </div>
 
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
@@ -326,17 +359,12 @@ export default function BookingsPage() {
                               <div
                                 key={booking.id}
                                 className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition-opacity truncate ${
-                                  booking.status === 'completed'
-                                    ? 'bg-green-100 text-green-700'
-                                    : booking.status === 'in_progress'
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : booking.status === 'confirmed'
-                                    ? 'bg-purple-100 text-purple-700'
-                                    : booking.status === 'cancelled'
-                                    ? 'bg-gray-100 text-gray-500'
-                                    : 'bg-yellow-100 text-yellow-700'
+                                  (() => {
+                                    const statusInfo = getStatusInfo(booking)
+                                    return statusInfo.colorClass.replace('border-', '')
+                                  })()
                                 }`}
-                                title={`${booking.customerName} - ${booking.serviceType} at ${booking.scheduledTime}`}
+                                title={`${booking.customerName} - ${booking.serviceType} at ${booking.scheduledTime} - ${getStatusInfo(booking).label}`}
                               >
                                 <div className="font-semibold truncate">{booking.scheduledTime}</div>
                                 <div className="truncate">{booking.customerName}</div>
@@ -355,33 +383,27 @@ export default function BookingsPage() {
                 </div>
 
                 {/* Bookings List for Selected Date (if any) */}
-                {filteredBookings.length === 0 && (
+                {bookings.length === 0 && (
                   <div className="card-surface rounded-xl p-12 text-center">
                     <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>
-                    <p className="text-gray-500">
-                      {statusFilter === 'all'
-                        ? 'No bookings have been created yet.'
-                        : `No ${statusFilter.replace('_', ' ')} bookings found.`}
-                    </p>
+                    <p className="text-gray-500">No bookings have been created yet.</p>
                   </div>
                 )}
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredBookings.length === 0 ? (
+                {bookings.length === 0 ? (
                   <div className="card-surface rounded-xl p-12 text-center">
                     <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>
-                    <p className="text-gray-500">
-                      {statusFilter === 'all' 
-                        ? 'No bookings have been created yet.'
-                        : `No ${statusFilter.replace('_', ' ')} bookings found.`}
-                    </p>
+                    <p className="text-gray-500">No bookings have been created yet.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-4">
-                    {filteredBookings.map((booking) => (
+                    {bookings.map((booking) => {
+                      const statusInfo = getStatusInfo(booking)
+                      return (
                       <div
                         key={booking.id}
                         className="card-surface rounded-xl p-6 hover:shadow-lg transition-shadow"
@@ -394,10 +416,22 @@ export default function BookingsPage() {
                                 <h3 className="text-lg font-semibold text-gray-900">{booking.customerName}</h3>
                                 <p className="text-sm text-gray-500">{booking.serviceType}</p>
                               </div>
-                              <span className={`px-3 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${getStatusColor(booking.status)}`}>
-                                {getStatusIcon(booking.status)}
-                                {booking.status.replace('_', ' ')}
-                              </span>
+                              <div className="flex flex-col items-end gap-1">
+                                <span className={`px-3 py-1 text-xs font-medium rounded-full flex items-center gap-1 border ${statusInfo.colorClass}`}>
+                                  {statusInfo.icon}
+                                  {statusInfo.label}
+                                </span>
+                                {statusInfo.isFromRepairRequest && booking.repairRequest?.urgency && (
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                                    booking.repairRequest.urgency === 'critical' ? 'bg-red-100 text-red-700' :
+                                    booking.repairRequest.urgency === 'high' ? 'bg-orange-100 text-orange-700' :
+                                    booking.repairRequest.urgency === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {booking.repairRequest.urgency.toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             {/* Contact Info */}
@@ -463,7 +497,8 @@ export default function BookingsPage() {
                           )}
                         </div>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>

@@ -46,8 +46,6 @@ export default function AdminSettingsPage() {
     email: "",
     role: "driver",
   });
-  const [filterRole, setFilterRole] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -334,28 +332,6 @@ export default function AdminSettingsPage() {
                       <span>Invite User</span>
                     </button>
                   </div>
-
-                  <div className="flex space-x-4">
-                    <select
-                      value={filterRole}
-                      onChange={(e) => setFilterRole(e.target.value)}
-                      className="block w-40 pl-3 pr-10 py-2 text-base border-2 border-gray-400 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md font-medium"
-                    >
-                      <option value="all">All Roles</option>
-                      <option value="admin">Admin</option>
-                      <option value="mechanic">Mechanic</option>
-                    </select>
-
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      className="block w-48 pl-3 pr-10 py-2 text-base border-2 border-gray-400 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md font-medium"
-                    >
-                      <option value="all">All Statuses</option>
-                      <option value="pending_approval">Pending Approval</option>
-                      <option value="approved">Approved</option>
-                    </select>
-                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -374,8 +350,6 @@ export default function AdminSettingsPage() {
                         .filter((u) => {
                           // Only show admins and mechanics
                           if (u.role !== "admin" && u.role !== "mechanic") return false;
-                          if (filterRole !== "all" && u.role !== filterRole) return false;
-                          if (filterStatus !== "all" && u.approval_status !== filterStatus) return false;
                           return true;
                         })
                         .sort((a, b) => {

@@ -24,7 +24,33 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const mechanicId = searchParams.get("mechanicId") || undefined;
     const bookings = await bookingDB.getAll(mechanicId ? { mechanicId } : undefined);
-    return NextResponse.json({ bookings });
+    
+    // Fetch repair request data for bookings that have repairRequestId
+    const bookingsWithRepairRequests = await Promise.all(
+      bookings.map(async (booking) => {
+        if (booking.repairRequestId) {
+          try {
+            const repairRequest = await repairRequestDB.getById(booking.repairRequestId);
+            return {
+              ...booking,
+              repairRequest: repairRequest ? {
+                id: repairRequest.id,
+                status: repairRequest.status,
+                urgency: repairRequest.urgency,
+                description: repairRequest.description,
+                aiCategory: repairRequest.aiCategory,
+              } : null,
+            };
+          } catch (err) {
+            console.error(`Error fetching repair request for booking ${booking.id}:`, err);
+            return { ...booking, repairRequest: null };
+          }
+        }
+        return { ...booking, repairRequest: null };
+      })
+    );
+    
+    return NextResponse.json({ bookings: bookingsWithRepairRequests });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 });
   }
