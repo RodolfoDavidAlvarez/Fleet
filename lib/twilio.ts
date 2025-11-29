@@ -18,6 +18,11 @@ export async function sendSMS(to: string, message: string): Promise<boolean> {
     return false
   }
 
+  if (!accountSid || !authToken) {
+    console.warn('Twilio credentials missing. Please set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN environment variables.')
+    return false
+  }
+
   if (!client || !phoneNumber) {
     console.warn('Twilio not configured. SMS would be sent to:', to, message)
     return false
@@ -32,10 +37,17 @@ export async function sendSMS(to: string, message: string): Promise<boolean> {
     return true
   } catch (error: any) {
     // Handle Twilio authentication errors gracefully
-    if (error?.code === 20003 || error?.status === 401) {
+    if (error?.code === 20003) {
+      console.warn('Twilio authentication failed. Please verify TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are correct.')
+    } else if (error?.status === 401) {
       console.warn('Twilio authentication error. Please check TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in your environment variables.')
+    } else if (error?.code === 21211) {
+      console.warn('Invalid phone number format. Please check the recipient phone number.')
+    } else if (error?.code === 21608) {
+      console.warn('Twilio phone number not verified or invalid. Please check TWILIO_PHONE_NUMBER.')
     } else {
       console.error('Error sending SMS:', error?.message || error)
+      console.error('Error code:', error?.code)
     }
     return false
   }

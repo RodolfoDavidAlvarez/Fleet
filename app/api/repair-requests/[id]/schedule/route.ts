@@ -47,48 +47,88 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       request.headers.get("origin") ||
       "http://localhost:3000";
     
+    // Use custom phone if provided, otherwise use existing phone
+    const phoneToUse = (parsed.data as any).customPhone || existing.driverPhone;
+    
     // Use the specialized booking link page
-    const bookingLink = `${baseUrl}/booking-link/${existing.id}?name=${encodeURIComponent(existing.driverName)}&phone=${encodeURIComponent(existing.driverPhone || '')}`;
+    const bookingLink = `${baseUrl}/booking-link/${existing.id}?name=${encodeURIComponent(existing.driverName)}&phone=${encodeURIComponent(phoneToUse || '')}`;
 
     const suggestedSlot =
       parsed.data.suggestedDate && parsed.data.suggestedTime
         ? `${parsed.data.suggestedDate} • ${parsed.data.suggestedTime}`
         : undefined;
 
-    const updated = await repairRequestDB.update(existing.id, {
+    // Update repair request, including phone if changed
+    const updateData: any = {
       status: "waiting_booking",
       bookingLink: bookingLink,
       bookingLinkSentAt: new Date().toISOString(),
       scheduledDate: parsed.data.suggestedDate,
       scheduledTime: parsed.data.suggestedTime,
-    });
+    };
+    
+    // Update phone number if custom phone was provided
+    if ((parsed.data as any).customPhone && (parsed.data as any).customPhone !== existing.driverPhone) {
+      updateData.driverPhone = (parsed.data as any).customPhone;
+    }
+    
+    const updated = await repairRequestDB.update(existing.id, updateData);
 
-    if (existing.driverPhone) {
-      await sendRepairBookingLink(existing.driverPhone, {
-        requestId: existing.id,
-        link: bookingLink,
-        issueSummary: existing.description.slice(0, 120),
-        language: existing.preferredLanguage,
-        suggestedSlot,
-      });
+    let smsSuccess = true;
+    let emailSuccess = true;
+    let smsError = null;
+    let emailError = null;
+
+    // Try to send SMS if phone number provided
+    if (phoneToUse) {
+      try {
+        smsSuccess = await sendRepairBookingLink(phoneToUse, {
+          requestId: existing.id,
+          link: bookingLink,
+          issueSummary: existing.description.slice(0, 120),
+          language: existing.preferredLanguage,
+          suggestedSlot,
+        });
+        if (!smsSuccess) {
+          smsError = "SMS failed to send - please check Twilio configuration";
+        }
+      } catch (error) {
+        smsSuccess = false;
+        smsError = "SMS service error - please verify Twilio credentials";
+        console.error("SMS sending error:", error);
+      }
     }
 
-    // Send email with booking link if email provided
+    // Try to send email if email provided
     if (existing.driverEmail) {
-      await sendRepairBookingLinkEmail(existing.driverEmail, {
-        driverName: existing.driverName,
-        requestId: existing.id,
-        link: bookingLink,
-        issueSummary: existing.description.slice(0, 120),
-        language: existing.preferredLanguage,
-        suggestedSlot,
-      });
+      try {
+        await sendRepairBookingLinkEmail(existing.driverEmail, {
+          driverName: existing.driverName,
+          requestId: existing.id,
+          link: bookingLink,
+          issueSummary: existing.description.slice(0, 120),
+          language: existing.preferredLanguage,
+          suggestedSlot,
+        });
+      } catch (error) {
+        emailSuccess = false;
+        emailError = "Email failed to send";
+        console.error("Email sending error:", error);
+      }
     }
 
-    // We don't need to notify admin again that they sent the link, but we could log it
-    // await notifyAdminOfRepair(...) 
-
-    return NextResponse.json({ request: updated || existing, link: bookingLink });
+    return NextResponse.json({ 
+      request: updated || existing, 
+      link: bookingLink,
+      smsSuccess,
+      emailSuccess,
+      smsError,
+      emailError,
+      warnings: [
+        ...(smsError ? [smsError] : []),
+        ...(emailError ? [emailError] : [])
+      ].filter(Boolean)
+    });
   } catch (error) {
     console.error("Failed to send booking link", error);
     return NextResponse.json({ error: "Failed to send booking link" }, { status: 500 });
