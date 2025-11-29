@@ -12,7 +12,9 @@
       "Bash(supabase status:*)",
       "Bash(npm install:*)",
       "Bash(node:*)",
-      "Bash(PGPASSWORD:*)"
+      "Bash(PGPASSWORD:*)",
+      "Bash(grep:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

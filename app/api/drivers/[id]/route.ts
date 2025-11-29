@@ -6,6 +6,11 @@ const driverUpdateSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
   phone: z.string().optional(),
+  role: z.enum(['admin', 'mechanic', 'customer', 'driver']).optional(),
+  approval_status: z.enum(['pending_approval', 'approved']).optional(),
+  level_certification: z.string().optional(),
+  notes: z.string().optional(),
+  preferred_language: z.string().optional(),
 })
 
 export async function GET(
@@ -18,7 +23,6 @@ export async function GET(
       .from('users')
       .select('*')
       .eq('id', params.id)
-      .eq('role', 'driver')
       .single()
 
     if (error || !data) {
@@ -35,6 +39,14 @@ export async function GET(
         name: data.name,
         role: data.role,
         phone: data.phone,
+        approval_status: data.approval_status,
+        airtable_id: data.airtable_id,
+        member_legacy_id: data.member_legacy_id,
+        level_certification: data.level_certification,
+        notes: data.notes,
+        preferred_language: data.preferred_language,
+        equipment_oversight: data.equipment_oversight,
+        last_seen_at: data.last_seen_at,
         createdAt: data.created_at,
       },
     })
@@ -68,12 +80,16 @@ export async function PATCH(
     if (parsed.data.name !== undefined) updateData.name = parsed.data.name
     if (parsed.data.email !== undefined) updateData.email = parsed.data.email
     if (parsed.data.phone !== undefined) updateData.phone = parsed.data.phone
+    if (parsed.data.role !== undefined) updateData.role = parsed.data.role
+    if (parsed.data.approval_status !== undefined) updateData.approval_status = parsed.data.approval_status
+    if (parsed.data.level_certification !== undefined) updateData.level_certification = parsed.data.level_certification
+    if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes
+    if (parsed.data.preferred_language !== undefined) updateData.preferred_language = parsed.data.preferred_language
 
     const { data, error } = await supabase
       .from('users')
       .update(updateData)
       .eq('id', params.id)
-      .eq('role', 'driver')
       .select()
       .single()
 
@@ -91,6 +107,14 @@ export async function PATCH(
         name: data.name,
         role: data.role,
         phone: data.phone,
+        approval_status: data.approval_status,
+        airtable_id: data.airtable_id,
+        member_legacy_id: data.member_legacy_id,
+        level_certification: data.level_certification,
+        notes: data.notes,
+        preferred_language: data.preferred_language,
+        equipment_oversight: data.equipment_oversight,
+        last_seen_at: data.last_seen_at,
         createdAt: data.created_at,
       },
     })
@@ -113,7 +137,6 @@ export async function DELETE(
       .from('users')
       .delete()
       .eq('id', params.id)
-      .eq('role', 'driver')
 
     if (error) {
       return NextResponse.json(

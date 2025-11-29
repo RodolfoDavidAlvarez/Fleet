@@ -9,6 +9,13 @@ export interface User {
   approval_status?: 'pending_approval' | 'approved'
   last_seen_at?: string
   isOnline?: boolean
+  // Airtable migration fields
+  airtable_id?: string
+  member_legacy_id?: string
+  level_certification?: string
+  notes?: string
+  preferred_language?: string
+  equipment_oversight?: string
   createdAt: string
 }
 

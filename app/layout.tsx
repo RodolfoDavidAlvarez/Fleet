@@ -15,6 +15,10 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: 'AGAVE ENVIRONMENTAL CONTRACTING, INC. - Fleet Management System',
   description: 'Modern fleet management system with admin and mechanic dashboards',
+  icons: {
+    icon: '/icon.svg',
+    apple: '/icon.svg',
+  },
 }
 
 export default function RootLayout({
