@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       vehicleType: formData.get("vehicleType")?.toString(),
       makeModel: formData.get("makeModel")?.toString(),
       incidentDate: formData.get("incidentDate")?.toString(),
-      isImmediate: formData.get("isImmediate") === 'true',
+      isImmediate: formData.get("isImmediate") === "true",
     };
 
     const parsed = createSchema.safeParse(payload);
@@ -142,12 +142,9 @@ export async function POST(request: NextRequest) {
     // Notify admins and mechanics who have opted in
     const supabase = createServerClient();
     let subscribedUsers: any[] | null = null;
-    
+
     try {
-      const { data } = await supabase
-        .from("users")
-        .select("phone, email")
-        .eq("notify_on_repair", true);
+      const { data } = await supabase.from("users").select("phone, email").eq("notify_on_repair", true);
       subscribedUsers = data;
     } catch (err) {
       console.warn("Failed to fetch subscribed users for notifications (column might be missing)", err);
@@ -158,12 +155,15 @@ export async function POST(request: NextRequest) {
         // SMS
         if (user.phone) {
           asyncNotifications.push(
-            notifyAdminOfRepair({
-              requestId: record.id,
-              driverName: record.driverName,
-              driverPhone: record.driverPhone,
-              urgency: record.urgency,
-            }, user.phone)
+            notifyAdminOfRepair(
+              {
+                requestId: record.id,
+                driverName: record.driverName,
+                driverPhone: record.driverPhone,
+                urgency: record.urgency,
+              },
+              user.phone
+            )
           );
         }
         // Email
@@ -182,28 +182,28 @@ export async function POST(request: NextRequest) {
         }
       });
     } else {
-        // Fallback to env var if no users subscribed (legacy behavior)
-        asyncNotifications.push(
+      // Fallback to env var if no users subscribed (legacy behavior)
+      asyncNotifications.push(
         notifyAdminOfRepair({
-            requestId: record.id,
-            driverName: record.driverName,
-            driverPhone: record.driverPhone,
-            urgency: record.urgency,
+          requestId: record.id,
+          driverName: record.driverName,
+          driverPhone: record.driverPhone,
+          urgency: record.urgency,
         })
-        );
+      );
 
-        const adminEmail = process.env.ADMIN_EMAIL || 'ralvarez@bettersystems.ai';
-        asyncNotifications.push(
+      const adminEmail = process.env.ADMIN_EMAIL || "ralvarez@bettersystems.ai";
+      asyncNotifications.push(
         notifyAdminNewRepairRequest(adminEmail, {
-            requestId: record.id,
-            driverName: record.driverName,
-            driverPhone: record.driverPhone,
-            driverEmail: record.driverEmail,
-            urgency: record.urgency,
-            summary: ai.summary,
-            vehicleIdentifier: record.vehicleIdentifier,
+          requestId: record.id,
+          driverName: record.driverName,
+          driverPhone: record.driverPhone,
+          driverEmail: record.driverEmail,
+          urgency: record.urgency,
+          summary: ai.summary,
+          vehicleIdentifier: record.vehicleIdentifier,
         })
-        );
+      );
     }
 
     Promise.allSettled(asyncNotifications).catch((err) => {
@@ -212,17 +212,17 @@ export async function POST(request: NextRequest) {
 
     // Automatically send booking link via SMS
     if (record.driverPhone) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
       const bookingLink = `${baseUrl}/booking-link/${record.id}?name=${encodeURIComponent(record.driverName)}&phone=${encodeURIComponent(record.driverPhone)}`;
-      
+
       // Update repair request with booking link
       await repairRequestDB.update(record.id, {
         bookingLink: bookingLink,
-        status: 'waiting_booking',
+        status: "waiting_booking",
       });
 
       // Send booking link via SMS
-      const { sendRepairBookingLink } = await import('@/lib/twilio');
+      const { sendRepairBookingLink } = await import("@/lib/twilio");
       sendRepairBookingLink(record.driverPhone, {
         requestId: record.id,
         link: bookingLink,
@@ -240,9 +240,9 @@ export async function POST(request: NextRequest) {
     const errorStack = error instanceof Error ? error.stack : undefined;
     console.error("Error details:", { errorMessage, errorStack });
     return NextResponse.json(
-      { 
+      {
         error: "Failed to create repair request",
-        details: process.env.NODE_ENV === "development" ? errorMessage : undefined
+        details: process.env.NODE_ENV === "development" ? errorMessage : undefined,
       },
       { status: 500 }
     );

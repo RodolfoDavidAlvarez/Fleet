@@ -180,3 +180,4 @@ After migrations are applied:
 **Recommended Method:** Supabase SQL Editor (Method 1)
 
 
+

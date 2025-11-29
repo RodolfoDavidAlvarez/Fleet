@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Car, Plus, User as UserIcon, Wrench, Calendar, Gauge, X, Loader2, Save, Grid3x3, List } from 'lucide-react'
+import { Car, Plus, User as UserIcon, Wrench, Calendar, Gauge, X, Loader2, Save, Grid3x3, List, Search } from 'lucide-react'
 import { Vehicle } from '@/types'
 import { getStatusColor, formatDate } from '@/lib/utils'
 import { useVehicles, useCreateVehicle } from '@/hooks/use-vehicles'
@@ -35,6 +35,7 @@ export default function VehiclesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(12)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -71,19 +72,47 @@ export default function VehiclesPage() {
     localStorage.setItem('vehicles-view-mode', mode)
   }
 
+  // Filter vehicles based on search term
+  const filteredVehicles = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return vehicles
+    }
+    const searchLower = searchTerm.toLowerCase().trim()
+    return vehicles.filter((vehicle) => {
+      const make = (vehicle.make || '').toLowerCase()
+      const model = (vehicle.model || '').toLowerCase()
+      const vin = (vehicle.vin || '').toLowerCase()
+      const licensePlate = (vehicle.licensePlate || '').toLowerCase()
+      const vehicleNumber = (vehicle.vehicleNumber || '').toLowerCase()
+      const year = vehicle.year?.toString() || ''
+      const driverName = (vehicle.driverName || '').toLowerCase()
+      
+      return (
+        make.includes(searchLower) ||
+        model.includes(searchLower) ||
+        vin.includes(searchLower) ||
+        licensePlate.includes(searchLower) ||
+        vehicleNumber.includes(searchLower) ||
+        year.includes(searchLower) ||
+        driverName.includes(searchLower) ||
+        `${make} ${model}`.includes(searchLower)
+      )
+    })
+  }, [vehicles, searchTerm])
+
   // Calculate pagination
   const paginatedVehicles = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
     const endIndex = startIndex + itemsPerPage
-    return vehicles.slice(startIndex, endIndex)
-  }, [vehicles, currentPage, itemsPerPage])
+    return filteredVehicles.slice(startIndex, endIndex)
+  }, [filteredVehicles, currentPage, itemsPerPage])
 
-  const totalPages = Math.ceil(vehicles.length / itemsPerPage)
+  const totalPages = Math.ceil(filteredVehicles.length / itemsPerPage)
 
-  // Reset to page 1 when items per page changes
+  // Reset to page 1 when items per page changes or search term changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [itemsPerPage])
+  }, [itemsPerPage, searchTerm])
 
   // Reset to page 1 if current page is out of bounds
   useEffect(() => {
@@ -177,6 +206,38 @@ export default function VehiclesPage() {
                   Add Vehicle
                 </button>
               </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 max-w-md relative">
+                <div className="input-group">
+                  <span className="input-group-icon input-group-icon-left">
+                    <Search className="h-4 w-4" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Search vehicles, VIN, license plate, driver..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="input input-with-icon-left pr-12"
+                  />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              {searchTerm && (
+                <div className="text-sm text-gray-600">
+                  {filteredVehicles.length} {filteredVehicles.length === 1 ? 'vehicle' : 'vehicles'} found
+                </div>
+              )}
             </div>
 
             {vehiclesError && (
@@ -319,9 +380,9 @@ export default function VehiclesPage() {
                         </motion.div>
                       ))}
                     </AnimatePresence>
-                    {vehicles.length === 0 && (
+                    {filteredVehicles.length === 0 && (
                       <div className="p-6 text-center text-gray-500 col-span-full">
-                        No vehicles found.
+                        {searchTerm ? `No vehicles found matching "${searchTerm}".` : 'No vehicles found.'}
                       </div>
                     )}
                   </motion.div>
@@ -396,22 +457,22 @@ export default function VehiclesPage() {
                         </motion.div>
                       ))}
                     </AnimatePresence>
-                    {vehicles.length === 0 && (
+                    {filteredVehicles.length === 0 && (
                       <div className="p-6 text-center text-gray-500">
-                        No vehicles found.
+                        {searchTerm ? `No vehicles found matching "${searchTerm}".` : 'No vehicles found.'}
                       </div>
                     )}
                   </motion.div>
                 )}
                 
                 {/* Pagination */}
-                {vehicles.length > 0 && (
+                {filteredVehicles.length > 0 && (
                   <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
                     onPageChange={setCurrentPage}
                     itemsPerPage={itemsPerPage}
-                    totalItems={vehicles.length}
+                    totalItems={filteredVehicles.length}
                     onItemsPerPageChange={handleItemsPerPageChange}
                   />
                 )}

@@ -355,14 +355,50 @@ export const vehicleDB = {
 
   update: async (id: string, updates: Partial<Vehicle>): Promise<Vehicle | null> => {
     const supabase = createServerClient();
-    const { data, error } = await supabase.from("vehicles").update(vehicleToRow(updates)).eq("id", id).select().single();
-
-    if (error || !data) {
-      return null;
+    
+    // Handle driver assignment separately using the assign_driver_to_vehicle function
+    const driverId = updates.driverId;
+    const updatesWithoutDriver = { ...updates };
+    delete (updatesWithoutDriver as any).driverId;
+    
+    // Update vehicle fields (excluding driverId)
+    const vehicleRow = vehicleToRow(updatesWithoutDriver);
+    // Remove undefined/null values
+    Object.keys(vehicleRow).forEach(key => {
+      if (vehicleRow[key] === undefined || vehicleRow[key] === null) {
+        delete vehicleRow[key];
+      }
+    });
+    
+    if (Object.keys(vehicleRow).length > 0) {
+      const { data, error } = await supabase.from("vehicles").update(vehicleRow).eq("id", id).select().single();
+      if (error) {
+        console.error("Error updating vehicle:", error);
+        return null;
+      }
+    }
+    
+    // Handle driver assignment
+    if (driverId !== undefined) {
+      if (driverId === null || driverId === '') {
+        // Remove driver assignment
+        await supabase.from("vehicle_drivers").delete().eq("vehicle_id", id).eq("is_primary", true);
+      } else {
+        // Assign driver using the database function
+        const { error: assignError } = await supabase.rpc('assign_driver_to_vehicle', {
+          p_vehicle_id: id,
+          p_driver_id: driverId,
+          p_is_primary: true
+        });
+        if (assignError) {
+          console.error("Error assigning driver:", assignError);
+          // Continue anyway - vehicle update might have succeeded
+        }
+      }
     }
 
     const detailed = await vehicleDB.getById(id);
-    return detailed || rowToVehicle(data);
+    return detailed || null;
   },
 
   delete: async (id: string): Promise<boolean> => {

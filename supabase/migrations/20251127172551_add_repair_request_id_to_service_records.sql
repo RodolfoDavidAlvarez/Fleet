@@ -11,3 +11,4 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS idx_service_records_repair_request_id ON service_records(repair_request_id);
 
+

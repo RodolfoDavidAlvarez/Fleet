@@ -22,10 +22,10 @@ export async function optimizeAndStoreImages(files: File[]): Promise<StoredImage
     if (index > 2) break; // keep it lightweight for mobile uploads
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    
+
     let optimized: Buffer;
     let thumb: Buffer;
-    
+
     try {
       optimized = await sharp(buffer).rotate().resize({ width: 1600, withoutEnlargement: true }).webp({ quality: 74 }).toBuffer();
       thumb = await sharp(buffer).rotate().resize({ width: 480, withoutEnlargement: true }).webp({ quality: 68 }).toBuffer();
@@ -67,7 +67,7 @@ export async function optimizeAndStoreImages(files: File[]): Promise<StoredImage
       continue;
     } catch (error) {
       console.error("Supabase storage upload failed:", error);
-      
+
       // Only use local storage fallback in development (not in Vercel/production)
       if (!isProduction) {
         try {
@@ -87,7 +87,7 @@ export async function optimizeAndStoreImages(files: File[]): Promise<StoredImage
           console.error("Local storage fallback also failed:", localError);
         }
       }
-      
+
       // In production, if Supabase fails, we must throw an error
       throw new Error(`Failed to upload image to storage: ${error instanceof Error ? error.message : "Unknown error"}`);
     }

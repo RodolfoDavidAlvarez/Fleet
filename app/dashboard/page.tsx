@@ -471,9 +471,15 @@ export default function UnifiedDashboard() {
                     </h2>
                     <p className="text-sm text-muted mt-1">Top assignments across the fleet</p>
                   </div>
-                  <Link href="/mechanic/jobs" className="btn btn-ghost btn-sm">
-                    Open board →
-                  </Link>
+                  {isMechanic ? (
+                    <Link href="/mechanic/schedule" className="btn btn-ghost btn-sm">
+                      View schedule →
+                    </Link>
+                  ) : (
+                    <Link href="/repairs" className="btn btn-ghost btn-sm">
+                      View repairs →
+                    </Link>
+                  )}
                 </div>
                 {showJobsSkeleton ? (
                   <ListSkeleton rows={3} />
