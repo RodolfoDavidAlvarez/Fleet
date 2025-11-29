@@ -296,8 +296,11 @@ export const vehicleDB = {
   getAll: async (): Promise<Vehicle[]> => {
     const supabase = createServerClient();
     const { data, error } = await supabase
-      .from("vehicles_with_drivers")
-      .select("*, users!vehicles_with_drivers_driver_id_fkey(role)")
+      .from("vehicles")
+      .select(`
+        *,
+        driver:users!driver_id(*)
+      `)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -310,7 +313,14 @@ export const vehicleDB = {
 
   getById: async (id: string): Promise<Vehicle | undefined> => {
     const supabase = createServerClient();
-    const { data, error } = await supabase.from("vehicles_with_drivers").select("*").eq("id", id).single();
+    const { data, error } = await supabase
+      .from("vehicles")
+      .select(`
+        *,
+        driver:users!driver_id(*)
+      `)
+      .eq("id", id)
+      .single();
 
     if (error || !data) {
       return undefined;
