@@ -1,48 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import DashboardLayout from '@/components/DashboardLayout'
 import QuickActions from '@/components/dashboard/QuickActions'
 import { Car, Calendar, Users, CheckCircle, MessageSquare, Wrench, BarChart3, TrendingUp, AlertTriangle, Clock } from 'lucide-react'
 import { DashboardStats, RepairRequest } from '@/types'
+import { queryKeys, prefetchQueries } from '@/lib/query-client'
+import { StatsCardSkeleton, ListSkeleton } from '@/components/ui/loading-optimized'
 
-function StatCardSkeleton() {
-  return (
-    <div className="card p-6 animate-pulse">
-      <div className="flex items-center justify-between mb-4">
-        <div className="w-12 h-12 rounded-xl bg-[var(--bg-tertiary)]" />
-        <div className="w-6 h-6 rounded-full bg-[var(--bg-tertiary)]" />
-      </div>
-      <div className="space-y-2">
-        <div className="h-6 w-20 bg-[var(--bg-tertiary)] rounded" />
-        <div className="h-4 w-24 bg-[var(--bg-tertiary)] rounded" />
-        <div className="h-3 w-16 bg-[var(--bg-tertiary)] rounded" />
-      </div>
-    </div>
-  )
-}
-
-function ListSkeleton({ rows = 4 }: { rows?: number }) {
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: rows }).map((_, idx) => (
-        <div key={idx} className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-tertiary)] animate-pulse">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[var(--surface)]" />
-            <div className="space-y-2">
-              <div className="h-4 w-32 bg-[var(--surface)] rounded" />
-              <div className="h-3 w-24 bg-[var(--surface)] rounded" />
-            </div>
-          </div>
-          <div className="w-20 h-6 bg-[var(--surface)] rounded-full" />
-        </div>
-      ))}
-    </div>
-  )
-}
+// Remove local skeletons - using optimized versions from loading-optimized.tsx
 
 export default function UnifiedDashboard() {
   const router = useRouter()
@@ -66,13 +35,9 @@ export default function UnifiedDashboard() {
     setAuthReady(true)
   }, [router])
 
-  const {
-    data: statsData,
-    isLoading: statsLoading,
-    isFetching: statsFetching,
-    error: statsError,
-  } = useQuery<{ stats: DashboardStats }>({
-    queryKey: ['dashboard-stats'],
+  // Optimized query functions with better caching
+  const statsQuery = useQuery<{ stats: DashboardStats }>({
+    queryKey: queryKeys.dashboardStats,
     queryFn: async () => {
       const res = await fetch('/api/dashboard')
       const data: { stats: DashboardStats; error?: string } = await res.json()
@@ -82,16 +47,11 @@ export default function UnifiedDashboard() {
       return data
     },
     enabled: authReady,
-    staleTime: 60 * 1000,
-
+    staleTime: 2 * 60 * 1000, // 2 minutes for stats
+    select: useCallback((data: { stats: DashboardStats }) => data, [])
   })
 
-  const {
-    data: jobsData,
-    isLoading: jobsLoading,
-    isFetching: jobsFetching,
-    error: jobsError,
-  } = useQuery<{ jobs: any[] }>({
+  const jobsQuery = useQuery<{ jobs: any[] }>({
     queryKey: ['dashboard-jobs'],
     queryFn: async () => {
       const res = await fetch('/api/jobs')
@@ -102,16 +62,11 @@ export default function UnifiedDashboard() {
       return data
     },
     enabled: authReady,
-    staleTime: 30 * 1000,
-
+    staleTime: 1 * 60 * 1000, // 1 minute for jobs
+    select: useCallback((data: { jobs: any[] }) => data.jobs.slice(0, 5), []) // Limit to 5 jobs
   })
 
-  const {
-    data: repairsData,
-    isLoading: repairsLoading,
-    isFetching: repairsFetching,
-    error: repairsError,
-  } = useQuery<{ requests: RepairRequest[] }>({
+  const repairsQuery = useQuery<{ requests: RepairRequest[] }>({
     queryKey: ['dashboard-repair-requests'],
     queryFn: async () => {
       const res = await fetch('/api/repair-requests?limit=4')
@@ -122,40 +77,80 @@ export default function UnifiedDashboard() {
       return data
     },
     enabled: authReady,
-    staleTime: 30 * 1000,
-
+    staleTime: 1 * 60 * 1000, // 1 minute for repairs
+    select: useCallback((data: { requests: RepairRequest[] }) => data.requests, [])
   })
 
+  // Memoized computed values for better performance
+  const computedData = useMemo(() => {
+    const stats = statsQuery.data?.stats || null
+    const jobs = jobsQuery.data || []
+    const bookings = stats?.recentBookings || []
+    const repairRequests = repairsQuery.data || []
+
+    const isInitialLoading =
+      (statsQuery.isLoading && !stats) ||
+      (jobsQuery.isLoading && jobs.length === 0) ||
+      (repairsQuery.isLoading && repairRequests.length === 0)
+
+    const isRefetching = statsQuery.isFetching || jobsQuery.isFetching || repairsQuery.isFetching
+    const firstError = [statsQuery.error, jobsQuery.error, repairsQuery.error].find(Boolean) as Error | undefined
+
+    return {
+      stats,
+      jobs,
+      bookings,
+      repairRequests,
+      isInitialLoading,
+      isRefetching,
+      firstError,
+      showStatsSkeleton: !stats && (statsQuery.isLoading || isInitialLoading),
+      showBookingsSkeleton: bookings.length === 0 && (statsQuery.isLoading || isInitialLoading)
+    }
+  }, [
+    statsQuery.data?.stats, 
+    jobsQuery.data, 
+    repairsQuery.data,
+    statsQuery.isLoading,
+    jobsQuery.isLoading, 
+    repairsQuery.isLoading,
+    statsQuery.isFetching,
+    jobsQuery.isFetching,
+    repairsQuery.isFetching,
+    statsQuery.error,
+    jobsQuery.error,
+    repairsQuery.error
+  ])
+
+  // Update last updated timestamp
   useEffect(() => {
-    if (statsData || jobsData || repairsData) {
+    if (computedData.stats || computedData.jobs.length || computedData.repairRequests.length) {
       setLastUpdated(new Date())
     }
-  }, [statsData, jobsData, repairsData])
+  }, [computedData.stats, computedData.jobs.length, computedData.repairRequests.length])
 
-  const stats = statsData?.stats || null
-  const jobs = jobsData?.jobs || []
-  const bookings = stats?.recentBookings || []
-  const repairRequests = repairsData?.requests || []
+  const {
+    stats,
+    jobs,
+    bookings,
+    repairRequests,
+    isInitialLoading,
+    isRefetching,
+    firstError,
+    showStatsSkeleton,
+    showBookingsSkeleton
+  } = computedData
+  const showRepairsSkeleton = repairRequests.length === 0 && (repairsQuery.isLoading || isInitialLoading)
+  const showJobsSkeleton = jobs.length === 0 && (jobsQuery.isLoading || isInitialLoading)
 
-  const isInitialLoading =
-    (statsLoading && !stats) ||
-    (jobsLoading && jobs.length === 0) ||
-    (repairsLoading && repairRequests.length === 0)
-
-  const isRefetching = statsFetching || jobsFetching || repairsFetching
-
-  const firstError = [statsError, jobsError, repairsError].find(Boolean) as Error | undefined
-
-  const showStatsSkeleton = !stats && (statsLoading || isInitialLoading)
-  const showBookingsSkeleton = bookings.length === 0 && (statsLoading || isInitialLoading)
-  const showRepairsSkeleton = repairRequests.length === 0 && (repairsLoading || isInitialLoading)
-  const showJobsSkeleton = jobs.length === 0 && (jobsLoading || isInitialLoading)
-
-  const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
-    queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] })
-    queryClient.invalidateQueries({ queryKey: ['dashboard-repair-requests'] })
-  }
+  // Optimized refresh handler
+  const handleRefresh = useCallback(() => {
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboardStats }),
+      queryClient.invalidateQueries({ queryKey: ['dashboard-jobs'] }),
+      queryClient.invalidateQueries({ queryKey: ['dashboard-repair-requests'] })
+    ]).catch(console.warn)
+  }, [queryClient])
 
   if (!authReady || !user) {
     return (

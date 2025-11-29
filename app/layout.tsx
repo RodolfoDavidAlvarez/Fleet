@@ -3,6 +3,7 @@ import { Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ToastProvider } from '@/components/ui/toast'
+import PrefetchProvider from '@/components/PrefetchProvider'
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -25,7 +26,9 @@ export default function RootLayout({
     <html lang="en" className={spaceGrotesk.variable}>
       <body className="font-sans antialiased">
         <QueryProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <PrefetchProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </PrefetchProvider>
         </QueryProvider>
       </body>
     </html>

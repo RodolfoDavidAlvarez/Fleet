@@ -12,6 +12,7 @@ import { TableRowSkeleton } from "@/components/ui/loading-states";
 import { motion, AnimatePresence } from "framer-motion";
 import ServiceReportForm, { ServiceReportFormData } from "@/components/ServiceReportForm";
 import Select from "@/components/ui/Select";
+import { Pagination } from "@/components/ui/pagination";
 
 const statusLabels: Record<string, string> = {
   in_progress: "In Progress",
@@ -42,6 +43,8 @@ export default function ServiceRecordsPage() {
   const [selected, setSelected] = useState<ServiceRecord | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const [editForm, setEditForm] = useState({
     mechanicName: "",
     serviceType: "",
@@ -67,6 +70,17 @@ export default function ServiceRecordsPage() {
       loadRepairs();
     }
   }, [user]);
+
+  // Load items per page preference from localStorage
+  useEffect(() => {
+    const savedItemsPerPage = localStorage.getItem("service-records-items-per-page");
+    if (savedItemsPerPage) {
+      const parsed = parseInt(savedItemsPerPage, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        setItemsPerPage(parsed);
+      }
+    }
+  }, []);
 
   const loadRepairs = async () => {
     try {
@@ -98,6 +112,32 @@ export default function ServiceRecordsPage() {
     }
     return list;
   }, [filter, search, records]);
+
+  // Calculate pagination
+  const paginatedRecords = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  }, [filtered, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+  // Reset to page 1 when items per page changes, filter changes, or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage, filter, search]);
+
+  // Reset to page 1 if current page is out of bounds
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, totalPages]);
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    localStorage.setItem("service-records-items-per-page", newItemsPerPage.toString());
+  };
 
   const statusCounts = useMemo(() => {
     return records.reduce(
@@ -274,7 +314,7 @@ export default function ServiceRecordsPage() {
                       </tr>
                     ) : (
                       <AnimatePresence>
-                        {filtered.map((rec, i) => (
+                        {paginatedRecords.map((rec, i) => (
                           <motion.tr
                             key={rec.id}
                             initial={{ opacity: 0, y: 10 }}
@@ -336,6 +376,20 @@ export default function ServiceRecordsPage() {
                   </tbody>
                 </table>
               </div>
+              {/* Pagination */}
+              {filtered.length > 0 && (
+                <div className="px-6 py-4 border-t border-gray-200">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    itemsPerPage={itemsPerPage}
+                    totalItems={filtered.length}
+                    onItemsPerPageChange={handleItemsPerPageChange}
+                    itemName="service records"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </main>

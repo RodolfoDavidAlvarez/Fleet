@@ -4,10 +4,10 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Car, Plus, User as UserIcon, Wrench, Calendar, Gauge, X, Loader2, Save, Grid3x3, List, Search } from 'lucide-react'
+import { Car, Plus, User as UserIcon, Wrench, Calendar, Gauge, X, Loader2, Save, Grid3x3, List, Search, UserPlus, FileText } from 'lucide-react'
 import { Vehicle } from '@/types'
 import { getStatusColor, formatDate } from '@/lib/utils'
-import { useVehicles, useCreateVehicle } from '@/hooks/use-vehicles'
+import { useVehicles, useCreateVehicle, useDrivers } from '@/hooks/use-vehicles'
 import { VehicleCardSkeleton } from '@/components/ui/loading-states'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/ui/toast'
@@ -19,6 +19,7 @@ export default function VehiclesPage() {
   const [user, setUser] = useState<any>(null)
   const { data: vehicles = [], isLoading, error: vehiclesError } = useVehicles()
   const createVehicle = useCreateVehicle()
+  const { data: drivers = [], isLoading: driversLoading } = useDrivers()
   const [showAddModal, setShowAddModal] = useState(false)
   const [formData, setFormData] = useState({
     make: '',
@@ -29,6 +30,7 @@ export default function VehiclesPage() {
     mileage: 0,
     status: 'active' as 'active' | 'in_service' | 'retired',
     vehicleNumber: '',
+    driverId: '' as string | undefined,
   })
   const activeCount = vehicles.filter((v) => v.status === 'active').length
   const inServiceCount = vehicles.filter((v) => v.status === 'in_service').length
@@ -129,7 +131,11 @@ export default function VehiclesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createVehicle.mutateAsync(formData)
+      const submitData = {
+        ...formData,
+        driverId: formData.driverId || undefined,
+      }
+      await createVehicle.mutateAsync(submitData)
       setShowAddModal(false)
       setFormData({
         make: '',
@@ -140,6 +146,7 @@ export default function VehiclesPage() {
         mileage: 0,
         status: 'active',
         vehicleNumber: '',
+        driverId: '',
       })
       showToast('Vehicle added successfully!', 'success')
     } catch (error) {
@@ -585,7 +592,7 @@ export default function VehiclesPage() {
                   <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
                       <div className="h-8 w-8 rounded-lg bg-green-100 flex items-center justify-center">
-                        <Car className="h-4 w-4 text-green-600" />
+                        <FileText className="h-4 w-4 text-green-600" />
                       </div>
                       Identification
                     </h3>
@@ -650,6 +657,41 @@ export default function VehiclesPage() {
                         />
                       </label>
                     </div>
+                  </div>
+
+                  {/* Driver Assignment */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                        <UserPlus className="h-4 w-4 text-purple-600" />
+                      </div>
+                      Driver Assignment
+                    </h3>
+                    <label className="space-y-1.5 block">
+                      <span className="text-sm font-semibold text-gray-700">Assign Driver (Optional)</span>
+                      <select
+                        className="input-field w-full"
+                        value={formData.driverId || ''}
+                        onChange={(e) => setFormData({ ...formData, driverId: e.target.value || '' })}
+                        disabled={driversLoading}
+                      >
+                        <option value="">No driver assigned</option>
+                        {drivers.map((driver) => (
+                          <option key={driver.id} value={driver.id}>
+                            {driver.name} {driver.email ? `(${driver.email})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      {driversLoading && (
+                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Loading drivers...
+                        </p>
+                      )}
+                      {!driversLoading && drivers.length === 0 && (
+                        <p className="text-xs text-gray-500 mt-1">No drivers available. Add drivers first.</p>
+                      )}
+                    </label>
                   </div>
 
                   {/* Actions */}

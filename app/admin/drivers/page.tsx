@@ -8,6 +8,7 @@ import { Users, Plus, Mail, Phone, X, Edit, Loader2, Save, Grid3x3, List, Search
 import { User } from '@/types'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/ui/toast'
+import { Pagination } from '@/components/ui/pagination'
 
 export default function DriversPage() {
   const router = useRouter()
@@ -22,6 +23,8 @@ export default function DriversPage() {
   const [saving, setSaving] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(12)
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -61,6 +64,13 @@ export default function DriversPage() {
     if (savedView === 'grid' || savedView === 'list') {
       setViewMode(savedView)
     }
+    const savedItemsPerPage = localStorage.getItem('drivers-items-per-page')
+    if (savedItemsPerPage) {
+      const parsed = parseInt(savedItemsPerPage, 10)
+      if (!isNaN(parsed) && parsed > 0) {
+        setItemsPerPage(parsed)
+      }
+    }
   }, [])
 
   // Save view preference to localStorage
@@ -87,6 +97,32 @@ export default function DriversPage() {
       )
     })
   }, [drivers, searchTerm])
+
+  // Calculate pagination
+  const paginatedDrivers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return filteredDrivers.slice(startIndex, endIndex)
+  }, [filteredDrivers, currentPage, itemsPerPage])
+
+  const totalPages = Math.ceil(filteredDrivers.length / itemsPerPage)
+
+  // Reset to page 1 when items per page changes or search term changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [itemsPerPage, searchTerm])
+
+  // Reset to page 1 if current page is out of bounds
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1)
+    }
+  }, [currentPage, totalPages])
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    localStorage.setItem('drivers-items-per-page', newItemsPerPage.toString())
+  }
 
   const openEdit = (driver: User) => {
     setEditing(true)
@@ -228,8 +264,9 @@ export default function DriversPage() {
             ) : (
               <>
                 {viewMode === 'grid' ? (
+                  <>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredDrivers.map((driver) => (
+                    {paginatedDrivers.map((driver) => (
                       <motion.div
                         key={driver.id}
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -278,19 +315,35 @@ export default function DriversPage() {
                         </div>
                       </motion.div>
                     ))}
-                    {filteredDrivers.length === 0 && (
+                    {paginatedDrivers.length === 0 && (
                       <div className="p-6 text-center text-gray-500 col-span-full">
                         {searchTerm ? `No drivers found matching "${searchTerm}".` : 'No drivers found.'}
                       </div>
                     )}
                   </div>
+                  {/* Pagination */}
+                  {filteredDrivers.length > 0 && (
+                    <div className="pt-4 border-t border-gray-200">
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        itemsPerPage={itemsPerPage}
+                        totalItems={filteredDrivers.length}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                        itemName="drivers"
+                      />
+                    </div>
+                  )}
+                  </>
                 ) : (
+                  <>
                   <motion.div 
                     layout
                     className="space-y-3"
                   >
                     <AnimatePresence>
-                      {filteredDrivers.map((driver, i) => (
+                      {paginatedDrivers.map((driver, i) => (
                         <motion.div
                           key={driver.id}
                           initial={{ opacity: 0, y: 10 }}
@@ -345,12 +398,27 @@ export default function DriversPage() {
                         </motion.div>
                       ))}
                     </AnimatePresence>
-                    {filteredDrivers.length === 0 && (
+                    {paginatedDrivers.length === 0 && (
                       <div className="p-6 text-center text-gray-500">
                         {searchTerm ? `No drivers found matching "${searchTerm}".` : 'No drivers found.'}
                       </div>
                     )}
                   </motion.div>
+                  {/* Pagination */}
+                  {filteredDrivers.length > 0 && (
+                    <div className="pt-4 border-t border-gray-200">
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        itemsPerPage={itemsPerPage}
+                        totalItems={filteredDrivers.length}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                        itemName="drivers"
+                      />
+                    </div>
+                  )}
+                  </>
                 )}
               </>
             )}

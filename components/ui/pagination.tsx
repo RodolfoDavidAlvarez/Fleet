@@ -10,6 +10,7 @@ interface PaginationProps {
   totalItems: number
   onItemsPerPageChange?: (itemsPerPage: number) => void
   itemsPerPageOptions?: number[]
+  itemName?: string
 }
 
 export function Pagination({
@@ -20,6 +21,7 @@ export function Pagination({
   totalItems,
   onItemsPerPageChange,
   itemsPerPageOptions = [10, 20, 50, 100],
+  itemName = 'vehicles',
 }: PaginationProps) {
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1
   const endItem = Math.min(currentPage * itemsPerPage, totalItems)
@@ -89,7 +91,7 @@ export function Pagination({
       <div className="text-sm text-gray-600">
         Showing <span className="font-semibold text-gray-900">{startItem}</span> to{' '}
         <span className="font-semibold text-gray-900">{endItem}</span> of{' '}
-        <span className="font-semibold text-gray-900">{totalItems}</span> vehicles
+        <span className="font-semibold text-gray-900">{totalItems}</span> {itemName}
       </div>
 
       {/* Pagination controls */}
