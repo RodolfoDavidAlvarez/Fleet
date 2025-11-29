@@ -19,7 +19,8 @@ import {
   Megaphone,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { prefetchQueries } from '@/lib/query-client'
 
 interface SidebarProps {
   role: 'admin' | 'mechanic'
@@ -48,14 +49,39 @@ const adminOnlyLinks = [
 export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
-  const links = role === 'admin' 
-    ? [...unifiedLinks, ...adminOnlyLinks]
-    : [...unifiedLinks, ...mechanicOnlyLinks]
+  
+  // Memoize links to prevent recalculation on every render
+  const links = useMemo(() => 
+    role === 'admin' 
+      ? [...unifiedLinks, ...adminOnlyLinks]
+      : [...unifiedLinks, ...mechanicOnlyLinks],
+    [role]
+  )
 
-  const handleLogout = () => {
+  // Memoize logout handler
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('user')
     window.location.href = '/login'
-  }
+  }, [])
+
+  // Optimized prefetching on hover
+  const handleLinkHover = useCallback((href: string) => {
+    // Prefetch data for common routes
+    switch (href) {
+      case '/dashboard':
+        prefetchQueries.dashboard().catch(console.warn)
+        break
+      case '/admin/vehicles':
+        prefetchQueries.vehicles().catch(console.warn)
+        break
+      case '/repairs':
+        prefetchQueries.repairs().catch(console.warn)
+        break
+      case '/service-records':
+        prefetchQueries.serviceRecords().catch(console.warn)
+        break
+    }
+  }, [])
 
   // Close sidebar on mobile when route changes
   useEffect(() => {
@@ -150,6 +176,7 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
               <Link
                 key={link.href}
                 href={link.href}
+                onMouseEnter={() => handleLinkHover(link.href)}
                 className={cn(
                   'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group',
                   isActive
