@@ -100,11 +100,13 @@ export default function DriversPage() {
       const name = (driver.name || '').toLowerCase()
       const email = (driver.email || '').toLowerCase()
       const phone = (driver.phone || '').toLowerCase()
+      const role = (driver.role || '').toLowerCase()
       
       return (
         name.includes(searchLower) ||
         email.includes(searchLower) ||
-        phone.includes(searchLower)
+        phone.includes(searchLower) ||
+        role.includes(searchLower)
       )
     })
   }, [drivers, searchTerm])
@@ -141,7 +143,11 @@ export default function DriversPage() {
       name: driver.name,
       email: driver.email,
       phone: driver.phone,
+      role: driver.role,
       approval_status: driver.approval_status,
+      level_certification: driver.level_certification,
+      notes: driver.notes,
+      preferred_language: driver.preferred_language,
     })
   }
 
@@ -317,8 +323,8 @@ export default function DriversPage() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
                 <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Team</p>
-                <h1 className="text-3xl font-bold text-gray-900">Drivers</h1>
-                <p className="text-gray-600">Manage and view all registered drivers.</p>
+                <h1 className="text-3xl font-bold text-gray-900">Team Members</h1>
+                <p className="text-gray-600">Manage and view all registered team members including drivers, mechanics, and administrators.</p>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-gray-200">
@@ -355,7 +361,7 @@ export default function DriversPage() {
                 </button>
                 <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
                   <Plus className="h-5 w-5 mr-2" />
-                  Add Driver
+                  Add Member
                 </button>
               </div>
             </div>
@@ -369,7 +375,7 @@ export default function DriversPage() {
                   </span>
                   <input
                     type="text"
-                    placeholder="Search drivers by name, email, phone..."
+                    placeholder="Search team members by name, email, phone, role..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="input input-with-icon-left pr-12"
@@ -387,7 +393,7 @@ export default function DriversPage() {
               </div>
               {searchTerm && (
                 <div className="text-sm text-gray-600">
-                  {filteredDrivers.length} {filteredDrivers.length === 1 ? 'driver' : 'drivers'} found
+                  {filteredDrivers.length} {filteredDrivers.length === 1 ? 'member' : 'members'} found
                 </div>
               )}
             </div>
@@ -421,6 +427,11 @@ export default function DriversPage() {
                             </div>
                             <div>
                               <h3 className="text-lg font-semibold text-gray-900">{driver.name}</h3>
+                              {driver.role && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-1">
+                                  {driver.role.charAt(0).toUpperCase() + driver.role.slice(1)}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -500,6 +511,11 @@ export default function DriversPage() {
                                 <h3 className="text-base font-bold text-gray-900 mb-1 group-hover:text-primary-700 transition-colors">
                                   {driver.name}
                                 </h3>
+                                {driver.role && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {driver.role.charAt(0).toUpperCase() + driver.role.slice(1)}
+                                  </span>
+                                )}
                               </div>
                               <div className="flex items-center gap-2 text-sm">
                                 <Mail className="h-4 w-4 text-gray-400" />
@@ -592,7 +608,7 @@ export default function DriversPage() {
                     <Users className="h-5 w-5 text-primary-600" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Driver Details</h2>
+                    <h2 className="text-xl font-bold text-gray-900">Team Member Details</h2>
                     <p className="text-xs text-gray-500 font-mono">ID: {selectedDriver.id.slice(0, 8)}</p>
                   </div>
                 </div>
@@ -713,18 +729,118 @@ export default function DriversPage() {
                     </div>
                     Account Information
                   </h3>
-                  <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-5 grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Joined Date</p>
-                      <p className="text-base font-bold text-gray-900">
-                        {new Date(selectedDriver.createdAt).toLocaleDateString('en-US', { 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
-                      </p>
+                  {!editing ? (
+                    <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-5 grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</p>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {selectedDriver.role ? selectedDriver.role.charAt(0).toUpperCase() + selectedDriver.role.slice(1) : 'Not Set'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</p>
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            selectedDriver.approval_status === 'approved' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {selectedDriver.approval_status ? selectedDriver.approval_status.replace('_', ' ').toUpperCase() : 'PENDING'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Joined Date</p>
+                        <p className="text-base font-bold text-gray-900">
+                          {new Date(selectedDriver.createdAt).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </p>
+                      </div>
+                      {selectedDriver.level_certification && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Certification</p>
+                          <p className="text-sm text-gray-900">{selectedDriver.level_certification}</p>
+                        </div>
+                      )}
+                      {selectedDriver.preferred_language && (
+                        <div className="space-y-1 col-span-2">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred Language</p>
+                          <p className="text-sm text-gray-900">{selectedDriver.preferred_language}</p>
+                        </div>
+                      )}
+                      {selectedDriver.notes && (
+                        <div className="space-y-1 col-span-2">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</p>
+                          <p className="text-sm text-gray-900">{selectedDriver.notes}</p>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-5 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <label className="space-y-1.5 block">
+                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</span>
+                          <select
+                            className="input-field w-full"
+                            value={editForm.role || ''}
+                            onChange={(e) => setEditForm({ ...editForm, role: e.target.value as User['role'] })}
+                          >
+                            <option value="">Select Role</option>
+                            <option value="driver">Driver</option>
+                            <option value="mechanic">Mechanic</option>
+                            <option value="admin">Admin</option>
+                            <option value="customer">Customer</option>
+                          </select>
+                        </label>
+                        <label className="space-y-1.5 block">
+                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</span>
+                          <select
+                            className="input-field w-full"
+                            value={editForm.approval_status || ''}
+                            onChange={(e) => setEditForm({ ...editForm, approval_status: e.target.value as User['approval_status'] })}
+                          >
+                            <option value="pending_approval">Pending Approval</option>
+                            <option value="approved">Approved</option>
+                          </select>
+                        </label>
+                      </div>
+                      <label className="space-y-1.5 block">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Certification Level</span>
+                        <input
+                          type="text"
+                          className="input-field w-full"
+                          value={editForm.level_certification || ''}
+                          onChange={(e) => setEditForm({ ...editForm, level_certification: e.target.value })}
+                          placeholder="e.g., CDL Class A, Forklift Certified"
+                        />
+                      </label>
+                      <label className="space-y-1.5 block">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred Language</span>
+                        <input
+                          type="text"
+                          className="input-field w-full"
+                          value={editForm.preferred_language || ''}
+                          onChange={(e) => setEditForm({ ...editForm, preferred_language: e.target.value })}
+                          placeholder="e.g., English, Spanish"
+                        />
+                      </label>
+                      <label className="space-y-1.5 block">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</span>
+                        <textarea
+                          className="input-field w-full"
+                          rows={3}
+                          value={editForm.notes || ''}
+                          onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                          placeholder="Additional notes about this person"
+                        />
+                      </label>
+                    </div>
+                  )}
                 </div>
 
                 {/* Assigned Vehicles */}

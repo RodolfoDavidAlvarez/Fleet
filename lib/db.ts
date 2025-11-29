@@ -236,7 +236,7 @@ export const driverDB = {
   getAll: async (): Promise<User[]> => {
     const supabase = createServerClient();
 
-    const { data, error } = await supabase.from("users").select("*").eq("role", "driver").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("users").select("*").order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching drivers:", error);
@@ -250,6 +250,14 @@ export const driverDB = {
       name: row.name,
       role: row.role,
       phone: row.phone,
+      approval_status: row.approval_status,
+      airtable_id: row.airtable_id,
+      member_legacy_id: row.member_legacy_id,
+      level_certification: row.level_certification,
+      notes: row.notes,
+      preferred_language: row.preferred_language,
+      equipment_oversight: row.equipment_oversight,
+      last_seen_at: row.last_seen_at,
       createdAt: row.created_at,
     }));
   },
