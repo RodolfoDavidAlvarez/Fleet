@@ -86,11 +86,13 @@ export async function POST(request: NextRequest) {
 
     const stored = await optimizeAndStoreImages(validPhotos);
 
+    // Analyze with AI - include photo URLs for vision analysis
     const ai = await analyzeRepairRequest({
       description: parsed.data.description,
       vehicleIdentifier: parsed.data.vehicleIdentifier,
       urgency: parsed.data.urgency,
       preferredLanguage: parsed.data.preferredLanguage,
+      photoUrls: stored.map((s) => s.url), // Pass photo URLs for vision analysis
     });
 
     const record = await repairRequestDB.create({

@@ -1,6 +1,29 @@
 # Environment Setup Instructions
 
-## Quick Setup
+## Required Environment Variables
+
+### AI Analysis (Claude API)
+
+The repair request AI analysis uses **Anthropic Claude** with vision capabilities for efficient and accurate categorization.
+
+1. Create or edit `.env.local` in the project root
+2. Add your Claude API key:
+
+```env
+# Anthropic Claude API for AI-powered repair request analysis
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+```
+
+**Getting your Claude API key:**
+- Visit: https://console.anthropic.com/
+- Sign up or log in
+- Navigate to API Keys section
+- Create a new API key
+- Copy and paste it into your `.env.local` file
+
+**Model Used:** `claude-3-haiku-20240307` (efficient, fast, cost-effective, supports vision)
+
+### Airtable Configuration
 
 Your Airtable API token has been received. To set it up, you have two options:
 
