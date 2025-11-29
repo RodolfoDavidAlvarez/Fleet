@@ -22,6 +22,7 @@ function rowToVehicle(row: any): Vehicle {
     driverName: row.driver_name || row.driver?.name,
     driverPhone: row.driver_phone || row.driver?.phone,
     driverEmail: row.driver_email || row.driver?.email,
+    driverRole: row.users?.role || (row.driver_name ? 'driver' : undefined),
     driverAssignedDate: row.assigned_date,
     photoUrl: row.photo_url,
     // Enhanced fields mapping
@@ -286,7 +287,10 @@ export const driverDB = {
 export const vehicleDB = {
   getAll: async (): Promise<Vehicle[]> => {
     const supabase = createServerClient();
-    const { data, error } = await supabase.from("vehicles_with_drivers").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("vehicles_with_drivers")
+      .select("*, users!vehicles_with_drivers_driver_id_fkey(role)")
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching vehicles:", error);

@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Car, Plus, User as UserIcon, Wrench, Calendar, Gauge, X, Loader2, Save, Grid3x3, List, Search, UserPlus, FileText } from 'lucide-react'
+import { Car, Plus, User as UserIcon, Wrench, Calendar, Gauge, X, Loader2, Save, Grid3x3, List, Search, UserPlus, FileText, Download } from 'lucide-react'
 import { Vehicle } from '@/types'
 import { getStatusColor, formatDate } from '@/lib/utils'
 import { useVehicles, useCreateVehicle, useDrivers } from '@/hooks/use-vehicles'
@@ -12,6 +12,7 @@ import { VehicleCardSkeleton } from '@/components/ui/loading-states'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/ui/toast'
 import { Pagination } from '@/components/ui/pagination'
+import { exportVehicles } from '@/lib/export-utils'
 
 export default function VehiclesPage() {
   const router = useRouter()
@@ -205,6 +206,14 @@ export default function VehiclesPage() {
                     <List className="h-4 w-4" />
                   </button>
                 </div>
+                <button 
+                  onClick={() => exportVehicles(filteredVehicles)} 
+                  className="btn btn-secondary flex items-center gap-2"
+                  disabled={filteredVehicles.length === 0}
+                >
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </button>
                 <button 
                   onClick={() => setShowAddModal(true)}
                   className="btn btn-primary flex items-center gap-2"

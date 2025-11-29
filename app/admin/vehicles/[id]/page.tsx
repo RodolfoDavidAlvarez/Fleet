@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
@@ -8,8 +8,9 @@ import { Car, ArrowLeft, Edit, Loader2, Save, X, User as UserIcon, Gauge, Calend
 import { Vehicle } from '@/types'
 import { getStatusColor, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useDrivers } from '@/hooks/use-vehicles'
+import { ChevronDown, Check, Search } from 'lucide-react'
 
 export default function VehicleDetailPage() {
   const router = useRouter()
@@ -25,6 +26,9 @@ export default function VehicleDetailPage() {
   const [showDriverSelector, setShowDriverSelector] = useState(false)
   const [selectedDriverId, setSelectedDriverId] = useState<string>('')
   const [assigningDriver, setAssigningDriver] = useState(false)
+  const [isDriverDropdownOpen, setIsDriverDropdownOpen] = useState(false)
+  const [driverSearch, setDriverSearch] = useState('')
+  const driverDropdownRef = useRef<HTMLDivElement>(null)
   const { data: drivers = [], isLoading: driversLoading } = useDrivers()
 
   const vehicleId = params.id as string
