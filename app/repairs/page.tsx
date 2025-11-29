@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -31,6 +31,8 @@ export default function RepairsPage() {
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [showSendLinkConfirm, setShowSendLinkConfirm] = useState<RepairRequest | null>(null);
+  const [duplicatePhoneCheck, setDuplicatePhoneCheck] = useState<any[]>([]);
 
   // React Query Hooks
   const { data: requests = [], isLoading, refetch } = useRepairs();
@@ -80,14 +82,64 @@ export default function RepairsPage() {
     window.open(getRepairFormLink(), "_blank");
   };
 
-  const sendBookingLink = async (request: RepairRequest) => {
+  const checkDuplicatePhone = useCallback(async (phone: string, excludeId: string) => {
+    try {
+      const res = await fetch('/api/repair-requests');
+      if (res.ok) {
+        const data = await res.json();
+        const duplicates = (data.requests || []).filter(
+          (req: any) => 
+            req.driverPhone === phone && 
+            req.id !== excludeId && 
+            req.bookingLinkSentAt
+        );
+        setDuplicatePhoneCheck(duplicates);
+        return duplicates.length > 0;
+      }
+    } catch (err) {
+      console.error('Error checking duplicate phone:', err);
+    }
+    return false;
+  }, []);
+
+  const handleSendLinkClick = async (request: RepairRequest) => {
+    if (!request.driverPhone) {
+      showToast("No phone number available for this repair request.", "error");
+      return;
+    }
+
+    // Check for duplicate phone numbers
+    const hasDuplicates = await checkDuplicatePhone(request.driverPhone, request.id);
+    
+    // Show confirmation modal
+    setShowSendLinkConfirm(request);
+  };
+
+  const sendBookingLink = async (request: RepairRequest, confirmed: boolean = false, customPhone?: string) => {
+    if (!confirmed) {
+      handleSendLinkClick(request);
+      return;
+    }
+
     try {
       setSendingId(request.id);
+      setShowSendLinkConfirm(null);
+      
+      // Use custom phone if provided, otherwise use request phone
+      const phoneToUse = customPhone || request.driverPhone;
+      
+      if (!phoneToUse) {
+        throw new Error("Phone number is required");
+      }
+
       // Build request body, only including defined values
       const body: any = {};
       if (request.aiCategory) body.serviceType = request.aiCategory;
       if (request.scheduledDate) body.suggestedDate = request.scheduledDate;
       if (request.scheduledTime) body.suggestedTime = request.scheduledTime;
+      if (customPhone && customPhone !== request.driverPhone) {
+        body.customPhone = customPhone;
+      }
 
       const res = await fetch(`/api/repair-requests/${request.id}/schedule`, {
         method: "POST",
@@ -100,15 +152,44 @@ export default function RepairsPage() {
         throw new Error(errorMsg);
       }
 
+      // If phone was changed, update the repair request
+      if (customPhone && customPhone !== request.driverPhone) {
+        try {
+          await fetch(`/api/repair-requests/${request.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ driverPhone: customPhone }),
+          });
+        } catch (updateErr) {
+          console.error("Error updating phone number:", updateErr);
+          // Don't fail the whole operation if phone update fails
+        }
+      }
+
       // Refetch to get updated status
       await refetch();
       if (selected && selected.id === request.id) {
         // Update selected with the response data which includes bookingLinkSentAt
         const updatedRequest = data.request || { ...selected, bookingLinkSentAt: new Date().toISOString() };
+        if (customPhone) {
+          updatedRequest.driverPhone = customPhone;
+        }
         setSelected(updatedRequest);
       }
-      // Also update the request in the list if it's visible
-      showToast("Booking link sent to driver.", "success");
+
+      // Handle success/warning messages based on SMS and email status
+      if (data.warnings && data.warnings.length > 0) {
+        showToast(`Link created but: ${data.warnings.join(", ")}`, "warning", 6000);
+      } else if (data.smsSuccess && data.emailSuccess) {
+        showToast("Booking link sent via SMS and email successfully.", "success");
+      } else if (data.smsSuccess) {
+        showToast("Booking link sent via SMS successfully.", "success");
+      } else if (data.emailSuccess) {
+        showToast("Booking link sent via email successfully.", "success");
+      } else {
+        showToast("Booking link created but delivery failed. Please check Twilio/email configuration.", "warning", 6000);
+      }
+      setDuplicatePhoneCheck([]);
     } catch (err) {
       console.error(err);
       const errorMessage = err instanceof Error ? err.message : "Failed to send booking link";
@@ -602,14 +683,12 @@ export default function RepairsPage() {
                       </h3>
                       <div className="flex flex-col sm:flex-row gap-3">
                         <button
-                          onClick={() => sendBookingLink(selected)}
-                          disabled={sendingId === selected.id || !!selected.bookingLinkSentAt}
+                          onClick={() => handleSendLinkClick(selected)}
+                          disabled={sendingId === selected.id}
                           className={`btn flex-1 flex items-center gap-2 transition-all ${
-                            selected.bookingLinkSentAt
-                              ? "btn-secondary opacity-75 cursor-not-allowed"
-                              : sendingId === selected.id
-                                ? "btn-primary opacity-75"
-                                : "btn-primary"
+                            sendingId === selected.id
+                              ? "btn-primary opacity-75 cursor-not-allowed"
+                              : "btn-primary"
                           }`}
                         >
                           {sendingId === selected.id ? (
@@ -619,13 +698,13 @@ export default function RepairsPage() {
                             </>
                           ) : selected.bookingLinkSentAt ? (
                             <>
-                              <CheckCircle className="h-4 w-4" />
-                              Sent
+                              <Send className="h-4 w-4" />
+                              Resend Booking Link
                             </>
                           ) : (
                             <>
                               <Send className="h-4 w-4" />
-                              {selected.bookingLink ? "Resend Booking Link" : "Send Booking Link"}
+                              Send Booking Link
                             </>
                           )}
                         </button>
@@ -745,6 +824,171 @@ export default function RepairsPage() {
           isSubmitting={submitReportMutation.isPending || updateRepair.isPending}
         />
       )}
+
+      {/* Send Link Confirmation Modal */}
+      {showSendLinkConfirm && (
+        <SendLinkConfirmationModal
+          request={showSendLinkConfirm}
+          duplicateRequests={duplicatePhoneCheck}
+          isResend={!!showSendLinkConfirm.bookingLinkSentAt}
+          onConfirm={(phoneNumber) => sendBookingLink(showSendLinkConfirm, true, phoneNumber)}
+          onCancel={() => {
+            setShowSendLinkConfirm(null);
+            setDuplicatePhoneCheck([]);
+          }}
+          isSending={sendingId === showSendLinkConfirm.id}
+          onPhoneChange={async (phone) => {
+            if (phone && phone.trim()) {
+              await checkDuplicatePhone(phone, showSendLinkConfirm.id);
+            } else {
+              setDuplicatePhoneCheck([]);
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Send Link Confirmation Modal Component
+function SendLinkConfirmationModal({
+  request,
+  duplicateRequests,
+  isResend,
+  onConfirm,
+  onCancel,
+  isSending,
+  onPhoneChange,
+}: {
+  request: RepairRequest;
+  duplicateRequests: any[];
+  isResend: boolean;
+  onConfirm: (phoneNumber: string) => void;
+  onCancel: () => void;
+  isSending: boolean;
+  onPhoneChange?: (phone: string) => void;
+}) {
+  const [phoneNumber, setPhoneNumber] = useState(request.driverPhone || '');
+  const hasDuplicates = duplicateRequests.length > 0;
+  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+
+  const handlePhoneChange = (value: string) => {
+    setPhoneNumber(value);
+    
+    // Debounce duplicate check
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    
+    const timer = setTimeout(() => {
+      if (onPhoneChange && value.trim()) {
+        onPhoneChange(value);
+      }
+    }, 500);
+    
+    setDebounceTimer(timer);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+    };
+  }, [debounceTimer]);
+
+  const handleConfirm = () => {
+    if (!phoneNumber.trim()) return;
+    onConfirm(phoneNumber.trim());
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden">
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onCancel} />
+      <div className="absolute inset-0 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-lg w-full max-w-sm border border-gray-200">
+          {/* Header */}
+          <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {isResend ? "Resend Link" : "Send Booking Link"}
+            </h3>
+            <button
+              onClick={onCancel}
+              disabled={isSending}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-5 space-y-4">
+            {/* Phone Number Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => handlePhoneChange(e.target.value)}
+                disabled={isSending}
+                className="input-field w-full"
+                placeholder="Enter phone number"
+              />
+              {request.driverName && (
+                <p className="text-xs text-gray-500 mt-1">Driver: {request.driverName}</p>
+              )}
+            </div>
+
+            {/* Simple Warnings */}
+            {hasDuplicates && (
+              <div className="flex items-start gap-2 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium">Note: {duplicateRequests.length} other {duplicateRequests.length === 1 ? "link" : "links"} sent to this number</p>
+                </div>
+              </div>
+            )}
+
+            {isResend && !hasDuplicates && (
+              <div className="flex items-start gap-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <p>Previously sent on {new Date(request.bookingLinkSentAt!).toLocaleDateString()}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="px-5 py-4 border-t border-gray-200 bg-gray-50 flex gap-3">
+            <button
+              onClick={onCancel}
+              disabled={isSending}
+              className="btn btn-secondary flex-1"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={isSending || !phoneNumber.trim()}
+              className="btn btn-primary flex-1 flex items-center gap-2 justify-center"
+            >
+              {isSending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  {isResend ? "Resend" : "Send"}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

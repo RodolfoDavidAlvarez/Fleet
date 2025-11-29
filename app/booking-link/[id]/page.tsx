@@ -36,6 +36,10 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [datesAvailability, setDatesAvailability] = useState<Record<string, { hasSlots: boolean; slotCount: number }>>({});
 
+  // Calendar state - initialize early to prevent reference errors
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [showCalendar, setShowCalendar] = useState(false);
+
   // Load calendar settings
   useEffect(() => {
     const loadSettings = async () => {
@@ -155,9 +159,6 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
     return dates;
   };
 
-  // Calendar state
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [showCalendar, setShowCalendar] = useState(false);
 
   // Get days in month for calendar display
   const getDaysInMonth = (date: Date) => {
@@ -361,17 +362,35 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
   if (submitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8 max-w-md w-full text-center">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+        <div className="max-w-md mx-auto">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 text-center border border-gray-100">
+            <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <CheckCircle className="h-10 w-10 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Booking Confirmed!</h2>
+            <p className="text-gray-600 mb-6 text-lg">Your repair appointment is all set</p>
+            
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 mb-6 border border-green-200">
+              <div className="space-y-2">
+                <p className="text-green-800 font-semibold text-lg">
+                  {new Date(formData.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                </p>
+                <p className="text-green-700 text-xl font-bold">{formData.time}</p>
+                <p className="text-green-600 text-sm">30 minute appointment</p>
+              </div>
+            </div>
+            
+            <div className="space-y-3 text-sm text-gray-600">
+              <p className="flex items-center justify-center gap-2">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                Confirmation SMS will be sent shortly
+              </p>
+              <p className="flex items-center justify-center gap-2">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                Service location: Agave Fleet HQ
+              </p>
+            </div>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Appointment Scheduled!</h2>
-          <p className="text-sm sm:text-base text-gray-600 mb-4">Your repair appointment has been confirmed for:</p>
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
-            <p className="font-semibold text-gray-900 text-base sm:text-lg">{formData.date}</p>
-            <p className="text-gray-600 text-sm sm:text-base">{formData.time}</p>
-          </div>
-          <p className="text-xs sm:text-sm text-gray-500">You'll receive a confirmation SMS shortly. We'll see you then!</p>
         </div>
       </div>
     );
@@ -380,106 +399,135 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
   if (!repairRequest) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-6 sm:p-8 max-w-md w-full text-center">
-          <p className="text-red-600 text-sm sm:text-base">Repair request not found or expired.</p>
+        <div className="max-w-md mx-auto">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 text-center border border-gray-100">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-red-600 text-2xl">⚠️</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Request Not Found</h2>
+            <p className="text-red-600 mb-4">This repair request could not be found or has expired.</p>
+            <p className="text-sm text-gray-500">Please contact support if you believe this is an error.</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl w-full bg-white rounded-lg shadow-lg overflow-hidden flex flex-col md:flex-row min-h-[600px]">
-        {/* Left Panel - Service Details (Calendly Style) */}
-        <div className="w-full md:w-1/3 bg-gray-50 border-r border-gray-300 p-4 sm:p-6 md:p-8 flex flex-col">
-          {/* Logo or Branding */}
-          <div className="mb-4 sm:mb-6 md:mb-8">
-            <img
-              src="/images/AEC-Horizontal-Official-Logo-2020.png"
-              alt="Agave Environmental Contracting"
-              className="h-8 sm:h-10 md:h-12 object-contain"
-            />
-          </div>
-
-          <div className="flex-1">
-            <div className="flex items-center gap-2 text-gray-700 text-xs sm:text-sm font-medium mb-2">
-              <User className="h-3 w-3 sm:h-4 sm:w-4 text-gray-600 flex-shrink-0" />
-              <span className="truncate">{repairRequest.driverName || "Valued Driver"}</span>
-            </div>
-
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Vehicle Repair Service</h1>
-
-            <div className="space-y-3 sm:space-y-4 text-gray-700">
-              <div className="flex items-start gap-2 sm:gap-3">
-                <Clock className="h-4 w-4 sm:h-5 sm:w-5 mt-0.5 text-gray-600 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-gray-900 text-sm sm:text-base">30 min</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2 sm:gap-3">
-                <MapPin className="h-4 w-4 sm:h-5 sm:w-5 mt-0.5 text-gray-600 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-gray-900 text-sm sm:text-base">Service Center</p>
-                  <p className="text-xs sm:text-sm text-gray-600">Agave Fleet HQ</p>
-                </div>
-              </div>
-
-              {repairRequest.vehicleIdentifier && (
-                <div className="flex items-start gap-2 sm:gap-3">
-                  <Car className="h-4 w-4 sm:h-5 sm:w-5 mt-0.5 text-gray-600 flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900 text-sm sm:text-base">Vehicle</p>
-                    <p className="text-xs sm:text-sm text-gray-600 truncate">{repairRequest.vehicleIdentifier}</p>
-                  </div>
-                </div>
-              )}
-
-              {repairRequest.description && (
-                <div className="flex items-start gap-2 sm:gap-3">
-                  <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 mt-0.5 text-gray-600 flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900 text-sm sm:text-base">Issue Reported</p>
-                    <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 sm:line-clamp-3">{repairRequest.description}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-auto pt-4 sm:pt-6 text-xs text-gray-500">
-            <p>© Agave Environmental Contracting</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <img
+            src="/images/AEC-Horizontal-Official-Logo-2020.png"
+            alt="Agave Environmental Contracting"
+            className="h-12 mx-auto mb-6"
+          />
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Book Your Repair Service</h1>
+          <p className="text-gray-600 text-lg">Select a convenient time for your vehicle repair</p>
         </div>
 
-        {/* Right Panel - Date & Time Selection */}
-        <div className="w-full md:w-2/3 p-4 sm:p-6 md:p-8 overflow-y-auto">
-          <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Select a Date & Time</h2>
-
-            {error && (
-              <div className="mb-4 sm:mb-6 bg-red-50 border-2 border-red-300 text-red-900 px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-xs sm:text-sm font-medium">
-                {error}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Service Details Card */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                  <User className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Driver</p>
+                  <p className="text-lg font-semibold text-gray-900">{repairRequest.driverName || "Valued Driver"}</p>
+                </div>
               </div>
-            )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
-              {/* Calendar Section */}
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2 sm:mb-3">Select Date</label>
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Vehicle Repair Service</h2>
 
-                {/* Calendar Toggle Button */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Clock className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">30 minutes</p>
+                    <p className="text-sm text-gray-600">Estimated duration</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <MapPin className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">Service Center</p>
+                    <p className="text-sm text-gray-600">Agave Fleet HQ</p>
+                  </div>
+                </div>
+
+                {repairRequest.vehicleIdentifier && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <Car className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-900">Vehicle</p>
+                      <p className="text-sm text-gray-600 truncate">{repairRequest.vehicleIdentifier}</p>
+                    </div>
+                  </div>
+                )}
+
+                {repairRequest.description && (
+                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                      <MessageSquare className="h-4 w-4 text-orange-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-900">Issue Reported</p>
+                      <p className="text-sm text-gray-600 line-clamp-3">{repairRequest.description}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-gray-200 text-center">
+                <p className="text-xs text-gray-500">© Agave Environmental Contracting</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Date & Time Selection */}
+          <div className="lg:col-span-2">
+            <form onSubmit={handleSubmit} className="space-y-8">
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2 mb-6">
+                  <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-red-600 text-xs">!</span>
+                  </div>
+                  {error}
+                </div>
+              )}
+
+              {/* Date Selection */}
+              <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <Calendar className="h-4 w-4 text-white" />
+                  </div>
+                  Select Date
+                </h3>
+
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => setShowCalendar(!showCalendar)}
-                    className="w-full border-2 border-gray-300 rounded-lg p-3 sm:p-4 bg-white shadow-sm text-left focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-colors touch-manipulation"
+                    className="w-full border-2 border-gray-200 rounded-xl p-4 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-blue-50 hover:to-purple-50 text-left focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all duration-200 touch-manipulation group"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         {formData.date ? (
                           <div>
-                            <p className="text-base sm:text-lg font-medium text-gray-900">
+                            <p className="text-lg font-semibold text-gray-900 mb-1">
                               {new Date(formData.date).toLocaleDateString("en-US", {
                                 weekday: "long",
                                 month: "long",
@@ -487,53 +535,55 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                                 year: "numeric",
                               })}
                             </p>
-                            <p className="text-xs text-gray-600 mt-1 font-medium">Monday - Friday only</p>
+                            <p className="text-sm text-blue-600 font-medium">✓ Date selected</p>
                           </div>
                         ) : (
                           <div>
-                            <p className="text-base sm:text-lg font-medium text-gray-400">Select a date</p>
-                            <p className="text-xs text-gray-600 mt-1 font-medium">Monday - Friday only</p>
+                            <p className="text-lg font-semibold text-gray-500 mb-1">Choose your date</p>
+                            <p className="text-sm text-gray-600">Monday - Friday available</p>
                           </div>
                         )}
                       </div>
-                      <Calendar className="h-5 w-5 text-gray-400 flex-shrink-0 ml-2" />
+                      <div className="w-10 h-10 bg-white rounded-lg shadow-sm flex items-center justify-center group-hover:shadow-md transition-shadow">
+                        <Calendar className="h-5 w-5 text-gray-600 group-hover:text-blue-600 transition-colors" />
+                      </div>
                     </div>
                   </button>
 
                   {/* Calendar Dropdown */}
                   {showCalendar && (
-                    <div className="absolute z-50 mt-2 w-full bg-white border-2 border-gray-300 rounded-lg shadow-xl p-4">
+                    <div className="absolute z-50 mt-3 w-full bg-white border border-gray-200 rounded-2xl shadow-2xl p-6 backdrop-blur-sm">
                       {/* Calendar Header */}
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center justify-between mb-6">
                         <button
                           type="button"
                           onClick={handlePrevMonth}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
+                          className="w-10 h-10 hover:bg-gray-100 rounded-xl transition-colors touch-manipulation flex items-center justify-center group"
                           aria-label="Previous month"
                         >
-                          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5 text-gray-500 group-hover:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                           </svg>
                         </button>
-                        <h3 className="text-base sm:text-lg font-semibold text-gray-900">{formatMonthYear(currentMonth)}</h3>
+                        <h3 className="text-lg font-bold text-gray-900">{formatMonthYear(currentMonth)}</h3>
                         <button
                           type="button"
                           onClick={handleNextMonth}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
+                          className="w-10 h-10 hover:bg-gray-100 rounded-xl transition-colors touch-manipulation flex items-center justify-center group"
                           aria-label="Next month"
                         >
-                          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5 text-gray-500 group-hover:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
                         </button>
                       </div>
 
                       {/* Week Days Header */}
-                      <div className="grid grid-cols-7 gap-1 mb-2">
+                      <div className="grid grid-cols-7 gap-1 mb-3">
                         {weekDays.map((day) => (
                           <div
                             key={day}
-                            className={`text-center text-xs font-semibold py-2 ${day === "Sun" || day === "Sat" ? "text-gray-400" : "text-gray-700"}`}
+                            className={`text-center text-sm font-semibold py-3 ${day === "Sun" || day === "Sat" ? "text-gray-400" : "text-gray-600"}`}
                           >
                             {day}
                           </div>
@@ -541,7 +591,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                       </div>
 
                       {/* Calendar Grid */}
-                      <div className="grid grid-cols-7 gap-1">
+                      <div className="grid grid-cols-7 gap-2">
                         {days.map((day, index) => {
                           const available = isDateAvailable(day);
                           const selected = isDateSelected(day);
@@ -561,25 +611,28 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                               onClick={() => day !== null && handleDateSelect(day)}
                               disabled={!available}
                               className={`
-                                   aspect-square min-h-[44px] sm:min-h-[48px] rounded-lg text-sm sm:text-base font-medium transition-all touch-manipulation relative
+                                   aspect-square min-h-[48px] rounded-xl text-base font-semibold transition-all duration-200 touch-manipulation relative group overflow-hidden
                                    ${
                                      day === null
                                        ? "cursor-default bg-transparent"
                                        : available && hasSlots
                                          ? selected
-                                           ? "bg-primary-600 text-white shadow-md scale-105 border-2 border-primary-700"
-                                           : "bg-white text-gray-900 hover:bg-primary-50 hover:border-primary-400 border-2 border-primary-300 hover:shadow-sm font-semibold"
+                                           ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg scale-105 transform hover:scale-110"
+                                           : "bg-white text-gray-900 hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 border-2 border-blue-200 hover:border-blue-400 shadow-sm hover:shadow-md"
                                          : isWorking
-                                           ? "bg-gray-100 text-gray-400 cursor-not-allowed border-2 border-gray-200 opacity-50"
-                                           : "bg-gray-50 text-gray-300 cursor-not-allowed border-2 border-transparent"
+                                           ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 opacity-60"
+                                           : "bg-transparent text-gray-300 cursor-not-allowed"
                                    }
-                                   ${isToday && !selected && available ? "ring-2 ring-primary-300" : ""}
+                                   ${isToday && !selected && available ? "ring-2 ring-blue-400 ring-opacity-50" : ""}
                                  `}
                               title={day !== null && hasSlots ? `${slotCount} slot${slotCount !== 1 ? "s" : ""} available` : undefined}
                             >
-                              {day}
+                              <span className="relative z-10">{day}</span>
                               {available && hasSlots && !selected && (
-                                <span className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-primary-500 rounded-full"></span>
+                                <div className="absolute bottom-1.5 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                              )}
+                              {selected && (
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
                               )}
                             </button>
                           );
@@ -587,8 +640,11 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                       </div>
 
                       {/* Helper Text */}
-                      <div className="mt-4 pt-3 border-t border-gray-200">
-                        <p className="text-xs text-gray-600 text-center">Only Monday - Friday are available</p>
+                      <div className="mt-6 pt-4 border-t border-gray-100">
+                        <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                          <span>Available dates • Monday - Friday only</span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -600,106 +656,154 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                 {/* Click outside to close calendar */}
                 {showCalendar && <div className="fixed inset-0 z-40" onClick={() => setShowCalendar(false)} />}
 
-                {/* Additional Inputs that were in the previous form */}
-                <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-1.5">Your Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 bg-white touch-manipulation"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-1.5">Phone Number</label>
-                    <input
-                      type="tel"
-                      required
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 bg-white touch-manipulation"
-                      inputMode="tel"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-1.5">
-                      Email <span className="text-gray-500 font-normal text-xs">(optional)</span>
-                    </label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 bg-white touch-manipulation"
-                      placeholder="name@example.com"
-                      inputMode="email"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-1.5">Notes</label>
-                    <textarea
-                      rows={2}
-                      value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm bg-white border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none text-gray-900 placeholder-gray-500 touch-manipulation"
-                      placeholder="Any specific requests..."
-                    />
-                  </div>
-                </div>
               </div>
 
-              {/* Time Slots Section */}
-              <div className="lg:border-l lg:pl-8 border-gray-300 mt-6 lg:mt-0">
-                <label className="block text-sm font-medium text-gray-900 mb-2 sm:mb-3">Select Time</label>
+              {/* Time Selection */}
+              <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                    <Clock className="h-4 w-4 text-white" />
+                  </div>
+                  Select Time
+                </h3>
 
                 {!formData.date ? (
-                  <div className="flex flex-col items-center justify-center h-40 sm:h-48 text-gray-600 bg-gray-50 rounded-lg border-2 border-dashed border-gray-400">
-                    <Calendar className="h-6 w-6 sm:h-8 sm:w-8 mb-2 text-gray-500" />
-                    <p className="text-xs sm:text-sm font-medium">Choose a date first</p>
+                  <div className="flex flex-col items-center justify-center h-64 text-gray-500 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-300">
+                    <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center mb-4">
+                      <Calendar className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <p className="text-lg font-semibold mb-1">Select a date first</p>
+                    <p className="text-sm text-gray-600">Choose from available dates</p>
                   </div>
                 ) : loadingAvailability ? (
-                  <div className="flex flex-col items-center justify-center h-40 sm:h-48 text-gray-700">
-                    <div className="h-5 w-5 sm:h-6 sm:w-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin mb-2"></div>
-                    <p className="text-xs sm:text-sm font-medium">Checking availability...</p>
+                  <div className="flex flex-col items-center justify-center h-64 text-gray-700">
+                    <div className="w-8 h-8 border-3 border-blue-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p className="text-lg font-semibold">Checking availability...</p>
                   </div>
                 ) : getTimeSlots().length === 0 ? (
-                  <div className="text-center p-3 sm:p-4 bg-yellow-50 border-2 border-yellow-200 text-yellow-900 rounded-lg text-xs sm:text-sm font-medium">
-                    No slots available for this date.
+                  <div className="text-center p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200 text-yellow-800 rounded-2xl">
+                    <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                      <Clock className="h-6 w-6 text-yellow-600" />
+                    </div>
+                    <p className="font-semibold mb-1">No slots available</p>
+                    <p className="text-sm">Please choose a different date</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-2 sm:gap-2 max-h-[400px] overflow-y-auto pr-1 sm:pr-2 custom-scrollbar">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                     {getTimeSlots().map((time: string) => (
                       <button
                         key={time}
                         type="button"
                         onClick={() => setFormData({ ...formData, time })}
-                        className={`w-full py-3 sm:py-3 px-3 sm:px-4 rounded-md border-2 text-center font-semibold transition-all touch-manipulation text-sm sm:text-base min-h-[44px] flex items-center justify-center ${
+                        className={`py-4 px-6 rounded-xl text-center font-semibold transition-all duration-200 touch-manipulation text-base min-h-[60px] flex items-center justify-center group relative overflow-hidden ${
                           formData.time === time
-                            ? "border-primary-600 bg-primary-600 text-white shadow-md scale-[1.02]"
-                            : "border-primary-300 text-primary-800 active:border-primary-600 active:bg-primary-50 hover:border-primary-600 hover:bg-primary-50 hover:shadow-sm bg-white"
+                            ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg transform scale-105 hover:scale-110"
+                            : "bg-white border-2 border-green-200 text-green-800 hover:border-green-400 hover:bg-green-50 shadow-sm hover:shadow-md"
                         }`}
                       >
-                        {time}
+                        <span className="relative z-10">{time}</span>
+                        {formData.time === time && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"></div>
+                        )}
                       </button>
                     ))}
                   </div>
                 )}
 
-                {formData.time && (
-                  <div className="mt-4 sm:mt-6 animate-fade-in">
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="w-full bg-gray-900 text-white py-3.5 sm:py-3 rounded-md font-semibold text-base sm:text-sm shadow-lg active:bg-black hover:bg-black hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed border-2 border-gray-900 touch-manipulation min-h-[48px]"
-                    >
-                      {submitting ? "Confirming..." : "Confirm Booking"}
-                    </button>
-                  </div>
-                )}
               </div>
-            </div>
-          </form>
+
+              {/* Contact Details */}
+              <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                    <User className="h-4 w-4 text-white" />
+                  </div>
+                  Your Details
+                </h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 text-gray-900 bg-white transition-all duration-200 touch-manipulation"
+                      placeholder="Enter your full name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">Phone Number</label>
+                    <input
+                      type="tel"
+                      required
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 text-gray-900 bg-white transition-all duration-200 touch-manipulation"
+                      placeholder="(555) 123-4567"
+                      inputMode="tel"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Email <span className="text-gray-500 font-normal text-sm">(optional)</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 text-gray-900 bg-white transition-all duration-200 touch-manipulation"
+                      placeholder="name@example.com"
+                      inputMode="email"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">Additional Notes</label>
+                    <textarea
+                      rows={3}
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      className="w-full px-4 py-3 text-base bg-white border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 resize-none text-gray-900 placeholder-gray-500 transition-all duration-200 touch-manipulation"
+                      placeholder="Any special requests or information..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Confirm Booking Button */}
+              {formData.date && formData.time && (
+                <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mb-6">
+                    <h4 className="font-semibold text-gray-900 mb-2">Booking Summary</h4>
+                    <div className="space-y-1 text-sm text-gray-700">
+                      <p><span className="font-medium">Date:</span> {new Date(formData.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
+                      <p><span className="font-medium">Time:</span> {formData.time}</p>
+                      <p><span className="font-medium">Duration:</span> 30 minutes</p>
+                    </div>
+                  </div>
+                  
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[56px] flex items-center justify-center gap-3 group"
+                  >
+                    {submitting ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Confirming...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                        Confirm Booking
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </form>
+          </div>
         </div>
       </div>
     </div>
