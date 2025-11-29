@@ -467,7 +467,7 @@ export default function DriversPage() {
                     ))}
                     {paginatedDrivers.length === 0 && (
                       <div className="p-6 text-center text-gray-500 col-span-full">
-                        {searchTerm ? `No drivers found matching "${searchTerm}".` : 'No drivers found.'}
+                        {searchTerm ? `No team members found matching "${searchTerm}".` : 'No team members found.'}
                       </div>
                     )}
                   </div>
@@ -555,7 +555,7 @@ export default function DriversPage() {
                     </AnimatePresence>
                     {paginatedDrivers.length === 0 && (
                       <div className="p-6 text-center text-gray-500">
-                        {searchTerm ? `No drivers found matching "${searchTerm}".` : 'No drivers found.'}
+                        {searchTerm ? `No team members found matching "${searchTerm}".` : 'No team members found.'}
                       </div>
                     )}
                   </motion.div>
