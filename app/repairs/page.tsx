@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
-import { BadgeCheck, Camera, CheckCircle, ClipboardList, Loader2, Send, Wrench, Search, X, Copy, Edit, FileText, AlertCircle } from "lucide-react";
+import { BadgeCheck, Camera, CheckCircle, ClipboardList, Loader2, Send, Wrench, Search, X, Copy, Edit, FileText, AlertCircle, ExternalLink } from "lucide-react";
 import { RepairReport, RepairRequest } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { useRepairs, useUpdateRepair, useSubmitRepairReport } from "@/hooks/use-repairs";
@@ -35,7 +35,8 @@ export default function RepairsPage() {
   const [duplicatePhoneCheck, setDuplicatePhoneCheck] = useState<any[]>([]);
 
   // React Query Hooks
-  const { data: requests = [], isLoading, refetch } = useRepairs();
+  const { data: requestsData, isLoading, refetch } = useRepairs();
+  const requests = Array.isArray(requestsData) ? requestsData : [];
   const updateRepair = useUpdateRepair();
   const submitReportMutation = useSubmitRepairReport();
 
@@ -169,8 +170,14 @@ export default function RepairsPage() {
       // Refetch to get updated status
       await refetch();
       if (selected && selected.id === request.id) {
-        // Update selected with the response data which includes bookingLinkSentAt
-        const updatedRequest = data.request || { ...selected, bookingLinkSentAt: new Date().toISOString() };
+        // Update selected with the response data which includes bookingLink and bookingLinkSentAt
+        // The schedule endpoint returns the full updated request with bookingLink
+        const updatedRequest = data.request || selected;
+        // Ensure bookingLink is set from response if available (prioritize data.link)
+        if (data.link) {
+          updatedRequest.bookingLink = data.link;
+        }
+        // Update phone if it was changed
         if (customPhone) {
           updatedRequest.driverPhone = customPhone;
         }
@@ -292,6 +299,9 @@ export default function RepairsPage() {
   };
 
   const filteredRequests = useMemo(() => {
+    if (!Array.isArray(requests)) {
+      return [];
+    }
     let list = requests;
     if (filter !== "all") {
       list = list.filter((r) => r.status === filter);
@@ -300,9 +310,9 @@ export default function RepairsPage() {
       const s = search.toLowerCase();
       list = list.filter(
         (r) =>
-          r.driverName.toLowerCase().includes(s) ||
+          r.driverName?.toLowerCase().includes(s) ||
           r.vehicleIdentifier?.toLowerCase().includes(s) ||
-          r.description.toLowerCase().includes(s) ||
+          r.description?.toLowerCase().includes(s) ||
           r.aiCategory?.toLowerCase().includes(s)
       );
     }
@@ -661,6 +671,36 @@ export default function RepairsPage() {
                               <span className="text-xs text-gray-500">{new Date(selected.bookingLinkSentAt).toLocaleString()}</span>
                             )}
                           </div>
+                          
+                          {/* Booking Link Display with Actions */}
+                          <div className="pt-2 border-t border-blue-200">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Booking Link</p>
+                            <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-3">
+                              <input
+                                type="text"
+                                readOnly
+                                value={selected.bookingLink}
+                                className="flex-1 text-sm font-mono text-gray-700 bg-transparent border-none outline-none"
+                              />
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => copyLink(selected.bookingLink)}
+                                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                  title="Copy link"
+                                >
+                                  <Copy className="h-4 w-4 text-gray-600" />
+                                </button>
+                                <button
+                                  onClick={() => window.open(selected.bookingLink, '_blank')}
+                                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                  title="Open in new tab"
+                                >
+                                  <ExternalLink className="h-4 w-4 text-gray-600" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
                           {selected.scheduledDate && (
                             <div className="pt-2 border-t border-blue-200">
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Scheduled</p>
