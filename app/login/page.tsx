@@ -5,26 +5,26 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import Footer from '@/components/Footer'
-import { Wrench, Mail, Lock, LogIn, Eye, EyeOff, UserPlus } from 'lucide-react'
+import { Wrench, Mail, Lock, LogIn, Eye, EyeOff, UserPlus, Loader2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { useToast } from '@/components/ui/toast'
 
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const defaultEmail = process.env.NODE_ENV === 'production' ? '' : 'admin@fleetpro.com'
-  const defaultPassword = process.env.NODE_ENV === 'production' ? '' : 'admin123'
-
-  const [email, setEmail] = useState(defaultEmail)
-  const [password, setPassword] = useState(defaultPassword)
+  const { showToast } = useToast()
+  
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     if (searchParams.get('registered')) {
-      setSuccess('Account created successfully. Please log in.')
+      showToast('Account created successfully. Please log in.', 'success')
     }
-  }, [searchParams])
+  }, [searchParams, showToast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,191 +32,180 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const supabase = createClient()
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       })
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Login failed')
+      if (error) {
+        throw error
       }
 
-      localStorage.setItem('user', JSON.stringify(data.user))
-      
-      if (data.user.role === 'admin' || data.user.role === 'mechanic') {
-        router.push('/dashboard')
+      // Check user role from public.users
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('role, approval_status')
+        .eq('id', data.user.id)
+        .single()
+
+      if (userError) {
+        console.error('Error fetching user details:', userError)
+        // Allow login but maybe restricted? Or throw error?
+        // If public user is missing but auth exists (rare sync issue), let them in but they might see nothing.
       } else {
-        // For drivers/customers, maybe redirect to a different page or home for now
-        router.push('/dashboard') 
+        if (userData.role === 'admin' && userData.approval_status !== 'approved') {
+          await supabase.auth.signOut()
+          throw new Error('Your account is pending approval. Please contact an administrator.')
+        }
+        
+        // Store user info in localStorage for legacy compatibility (if needed by other components)
+        // But primarily we rely on cookies now.
+        localStorage.setItem('user', JSON.stringify({ 
+          ...data.user, 
+          role: userData.role, 
+          name: data.user.user_metadata.name 
+        }))
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+
+      router.push('/dashboard')
+      router.refresh() // Refresh to update server components with new cookie
+    } catch (err: any) {
+      console.error('Login error:', err)
+      setError(err.message || 'Invalid email or password')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-[var(--primary-50)] via-[var(--bg-secondary)] to-[var(--bg-secondary)] flex flex-col p-4 overflow-hidden">
-      <div className="pointer-events-none absolute -top-20 -left-24 w-80 h-80 bg-[var(--primary-200)] opacity-40 blur-3xl rounded-full" />
-      <div className="pointer-events-none absolute -bottom-24 -right-10 w-96 h-96 bg-[var(--primary-300)] opacity-30 blur-3xl rounded-full" />
-      <div className="flex-1 flex items-center justify-center">
-        <div className="max-w-md w-full animate-scale-in">
-          <div className="card-glass p-8 md:p-10">
-            <div className="text-center mb-8 animate-slide-down">
-              <div className="flex flex-col items-center mb-6">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-600)] flex items-center justify-center shadow-xl mb-4">
-                  <Wrench className="h-10 w-10 text-white" />
-                </div>
-                <div className="relative h-12 w-auto mb-2">
-                  <Image
-                    src="/images/AEC-Horizontal-Official-Logo-2020.png"
-                    alt="AGAVE ENVIRONMENTAL CONTRACTING, INC."
-                    width={180}
-                    height={48}
-                    className="object-contain"
-                    priority
-                  />
-                </div>
-                <p className="text-sm font-bold uppercase tracking-wide text-[var(--primary-600)]">Fleet Management</p>
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 flex flex-col">
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col md:flex-row">
+          
+          {/* Left Side - Form */}
+          <div className="w-full md:w-1/2 p-8 md:p-12">
+            <div className="mb-8">
+              <div className="h-12 w-12 bg-primary-100 rounded-xl flex items-center justify-center mb-4 text-primary-600">
+                <Wrench className="h-6 w-6" />
               </div>
-              <h1 className="text-3xl font-bold text-gradient">Welcome Back</h1>
-              <p className="text-muted mt-2">Sign in to access your dashboard</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+              <p className="text-gray-600">Please sign in to your account</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <div className="bg-[var(--danger-50)] border border-[var(--danger-200)] text-[var(--danger-600)] px-4 py-3 rounded-lg animate-slide-up">
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+                  <span className="flex-shrink-0">⚠️</span>
                   {error}
                 </div>
               )}
-              {success && (
-                <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg animate-slide-up">
-                  {success}
-                </div>
-              )}
 
               <div className="space-y-2">
-                <label htmlFor="email" className="block text-sm font-semibold">
-                  Email Address
-                </label>
-                <div className="input-group">
-                  <span className="input-group-icon input-group-icon-left">
-                    <Mail className="h-5 w-5" />
-                  </span>
+                <label className="text-sm font-medium text-gray-700 block">Email Address</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-gray-400" />
+                  </div>
                   <input
-                    id="email"
                     type="email"
+                    required
+                    className="input pl-10 w-full"
+                    placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="input input-with-icon-left"
-                    placeholder="admin@fleetpro.com"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="password" className="block text-sm font-semibold">
-                  Password
-                </label>
-                <div className="input-group">
-                  <span className="input-group-icon input-group-icon-left">
-                    <Lock className="h-5 w-5" />
-                  </span>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700 block">Password</label>
+                  <Link 
+                    href="/forgot-password" 
+                    className="text-sm font-medium text-primary-600 hover:text-primary-700"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
                   <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
+                    required
+                    className="input pl-10 pr-10 w-full"
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="input input-with-icon-left input-with-icon-right"
-                    placeholder="Enter your password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 btn-ghost btn-icon btn-sm"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-[var(--primary-600)] focus:ring-[var(--primary-500)]" />
-                  <span>Remember me</span>
-                </label>
-                <Link href="/forgot-password" className="text-sm text-[var(--primary-600)] hover:text-[var(--primary-700)] font-medium">
-                  Forgot password?
-                </Link>
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="btn btn-primary w-full btn-lg group"
+                className="btn btn-primary w-full flex items-center justify-center gap-2 py-2.5"
               >
                 {loading ? (
                   <>
-                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Signing in...</span>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Signing in...
                   </>
                 ) : (
                   <>
-                    <LogIn className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
-                    <span>Sign In</span>
+                    <LogIn className="h-5 w-5" />
+                    Sign In
                   </>
                 )}
               </button>
-            </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+              <div className="text-center text-sm text-gray-500 mt-4">
                 Don't have an account?{' '}
-                <Link href="/register" className="font-medium text-[var(--primary-600)] hover:text-[var(--primary-700)]">
-                  Create an account
-                </Link>
-              </p>
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-[var(--border)]">
-              <div className="card p-4 mb-4">
-                <p className="text-sm font-semibold mb-3">Demo Credentials</p>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted">Admin:</span>
-                    <code className="px-2 py-1 bg-[var(--bg-tertiary)] rounded">admin@fleetpro.com / admin123</code>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted">Mechanic:</span>
-                    <code className="px-2 py-1 bg-[var(--bg-tertiary)] rounded">mechanic@fleetpro.com / mechanic123</code>
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-center space-y-3">
-                <p className="text-xs text-muted">
-                  By signing in you agree to our{' '}
-                  <Link href="/compliance" className="text-[var(--primary-600)] hover:text-[var(--primary-700)] font-medium underline underline-offset-2">
-                    SMS compliance policy
-                  </Link>
-                </p>
-
-                <Link href="/" className="inline-flex items-center gap-2 text-[var(--primary-600)] hover:text-[var(--primary-700)] text-sm font-medium transition-all hover:gap-3">
-                  <span>←</span>
-                  <span>Back to home</span>
+                <Link href="/register" className="font-semibold text-primary-600 hover:text-primary-500">
+                  Register here
                 </Link>
               </div>
+            </form>
+          </div>
+
+          {/* Right Side - Image/Info */}
+          <div className="hidden md:flex w-1/2 bg-gray-900 relative items-center justify-center overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-900/90 to-gray-900/90 z-10" />
+            <img 
+              src="https://images.unsplash.com/photo-1580273916550-e323be2ed5fa?auto=format&fit=crop&q=80" 
+              alt="Fleet Management" 
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="relative z-20 p-12 text-white space-y-6">
+              <div className="space-y-2">
+                <h2 className="text-3xl font-bold">Fleet Management System</h2>
+                <p className="text-gray-300 text-lg">Streamline your operations with our comprehensive management solution.</p>
+              </div>
+              <ul className="space-y-4">
+                {[
+                  'Real-time fleet tracking',
+                  'Automated maintenance scheduling',
+                  'Driver performance analytics',
+                  'Comprehensive reporting'
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3">
+                    <div className="h-6 w-6 rounded-full bg-primary-500/20 flex items-center justify-center">
+                      <div className="h-2 w-2 rounded-full bg-primary-400" />
+                    </div>
+                    <span className="text-gray-200">{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>

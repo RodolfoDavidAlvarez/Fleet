@@ -10,6 +10,7 @@ import { Car, Calendar, Users, CheckCircle, MessageSquare, Wrench, BarChart3, Tr
 import { DashboardStats, RepairRequest } from '@/types'
 import { queryKeys, prefetchQueries } from '@/lib/query-client'
 import { StatsCardSkeleton, ListSkeleton } from '@/components/ui/loading-optimized'
+import DashboardCharts from '@/components/dashboard/DashboardCharts'
 
 // Remove local skeletons - using optimized versions from loading-optimized.tsx
 
@@ -297,6 +298,11 @@ export default function UnifiedDashboard() {
                 )
               })}
         </div>
+
+        {/* Charts Section */}
+        {!showStatsSkeleton && stats && (
+          <DashboardCharts stats={stats} />
+        )}
 
         {/* Quick Actions */}
         {isAdmin && <QuickActions />}
