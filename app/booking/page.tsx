@@ -65,20 +65,49 @@ export default function BookingPage({ searchParams }: { searchParams?: Record<st
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
     setError(null);
 
-    if (!formData.serviceType || !formData.scheduledDate || !formData.scheduledTime) {
-      setSubmitting(false);
-      setError("Pick a service type, date, and time to continue.");
-      return;
+    // Comprehensive client-side validation before submitting
+    const validationErrors: string[] = [];
+
+    if (!formData.customerName || formData.customerName.trim().length === 0) {
+      validationErrors.push("Customer name is required");
+    }
+
+    if (!formData.customerEmail || formData.customerEmail.trim().length === 0) {
+      validationErrors.push("Email address is required");
+    } else if (!formData.customerEmail.includes("@") || !formData.customerEmail.includes(".")) {
+      validationErrors.push("Please provide a valid email address");
+    }
+
+    if (!formData.customerPhone || formData.customerPhone.trim().length === 0) {
+      validationErrors.push("Phone number is required");
+    } else if (formData.customerPhone.replace(/\D/g, "").length < 6) {
+      validationErrors.push("Phone number must be at least 6 digits");
+    }
+
+    if (!formData.serviceType || formData.serviceType.trim().length === 0) {
+      validationErrors.push("Service type is required");
+    }
+
+    if (!formData.scheduledDate || formData.scheduledDate.trim().length === 0) {
+      validationErrors.push("Date is required");
+    }
+
+    if (!formData.scheduledTime || formData.scheduledTime.trim().length === 0) {
+      validationErrors.push("Time is required");
     }
 
     if (!formData.complianceAccepted) {
-      setSubmitting(false);
-      setError("Please confirm SMS terms and compliance before booking.");
+      validationErrors.push("Please confirm SMS terms and compliance before booking");
+    }
+
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(". "));
       return;
     }
+
+    setSubmitting(true);
 
     try {
       const response = await fetch("/api/bookings", {
@@ -87,14 +116,14 @@ export default function BookingPage({ searchParams }: { searchParams?: Record<st
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          customerName: formData.customerName,
-          customerEmail: formData.customerEmail,
-          customerPhone: formData.customerPhone,
-          serviceType: formData.serviceType,
-          scheduledDate: formData.scheduledDate,
-          scheduledTime: formData.scheduledTime,
-          vehicleInfo: formData.vehicleInfo,
-          notes: formData.notes,
+          customerName: formData.customerName.trim(),
+          customerEmail: formData.customerEmail.trim(),
+          customerPhone: formData.customerPhone.trim(),
+          serviceType: formData.serviceType.trim(),
+          scheduledDate: formData.scheduledDate.trim(),
+          scheduledTime: formData.scheduledTime.trim(),
+          vehicleInfo: formData.vehicleInfo?.trim() || undefined,
+          notes: formData.notes?.trim() || undefined,
           smsConsent: formData.smsConsent,
           complianceAccepted: formData.complianceAccepted,
           repairRequestId: linkedRequestId || undefined,
@@ -104,6 +133,16 @@ export default function BookingPage({ searchParams }: { searchParams?: Record<st
       const data = await response.json();
 
       if (!response.ok) {
+        // Show detailed validation errors from server if available
+        if (data.details) {
+          const serverErrors = Object.entries(data.details)
+            .map(([field, errors]: [string, any]) => {
+              const fieldName = field.replace(/([A-Z])/g, " $1").toLowerCase();
+              return Array.isArray(errors) ? errors.join(", ") : String(errors);
+            })
+            .join(". ");
+          throw new Error(serverErrors || data.error || "Validation failed");
+        }
         throw new Error(data.error || "Failed to create booking");
       }
 

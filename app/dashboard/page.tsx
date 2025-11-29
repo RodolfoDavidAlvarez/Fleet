@@ -271,7 +271,7 @@ export default function UnifiedDashboard() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 stagger">
           {showStatsSkeleton
-            ? Array.from({ length: 4 }).map((_, idx) => <StatCardSkeleton key={idx} />)
+            ? Array.from({ length: 4 }).map((_, idx) => <StatsCardSkeleton key={idx} />)
             : statCards.map((stat) => {
                 const Icon = stat.icon
                 return (

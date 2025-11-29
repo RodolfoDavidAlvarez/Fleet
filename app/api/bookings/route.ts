@@ -6,7 +6,7 @@ import { sendBookingConfirmationEmail, notifyAdminNewBooking } from "@/lib/email
 
 const bookingSchema = z.object({
   customerName: z.string().min(1, "customerName is required"),
-  customerEmail: z.string().email("customerEmail must be a valid email"),
+  customerEmail: z.string().email("customerEmail must be a valid email").optional(),
   customerPhone: z.string().min(6, "customerPhone is required"),
   serviceType: z.string().min(1, "serviceType is required"),
   scheduledDate: z.string().min(1, "scheduledDate is required"),
@@ -33,6 +33,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const json = await request.json();
+    // Transform empty email strings to undefined
+    if (json.customerEmail === "" || json.customerEmail === null) {
+      json.customerEmail = undefined;
+    }
     const parsed = bookingSchema.safeParse(json);
     if (!parsed.success) {
       return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
@@ -40,6 +44,31 @@ export async function POST(request: NextRequest) {
 
     if (parsed.data.complianceAccepted !== true) {
       return NextResponse.json({ error: "SMS compliance acknowledgment is required before booking." }, { status: 400 });
+    }
+
+    // Check if repair request already has a booking (prevent duplicate bookings)
+    if (parsed.data.repairRequestId) {
+      const repairRequest = await repairRequestDB.getById(parsed.data.repairRequestId);
+      if (!repairRequest) {
+        return NextResponse.json({ error: "Repair request not found" }, { status: 404 });
+      }
+      
+      // If repair request already has a booking, prevent creating another one
+      if (repairRequest.bookingId) {
+        // Check if the booking still exists
+        try {
+          const existingBooking = await bookingDB.getById(repairRequest.bookingId);
+          if (existingBooking) {
+            return NextResponse.json({ 
+              error: "This repair request already has a booking. The booking link can only be used once.",
+              existingBookingId: repairRequest.bookingId 
+            }, { status: 409 }); // 409 Conflict
+          }
+        } catch (err) {
+          // Booking doesn't exist, allow creating a new one
+          console.warn("Existing booking ID not found, allowing new booking creation");
+        }
+      }
     }
 
     const { smsConsent, complianceAccepted, vehicleInfo, notes, ...bookingData } = parsed.data;
@@ -69,18 +98,20 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Send email confirmation to customer
-    asyncNotifications.push(
-      sendBookingConfirmationEmail(parsed.data.customerEmail, {
-        customerName: parsed.data.customerName,
-        serviceType: parsed.data.serviceType,
-        date: parsed.data.scheduledDate,
-        time: parsed.data.scheduledTime,
-        bookingId: booking.id,
-        vehicleInfo: parsed.data.vehicleInfo,
-        notes: parsed.data.notes,
-      })
-    );
+    // Send email confirmation to customer (only if email provided)
+    if (parsed.data.customerEmail) {
+      asyncNotifications.push(
+        sendBookingConfirmationEmail(parsed.data.customerEmail, {
+          customerName: parsed.data.customerName,
+          serviceType: parsed.data.serviceType,
+          date: parsed.data.scheduledDate,
+          time: parsed.data.scheduledTime,
+          bookingId: booking.id,
+          vehicleInfo: parsed.data.vehicleInfo,
+          notes: parsed.data.notes,
+        })
+      );
+    }
 
     // Notify admin of new booking
     const adminEmail = process.env.ADMIN_EMAIL || 'ralvarez@bettersystems.ai';

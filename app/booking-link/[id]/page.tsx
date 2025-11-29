@@ -12,6 +12,8 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [linkAlreadyUsed, setLinkAlreadyUsed] = useState(false);
+  const [existingBookingId, setExistingBookingId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: searchParams.get("name") || "",
@@ -257,8 +259,44 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
     const loadRepairRequest = async () => {
       try {
         const res = await fetch(`/api/repair-requests/${params.id}`);
-        if (!res.ok) throw new Error("Failed to load repair request");
+        if (!res.ok) {
+          if (res.status === 404) {
+            setError("Repair request not found. This booking link may be invalid.");
+          } else {
+            throw new Error("Failed to load repair request");
+          }
+          setLoading(false);
+          return;
+        }
         const data = await res.json();
+        
+        if (!data.request) {
+          setError("Repair request not found. This booking link may be invalid.");
+          setLoading(false);
+          return;
+        }
+
+        // Check if booking already exists for this repair request
+        if (data.request.bookingId) {
+          // Verify the booking still exists
+          try {
+            const bookingRes = await fetch(`/api/bookings/${data.request.bookingId}`);
+            if (bookingRes.ok) {
+              const bookingData = await bookingRes.json();
+              if (bookingData.booking) {
+                setLinkAlreadyUsed(true);
+                setExistingBookingId(data.request.bookingId);
+                setRepairRequest(data.request);
+                setLoading(false);
+                return;
+              }
+            }
+          } catch (err) {
+            // Booking doesn't exist, allow proceeding
+            console.warn("Existing booking not found, allowing new booking");
+          }
+        }
+
         setRepairRequest(data.request);
         if (data.request) {
           setFormData((prev) => ({
@@ -270,7 +308,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
         }
       } catch (err) {
         console.error("Error loading repair request:", err);
-        setError("Failed to load repair request details");
+        setError("Failed to load repair request details. Please try again or contact support.");
       } finally {
         setLoading(false);
       }
@@ -281,32 +319,87 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
     setError(null);
 
-    // Email is optional, but if provided, it should be valid
-    if (formData.email && !formData.email.includes("@")) {
-      setSubmitting(false);
-      setError("Please provide a valid email address.");
+    // Comprehensive validation before submitting
+    const validationErrors: string[] = [];
+
+    if (!formData.name || formData.name.trim().length === 0) {
+      validationErrors.push("Name is required");
+    }
+
+    // Email is optional, but if provided, it must be valid
+    if (formData.email && formData.email.trim().length > 0) {
+      if (!formData.email.includes("@") || !formData.email.includes(".")) {
+        validationErrors.push("Please provide a valid email address");
+      }
+    }
+
+    if (!formData.phone || formData.phone.trim().length === 0) {
+      validationErrors.push("Phone number is required");
+    } else {
+      // Remove non-digits and check length
+      const phoneDigits = formData.phone.replace(/\D/g, "");
+      if (phoneDigits.length < 6) {
+        validationErrors.push("Phone number must be at least 6 digits");
+      }
+    }
+
+    if (!formData.date || formData.date.trim().length === 0) {
+      validationErrors.push("Date is required");
+    }
+
+    if (!formData.time || formData.time.trim().length === 0) {
+      validationErrors.push("Time is required");
+    }
+
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(". "));
       return;
     }
 
+    // Prevent double submission
+    if (submitting) {
+      return;
+    }
+
+    setSubmitting(true);
+
     try {
+      // Check again if booking already exists (race condition protection)
+      if (repairRequest?.bookingId) {
+        try {
+          const checkRes = await fetch(`/api/bookings/${repairRequest.bookingId}`);
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            if (checkData.booking) {
+              setLinkAlreadyUsed(true);
+              setExistingBookingId(repairRequest.bookingId);
+              setSubmitting(false);
+              setError("This booking link has already been used. A booking already exists for this repair request.");
+              return;
+            }
+          }
+        } catch (err) {
+          // Continue if check fails
+        }
+      }
+
       // Create booking from repair request
       const bookingRes = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerName: formData.name,
-          customerEmail: formData.email,
-          customerPhone: formData.phone,
+          customerName: formData.name.trim(),
+          customerEmail: formData.email?.trim() || undefined,
+          customerPhone: formData.phone.trim(),
           serviceType: repairRequest?.aiCategory || "Repair Service",
-          scheduledDate: formData.date,
-          scheduledTime: formData.time,
+          scheduledDate: formData.date.trim(),
+          scheduledTime: formData.time.trim(),
           status: "confirmed",
-          notes: formData.notes,
+          notes: formData.notes?.trim() || undefined,
           repairRequestId: params.id,
-          vehicleInfo: repairRequest?.vehicleIdentifier || "",
+          vehicleInfo: repairRequest?.vehicleIdentifier || undefined,
           smsConsent: true,
           complianceAccepted: true,
         }),
@@ -314,6 +407,22 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
 
       const bookingData = await bookingRes.json();
       if (!bookingRes.ok) {
+        // Handle specific error cases
+        if (bookingRes.status === 409) {
+          // Conflict - booking already exists
+          throw new Error(bookingData.error || "This booking link has already been used. A booking already exists for this repair request.");
+        } else if (bookingRes.status === 404) {
+          throw new Error(bookingData.error || "Repair request not found. This booking link may be invalid.");
+        } else if (bookingData.details) {
+          // Show detailed validation errors from server if available
+          const serverErrors = Object.entries(bookingData.details)
+            .map(([field, errors]: [string, any]) => {
+              const fieldName = field.replace(/([A-Z])/g, " $1").toLowerCase();
+              return Array.isArray(errors) ? errors.join(", ") : String(errors);
+            })
+            .join(". ");
+          throw new Error(serverErrors || bookingData.error || "Validation failed");
+        }
         throw new Error(bookingData.error || "Failed to create booking");
       }
 
@@ -390,6 +499,44 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                 Service location: Agave Fleet HQ
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (linkAlreadyUsed) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-orange-100 flex items-center justify-center p-4">
+        <div className="max-w-md mx-auto">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 text-center border border-gray-100">
+            <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <CheckCircle className="h-10 w-10 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Booking Already Completed</h2>
+            <p className="text-gray-600 mb-6 text-lg">This booking link has already been used to create a booking.</p>
+            
+            {existingBookingId && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-blue-200">
+                <p className="text-sm text-gray-600 mb-2">Booking ID:</p>
+                <p className="text-blue-800 font-mono font-semibold text-lg break-all">{existingBookingId}</p>
+              </div>
+            )}
+            
+            <div className="space-y-3 text-sm text-gray-600">
+              <p className="flex items-center justify-center gap-2">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                Your booking has been confirmed
+              </p>
+              <p className="flex items-center justify-center gap-2">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                Check your SMS for booking details
+              </p>
+            </div>
+            
+            <p className="text-xs text-gray-500 mt-6">
+              If you need to modify your booking, please contact support.
+            </p>
           </div>
         </div>
       </div>
@@ -497,14 +644,19 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
 
           {/* Date & Time Selection */}
           <div className="lg:col-span-2">
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-8" noValidate>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2 mb-6">
-                  <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-red-600 text-xs">!</span>
+                <div className="bg-red-50 border-2 border-red-300 text-red-800 px-5 py-4 rounded-xl text-sm font-medium mb-6 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 bg-red-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-red-700 text-xs font-bold">!</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold mb-1">Validation Error</p>
+                      <p className="text-red-700">{error}</p>
+                    </div>
                   </div>
-                  {error}
                 </div>
               )}
 
@@ -785,13 +937,18 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                   
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || linkAlreadyUsed}
                     className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[56px] flex items-center justify-center gap-3 group"
                   >
                     {submitting ? (
                       <>
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         Confirming...
+                      </>
+                    ) : linkAlreadyUsed ? (
+                      <>
+                        <CheckCircle className="h-5 w-5" />
+                        Already Booked
                       </>
                     ) : (
                       <>

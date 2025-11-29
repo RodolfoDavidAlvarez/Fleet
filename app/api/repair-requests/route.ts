@@ -210,28 +210,8 @@ export async function POST(request: NextRequest) {
       console.error("Background repair notifications failed", err);
     });
 
-    // Automatically send booking link via SMS
-    if (record.driverPhone) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
-      const bookingLink = `${baseUrl}/booking-link/${record.id}?name=${encodeURIComponent(record.driverName)}&phone=${encodeURIComponent(record.driverPhone)}`;
-
-      // Update repair request with booking link
-      await repairRequestDB.update(record.id, {
-        bookingLink: bookingLink,
-        status: "waiting_booking",
-      });
-
-      // Send booking link via SMS
-      const { sendRepairBookingLink } = await import("@/lib/twilio");
-      sendRepairBookingLink(record.driverPhone, {
-        requestId: record.id,
-        link: bookingLink,
-        issueSummary: record.description.slice(0, 120),
-        language: record.preferredLanguage,
-      }).catch((err) => {
-        console.error("Failed to send booking link SMS", err);
-      });
-    }
+    // Booking link will be generated and sent by admin via the schedule endpoint
+    // No automatic sending on submission
 
     return NextResponse.json({ request: record, ai }, { status: 201 });
   } catch (error) {
