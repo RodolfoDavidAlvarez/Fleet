@@ -30,8 +30,13 @@ export async function sendSMS(to: string, message: string): Promise<boolean> {
       to: to,
     })
     return true
-  } catch (error) {
-    console.error('Error sending SMS:', error)
+  } catch (error: any) {
+    // Handle Twilio authentication errors gracefully
+    if (error?.code === 20003 || error?.status === 401) {
+      console.warn('Twilio authentication error. Please check TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in your environment variables.')
+    } else {
+      console.error('Error sending SMS:', error?.message || error)
+    }
     return false
   }
 }

@@ -17,3 +17,4 @@ WHERE advance_booking_window IS NULL OR advance_booking_unit IS NULL;
 COMMENT ON COLUMN calendar_settings.advance_booking_window IS 'Number of hours or days before users can book (e.g., 2 days means users can only book 2+ days in advance)';
 COMMENT ON COLUMN calendar_settings.advance_booking_unit IS 'Unit for advance booking window: hours or days';
 
+

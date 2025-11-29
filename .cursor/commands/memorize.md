@@ -11,5 +11,9 @@
 
 Full files make the app bulky unnecessarily. Git is the proper place for full file contents and version history.
 
+## autonomy
 
+- Be as autonomous as possible for this reason
+  - Interact/migrate data through the CLI for database supabase or other
+  - USE CLI for vercel logs and more
 

@@ -6,7 +6,7 @@ import { Plus, Car, Calendar, FileText, Wrench } from 'lucide-react'
 const actions = [
   {
     label: 'New Booking',
-    href: '/admin/bookings/new',
+    href: '/admin/bookings',
     icon: Calendar,
     color: 'text-purple-600 dark:text-purple-400',
     bg: 'bg-purple-100 dark:bg-purple-500/10',
@@ -15,7 +15,7 @@ const actions = [
   },
   {
     label: 'Add Vehicle',
-    href: '/admin/vehicles/new',
+    href: '/admin/vehicles',
     icon: Car,
     color: 'text-blue-600 dark:text-blue-400',
     bg: 'bg-blue-100 dark:bg-blue-500/10',
@@ -32,8 +32,8 @@ const actions = [
     border: 'border-orange-200 dark:border-orange-500/20'
   },
   {
-    label: 'Create Report',
-    href: '/admin/analytics',
+    label: 'Service Records',
+    href: '/service-records',
     icon: FileText,
     color: 'text-emerald-600 dark:text-emerald-400',
     bg: 'bg-emerald-100 dark:bg-emerald-500/10',

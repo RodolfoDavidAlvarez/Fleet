@@ -69,3 +69,4 @@ echo "  1. Run Airtable import at /admin/airtable-import"
 echo "  2. Verify schema with: supabase db remote diff"
 
 
+

@@ -30,13 +30,27 @@ export async function POST(
     // Send SMS with booking link
     const message = `Hi ${booking.customerName}! Please schedule your ${booking.serviceType} appointment: ${bookingLink}\n\nClick the link to choose your preferred time slot.`
     
-    const sent = await sendSMS(booking.customerPhone, message)
+    try {
+      const sent = await sendSMS(booking.customerPhone, message)
 
-    if (!sent) {
-      return NextResponse.json(
-        { error: 'Failed to send SMS. Please check Twilio configuration.' },
-        { status: 500 }
-      )
+      if (!sent) {
+        console.warn('SMS sending returned false - Twilio may be misconfigured')
+        // Still return success with the link so user can manually share it
+        return NextResponse.json({ 
+          success: true,
+          message: 'Booking link generated (SMS may not have been sent - check Twilio configuration)',
+          bookingLink 
+        })
+      }
+    } catch (smsError: any) {
+      console.error('Error sending SMS (non-critical):', smsError?.message || smsError)
+      // Still return success with the link so user can manually share it
+      return NextResponse.json({ 
+        success: true,
+        message: 'Booking link generated (SMS failed - check Twilio configuration)',
+        bookingLink,
+        warning: 'SMS notification failed but link is available'
+      })
     }
 
     return NextResponse.json({ 
@@ -52,6 +66,7 @@ export async function POST(
     )
   }
 }
+
 
 
 

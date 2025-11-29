@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Users, Plus, Mail, Phone, X, Edit, Loader2, Save, Grid3x3, List } from 'lucide-react'
+import { Users, Plus, Mail, Phone, X, Edit, Loader2, Save, Grid3x3, List, Search } from 'lucide-react'
 import { User } from '@/types'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/ui/toast'
@@ -21,6 +21,7 @@ export default function DriversPage() {
   const [editForm, setEditForm] = useState<Partial<User>>({})
   const [saving, setSaving] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -67,6 +68,25 @@ export default function DriversPage() {
     setViewMode(mode)
     localStorage.setItem('drivers-view-mode', mode)
   }
+
+  // Filter drivers based on search term
+  const filteredDrivers = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return drivers
+    }
+    const searchLower = searchTerm.toLowerCase().trim()
+    return drivers.filter((driver) => {
+      const name = (driver.name || '').toLowerCase()
+      const email = (driver.email || '').toLowerCase()
+      const phone = (driver.phone || '').toLowerCase()
+      
+      return (
+        name.includes(searchLower) ||
+        email.includes(searchLower) ||
+        phone.includes(searchLower)
+      )
+    })
+  }, [drivers, searchTerm])
 
   const openEdit = (driver: User) => {
     setEditing(true)
@@ -165,6 +185,38 @@ export default function DriversPage() {
               </div>
             </div>
 
+            {/* Search Bar */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 max-w-md relative">
+                <div className="input-group">
+                  <span className="input-group-icon input-group-icon-left">
+                    <Search className="h-4 w-4" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Search drivers by name, email, phone..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="input input-with-icon-left pr-12"
+                  />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              {searchTerm && (
+                <div className="text-sm text-gray-600">
+                  {filteredDrivers.length} {filteredDrivers.length === 1 ? 'driver' : 'drivers'} found
+                </div>
+              )}
+            </div>
+
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
                 {error}
@@ -177,7 +229,7 @@ export default function DriversPage() {
               <>
                 {viewMode === 'grid' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {drivers.map((driver) => (
+                    {filteredDrivers.map((driver) => (
                       <motion.div
                         key={driver.id}
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -226,9 +278,9 @@ export default function DriversPage() {
                         </div>
                       </motion.div>
                     ))}
-                    {drivers.length === 0 && (
+                    {filteredDrivers.length === 0 && (
                       <div className="p-6 text-center text-gray-500 col-span-full">
-                        No drivers found.
+                        {searchTerm ? `No drivers found matching "${searchTerm}".` : 'No drivers found.'}
                       </div>
                     )}
                   </div>
@@ -238,7 +290,7 @@ export default function DriversPage() {
                     className="space-y-3"
                   >
                     <AnimatePresence>
-                      {drivers.map((driver, i) => (
+                      {filteredDrivers.map((driver, i) => (
                         <motion.div
                           key={driver.id}
                           initial={{ opacity: 0, y: 10 }}
@@ -293,9 +345,9 @@ export default function DriversPage() {
                         </motion.div>
                       ))}
                     </AnimatePresence>
-                    {drivers.length === 0 && (
+                    {filteredDrivers.length === 0 && (
                       <div className="p-6 text-center text-gray-500">
-                        No drivers found.
+                        {searchTerm ? `No drivers found matching "${searchTerm}".` : 'No drivers found.'}
                       </div>
                     )}
                   </motion.div>

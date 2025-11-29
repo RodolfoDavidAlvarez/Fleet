@@ -24,3 +24,4 @@ WHERE table_name = 'vehicles' AND column_name = 'photo_url';
 
 
 
+

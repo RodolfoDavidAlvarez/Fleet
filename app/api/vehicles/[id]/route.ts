@@ -12,7 +12,10 @@ const vehicleUpdateSchema = z.object({
   status: z.enum(['active', 'in_service', 'retired']).optional(),
   lastServiceDate: z.string().optional(),
   nextServiceDue: z.string().optional(),
-  driverId: z.string().uuid().optional(),
+  driverId: z.preprocess(
+    (val) => val === '' || val === null ? null : val,
+    z.string().uuid().nullable().optional()
+  ),
 })
 
 export async function GET(
@@ -88,6 +91,7 @@ export async function DELETE(
     )
   }
 }
+
 
 
 

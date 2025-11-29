@@ -34,8 +34,6 @@ const unifiedLinks = [
   { href: '/admin/bookings', label: 'Bookings', icon: Calendar },
   { href: '/service-records', label: 'Service Records', icon: FileText },
   { href: '/admin/drivers', label: 'Drivers', icon: Users },
-  { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/mechanic/jobs', label: 'My Jobs', icon: Wrench },
   { href: '/mechanic/schedule', label: 'Schedule', icon: Calendar },
 ]
 
@@ -45,7 +43,6 @@ const mechanicOnlyLinks = [
 
 const adminOnlyLinks = [
   { href: '/admin/announcements', label: 'Announcements', icon: Megaphone },
-  { href: '/admin/settings', label: 'Admin Settings', icon: Settings },
 ]
 
 export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) {

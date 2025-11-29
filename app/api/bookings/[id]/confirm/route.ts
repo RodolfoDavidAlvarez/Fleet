@@ -30,24 +30,34 @@ export async function POST(
       }
     }
 
-    // Send confirmation SMS to driver
+    // Send confirmation SMS to driver (fail silently if Twilio is misconfigured)
     if (booking.customerPhone) {
-      const confirmationMessage = `Your appointment has been confirmed!\n\nService: ${booking.serviceType}\nDate: ${json.scheduledDate}\nTime: ${json.scheduledTime}\n\nWe'll see you then!`
-      await sendSMS(booking.customerPhone, confirmationMessage)
+      try {
+        const confirmationMessage = `Your appointment has been confirmed!\n\nService: ${booking.serviceType}\nDate: ${json.scheduledDate}\nTime: ${json.scheduledTime}\n\nWe'll see you then!`
+        await sendSMS(booking.customerPhone, confirmationMessage)
+      } catch (smsError) {
+        console.error('Failed to send confirmation SMS (non-critical):', smsError)
+        // Continue execution - SMS failure shouldn't block booking confirmation
+      }
     }
 
-    // Notify mechanic if assigned
+    // Notify mechanic if assigned (fail silently if Twilio is misconfigured)
     if (booking.mechanicId) {
-      const supabase = createServerClient()
-      const { data: mechanic } = await supabase
-        .from('users')
-        .select('phone, name')
-        .eq('id', booking.mechanicId)
-        .single()
+      try {
+        const supabase = createServerClient()
+        const { data: mechanic } = await supabase
+          .from('users')
+          .select('phone, name')
+          .eq('id', booking.mechanicId)
+          .single()
 
-      if (mechanic?.phone) {
-        const mechanicMessage = `New appointment scheduled:\n\nCustomer: ${booking.customerName}\nService: ${booking.serviceType}\nDate: ${json.scheduledDate}\nTime: ${json.scheduledTime}\n\nBooking ID: ${booking.id}`
-        await sendSMS(mechanic.phone, mechanicMessage)
+        if (mechanic?.phone) {
+          const mechanicMessage = `New appointment scheduled:\n\nCustomer: ${booking.customerName}\nService: ${booking.serviceType}\nDate: ${json.scheduledDate}\nTime: ${json.scheduledTime}\n\nBooking ID: ${booking.id}`
+          await sendSMS(mechanic.phone, mechanicMessage)
+        }
+      } catch (smsError) {
+        console.error('Failed to send mechanic notification SMS (non-critical):', smsError)
+        // Continue execution - SMS failure shouldn't block booking confirmation
       }
     }
 
@@ -63,6 +73,7 @@ export async function POST(
     )
   }
 }
+
 
 
 

@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Car, ArrowLeft, Edit, Loader2, Save, X, User as UserIcon, Gauge, Calendar, Wrench, Mail, Phone } from 'lucide-react'
+import { Car, ArrowLeft, Edit, Loader2, Save, X, User as UserIcon, Gauge, Calendar, Wrench, Mail, Phone, UserPlus, UserMinus } from 'lucide-react'
 import { Vehicle } from '@/types'
 import { getStatusColor, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { motion } from 'framer-motion'
+import { useDrivers } from '@/hooks/use-vehicles'
 
 export default function VehicleDetailPage() {
   const router = useRouter()
@@ -21,6 +22,10 @@ export default function VehicleDetailPage() {
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState<Partial<Vehicle>>({})
   const [saving, setSaving] = useState(false)
+  const [showDriverSelector, setShowDriverSelector] = useState(false)
+  const [selectedDriverId, setSelectedDriverId] = useState<string>('')
+  const [assigningDriver, setAssigningDriver] = useState(false)
+  const { data: drivers = [], isLoading: driversLoading } = useDrivers()
 
   const vehicleId = params.id as string
 
@@ -113,6 +118,63 @@ export default function VehicleDetailPage() {
       showToast(err instanceof Error ? err.message : 'Failed to update vehicle', 'error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const assignDriver = async () => {
+    if (!vehicle) return
+    
+    try {
+      setAssigningDriver(true)
+      const driverId = selectedDriverId === '' ? null : selectedDriverId
+      const res = await fetch(`/api/vehicles/${vehicle.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driverId }),
+      })
+      
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to assign driver')
+      }
+
+      const data = await res.json()
+      setVehicle(data.vehicle)
+      setShowDriverSelector(false)
+      setSelectedDriverId('')
+      showToast(driverId ? 'Driver assigned successfully!' : 'Driver removed successfully!', 'success')
+    } catch (err) {
+      console.error('Error assigning driver:', err)
+      showToast(err instanceof Error ? err.message : 'Failed to assign driver', 'error')
+    } finally {
+      setAssigningDriver(false)
+    }
+  }
+
+  const removeDriver = async () => {
+    if (!vehicle) return
+    
+    try {
+      setAssigningDriver(true)
+      const res = await fetch(`/api/vehicles/${vehicle.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driverId: null }),
+      })
+      
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to remove driver')
+      }
+
+      const data = await res.json()
+      setVehicle(data.vehicle)
+      showToast('Driver removed successfully!', 'success')
+    } catch (err) {
+      console.error('Error removing driver:', err)
+      showToast(err instanceof Error ? err.message : 'Failed to remove driver', 'error')
+    } finally {
+      setAssigningDriver(false)
     }
   }
 
@@ -446,12 +508,84 @@ export default function VehicleDetailPage() {
                   {/* Sidebar */}
                   <div className="space-y-6">
                     {/* Driver Information */}
-                    {vehicle.driverName && (
-                      <div className="card-surface rounded-xl p-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <div className="card-surface rounded-xl p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                           <UserIcon className="h-5 w-5 text-primary-600" />
                           Assigned Driver
                         </h3>
+                        {!showDriverSelector && (
+                          <button
+                            onClick={() => {
+                              setShowDriverSelector(true)
+                              setSelectedDriverId(vehicle.driverId || '')
+                            }}
+                            className="btn btn-sm btn-secondary flex items-center gap-1.5"
+                          >
+                            {vehicle.driverName ? (
+                              <>
+                                <Edit className="h-3.5 w-3.5" />
+                                Change
+                              </>
+                            ) : (
+                              <>
+                                <UserPlus className="h-3.5 w-3.5" />
+                                Assign
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      {showDriverSelector ? (
+                        <div className="space-y-3">
+                          <label className="space-y-1.5 block">
+                            <span className="text-sm font-semibold text-gray-700">Select Driver</span>
+                            <select
+                              className="input-field w-full"
+                              value={selectedDriverId}
+                              onChange={(e) => setSelectedDriverId(e.target.value)}
+                              disabled={assigningDriver || driversLoading}
+                            >
+                              <option value="">No driver assigned</option>
+                              {drivers.map((driver) => (
+                                <option key={driver.id} value={driver.id}>
+                                  {driver.name} {driver.email ? `(${driver.email})` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={assignDriver}
+                              className="btn btn-primary btn-sm flex-1 flex items-center gap-1.5"
+                              disabled={assigningDriver || driversLoading}
+                            >
+                              {assigningDriver ? (
+                                <>
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Saving...
+                                </>
+                              ) : (
+                                <>
+                                  <Save className="h-3.5 w-3.5" />
+                                  Save
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowDriverSelector(false)
+                                setSelectedDriverId('')
+                              }}
+                              className="btn btn-secondary btn-sm"
+                              disabled={assigningDriver}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : vehicle.driverName ? (
                         <div className="space-y-3">
                           <div>
                             <p className="text-sm font-medium text-gray-500">Name</p>
@@ -475,9 +609,20 @@ export default function VehicleDetailPage() {
                               <p className="text-sm text-gray-700">{formatDate(vehicle.driverAssignedDate)}</p>
                             </div>
                           )}
+                          <button
+                            onClick={removeDriver}
+                            className="btn btn-sm btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50 w-full mt-2 flex items-center justify-center gap-1.5"
+                          >
+                            <UserMinus className="h-3.5 w-3.5" />
+                            Remove Driver
+                          </button>
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="text-center py-4">
+                          <p className="text-sm text-gray-500 mb-3">No driver assigned to this vehicle</p>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Additional Info */}
                     <div className="card-surface rounded-xl p-6">
@@ -511,4 +656,5 @@ export default function VehicleDetailPage() {
     </div>
   )
 }
+
 
