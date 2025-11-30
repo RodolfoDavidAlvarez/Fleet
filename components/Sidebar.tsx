@@ -61,11 +61,8 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
   // Memoize logout handler
   const handleLogout = useCallback(async () => {
     try {
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
-      
-      // Sign out from Supabase
-      await supabase.auth.signOut()
+      // Call logout API endpoint for proper session cleanup
+      await fetch('/api/auth/logout', { method: 'POST' })
       
       // Clear localStorage
       localStorage.removeItem('user')
