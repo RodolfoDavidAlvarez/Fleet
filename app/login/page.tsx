@@ -125,14 +125,14 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-900 block">Email Address</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-500" />
-                  </div>
+                <div className="input-group">
+                  <span className="input-group-icon input-group-icon-left">
+                    <Mail className="h-5 w-5" />
+                  </span>
                   <input
                     type="email"
                     required
-                    className="input pl-12 w-full border-2 border-gray-300 focus:border-primary-500"
+                    className="input input-with-icon-left w-full border-2 border-gray-300 focus:border-primary-500"
                     placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -150,14 +150,14 @@ export default function LoginPage() {
                     Forgot password?
                   </Link>
                 </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-500" />
-                  </div>
+                <div className="input-group">
+                  <span className="input-group-icon input-group-icon-left">
+                    <Lock className="h-5 w-5" />
+                  </span>
                   <input
                     type={showPassword ? "text" : "password"}
                     required
-                    className="input pl-12 pr-12 w-full border-2 border-gray-300 focus:border-primary-500"
+                    className="input input-with-icon-left input-with-icon-right w-full border-2 border-gray-300 focus:border-primary-500"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -165,7 +165,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 rounded"
+                    className="input-group-icon input-group-icon-right pointer-events-auto text-gray-600 hover:text-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 rounded cursor-pointer"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
