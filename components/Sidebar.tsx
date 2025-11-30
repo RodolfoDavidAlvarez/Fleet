@@ -59,9 +59,26 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
   )
 
   // Memoize logout handler
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('user')
-    window.location.href = '/login'
+  const handleLogout = useCallback(async () => {
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      // Sign out from Supabase
+      await supabase.auth.signOut()
+      
+      // Clear localStorage
+      localStorage.removeItem('user')
+      localStorage.clear()
+      
+      // Force redirect to login
+      window.location.href = '/login'
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Fallback: still clear storage and redirect
+      localStorage.clear()
+      window.location.href = '/login'
+    }
   }, [])
 
   // Optimized prefetching on hover

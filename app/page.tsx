@@ -10,14 +10,36 @@ export default function Home() {
 
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (user) {
-        // User is already authenticated, redirect to dashboard
-        router.push('/dashboard')
-      } else {
-        // User is not authenticated, redirect to login
+      try {
+        const supabase = createClient()
+        const { data: { user }, error } = await supabase.auth.getUser()
+        
+        if (error) {
+          console.error('Auth check error:', error)
+          router.push('/login')
+          return
+        }
+        
+        if (user) {
+          // Double-check by calling the auth API
+          try {
+            const response = await fetch('/api/auth/me', { cache: 'no-store' })
+            if (response.ok) {
+              const { user: profile } = await response.json()
+              if (profile && profile.approval_status === 'approved') {
+                router.push('/dashboard')
+                return
+              }
+            }
+          } catch (apiError) {
+            console.error('Profile check failed:', apiError)
+          }
+        }
+        
+        // Default: redirect to login
+        router.push('/login')
+      } catch (error) {
+        console.error('Auth redirect error:', error)
         router.push('/login')
       }
     }
