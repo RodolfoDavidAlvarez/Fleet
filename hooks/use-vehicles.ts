@@ -13,9 +13,18 @@ export function useVehicles() {
       const data = await response.json()
       return data.vehicles || []
     },
+    keepPreviousData: true,
+    placeholderData: (prev) => prev ?? [],
+    // Keep the last good payload if a transient refetch returns an empty array
+    structuralSharing: (oldData, newData) => {
+      if (Array.isArray(newData) && newData.length === 0 && Array.isArray(oldData) && oldData.length > 0) {
+        return oldData
+      }
+      return newData
+    },
     select: (data: Vehicle[]) => 
-      // Sort vehicles to prioritize complete records
-      data.sort((a: Vehicle, b: Vehicle) => {
+      // Sort vehicles to prioritize complete records (copy first to avoid mutating cache)
+      [...data].sort((a: Vehicle, b: Vehicle) => {
         const isCompleteA = a.make && a.model && !a.vin.startsWith('AIRTABLE');
         const isCompleteB = b.make && b.model && !b.vin.startsWith('AIRTABLE');
         if (isCompleteA && !isCompleteB) return -1;

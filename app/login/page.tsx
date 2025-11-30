@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [attemptCount, setAttemptCount] = useState(0)
 
   useEffect(() => {
     if (searchParams.get('registered')) {
@@ -31,43 +32,61 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
+    // Rate limiting: prevent too many attempts
+    if (attemptCount >= 5) {
+      setError('Too many failed attempts. Please wait before trying again.')
+      setLoading(false)
+      return
+    }
+
     try {
       const supabase = createClient()
       
+      // Input validation
+      if (!email.trim() || !password.trim()) {
+        throw new Error('Please enter both email and password')
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new Error('Please enter a valid email address')
+      }
+      
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim().toLowerCase(),
         password,
       })
 
       if (error) {
+        setAttemptCount(prev => prev + 1)
         throw error
       }
 
-      // Check user role from public.users
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('role, approval_status')
-        .eq('id', data.user.id)
-        .single()
+      const profileRes = await fetch('/api/auth/me', { cache: 'no-store' })
+      const profileJson = await profileRes.json()
 
-      if (userError) {
-        console.error('Error fetching user details:', userError)
-        // Allow login but maybe restricted? Or throw error?
-        // If public user is missing but auth exists (rare sync issue), let them in but they might see nothing.
-      } else {
-        if (userData.role === 'admin' && userData.approval_status !== 'approved') {
-          await supabase.auth.signOut()
-          throw new Error('Your account is pending approval. Please contact an administrator.')
-        }
-        
-        // Store user info in localStorage for legacy compatibility (if needed by other components)
-        // But primarily we rely on cookies now.
-        localStorage.setItem('user', JSON.stringify({ 
-          ...data.user, 
-          role: userData.role, 
-          name: data.user.user_metadata.name 
-        }))
+      if (!profileRes.ok) {
+        await supabase.auth.signOut()
+        throw new Error(profileJson.error || 'Unable to load your account profile')
       }
+
+      const profile = profileJson.user
+
+      // Verify user account status
+      if (profile.approval_status !== 'approved') {
+        await supabase.auth.signOut()
+        throw new Error('Your account is pending approval. Please contact an administrator.')
+      }
+
+      // Store user info in localStorage for legacy compatibility (if needed by other components)
+      // But primarily we rely on cookies now.
+      localStorage.setItem('user', JSON.stringify({ 
+        ...data.user, 
+        role: profile.role, 
+        name: profile.name || data.user.user_metadata?.name 
+      }))
+
+      // Reset attempt counter on success
+      setAttemptCount(0)
 
       router.push('/dashboard')
       router.refresh() // Refresh to update server components with new cookie
@@ -91,27 +110,29 @@ export default function LoginPage() {
                 <Wrench className="h-6 w-6" />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-              <p className="text-gray-600">Please sign in to your account</p>
+              <p className="text-gray-700 font-medium">Please sign in to your account</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
-                  <span className="flex-shrink-0">⚠️</span>
+                <div className="bg-red-100 border-2 border-red-500 text-red-800 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm">
+                  <svg className="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
                   {error}
                 </div>
               )}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 block">Email Address</label>
+                <label className="text-sm font-semibold text-gray-900 block">Email Address</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
+                    <Mail className="h-5 w-5 text-gray-500" />
                   </div>
                   <input
                     type="email"
                     required
-                    className="input pl-10 w-full"
+                    className="input pl-12 w-full border-2 border-gray-300 focus:border-primary-500"
                     placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -121,22 +142,22 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-700 block">Password</label>
+                  <label className="text-sm font-semibold text-gray-900 block">Password</label>
                   <Link 
                     href="/forgot-password" 
-                    className="text-sm font-medium text-primary-600 hover:text-primary-700"
+                    className="text-sm font-semibold text-primary-600 hover:text-primary-700 underline"
                   >
                     Forgot password?
                   </Link>
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
+                    <Lock className="h-5 w-5 text-gray-500" />
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
                     required
-                    className="input pl-10 pr-10 w-full"
+                    className="input pl-12 pr-12 w-full border-2 border-gray-300 focus:border-primary-500"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -144,7 +165,8 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 rounded"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -169,9 +191,9 @@ export default function LoginPage() {
                 )}
               </button>
 
-              <div className="text-center text-sm text-gray-500 mt-4">
+              <div className="text-center text-sm text-gray-600 mt-4">
                 Don't have an account?{' '}
-                <Link href="/register" className="font-semibold text-primary-600 hover:text-primary-500">
+                <Link href="/register" className="font-semibold text-primary-600 hover:text-primary-700 underline">
                   Register here
                 </Link>
               </div>
