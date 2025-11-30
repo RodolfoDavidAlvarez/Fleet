@@ -305,7 +305,9 @@ export const vehicleDB = {
 
     if (error) {
       console.error("Error fetching vehicles:", error);
-      return [];
+      // Surface the error so callers (React Query) keep showing cached data instead of an empty list
+      // when a background refetch fails. This prevents brief "No vehicles" flashes when focus changes.
+      throw error;
     }
 
     return (data || []).map(rowToVehicle);

@@ -13,6 +13,7 @@ const dictionary = {
     driverPhone: "Phone Number *",
     makeModel: "Make and Model",
     vehicleIdentifier: "Vehicle Number",
+    odometer: "Current mileage (if vehicle)",
     division: "Division *",
     vehicleType: "Type of vehicle *",
     isImmediate: "Requires immediate action?",
@@ -34,6 +35,7 @@ const dictionary = {
     driverPhone: "Número de telefono *",
     makeModel: "Marca y modelo",
     vehicleIdentifier: "Numero del vehiculo",
+    odometer: "Millas actuales (si aplica)",
     division: "Division *",
     vehicleType: "Tipo de vehiculo *",
     isImmediate: "¿Requiere acción inmediata?",
@@ -62,6 +64,7 @@ export default function RepairRequestPage() {
     driverPhone: "",
     makeModel: "",
     vehicleIdentifier: "",
+    odometer: "",
     division: "",
     vehicleType: "",
     isImmediate: "false",
@@ -91,6 +94,9 @@ export default function RepairRequestPage() {
       fd.append("driverPhone", form.driverPhone);
       fd.append("makeModel", form.makeModel);
       fd.append("vehicleIdentifier", form.vehicleIdentifier);
+      if (form.odometer.trim()) {
+        fd.append("odometer", form.odometer.replace(/,/g, ""));
+      }
       fd.append("division", form.division);
       fd.append("vehicleType", form.vehicleType);
       fd.append("isImmediate", form.isImmediate === "true" ? "true" : "false");
@@ -232,6 +238,25 @@ export default function RepairRequestPage() {
                 />
               </label>
             </div>
+
+            {/* Vehicle mileage (optional) */}
+            <label className="space-y-2 block">
+              <span className="text-sm font-semibold text-gray-700">{t.odometer}</span>
+              <input
+                type="number"
+                min={0}
+                className="input"
+                name="odometer"
+                value={form.odometer}
+                onChange={(e) => setForm({ ...form, odometer: e.target.value })}
+                placeholder={language === 'es' ? 'Ej: 42,500' : 'e.g. 42,500'}
+              />
+              <span className="text-xs text-gray-500">
+                {language === 'es'
+                  ? 'Opcional: ingrese solo si se trata de un vehículo.'
+                  : 'Optional: include if this request is for a vehicle.'}
+              </span>
+            </label>
 
             {/* Row 3: Division & Vehicle Type */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

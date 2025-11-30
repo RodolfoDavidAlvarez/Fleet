@@ -22,18 +22,45 @@ export default function UnifiedDashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   useEffect(() => {
-    const userData = localStorage.getItem('user')
-    if (!userData) {
-      router.push('/login')
-      return
+    const bootstrapUser = async () => {
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        const parsedUser = JSON.parse(userData)
+        if (parsedUser.role !== 'admin' && parsedUser.role !== 'mechanic') {
+          router.push('/login')
+          return
+        }
+        setUser(parsedUser)
+        setAuthReady(true)
+        return
+      }
+
+      try {
+        const res = await fetch('/api/auth/me', { cache: 'no-store' })
+        if (!res.ok) {
+          router.push('/login')
+          return
+        }
+        const { user: profile } = await res.json()
+        if (profile.role !== 'admin' && profile.role !== 'mechanic') {
+          router.push('/login')
+          return
+        }
+        const normalizedUser = {
+          id: profile.id,
+          email: profile.email,
+          role: profile.role,
+          name: profile.name,
+        }
+        localStorage.setItem('user', JSON.stringify(normalizedUser))
+        setUser(normalizedUser)
+        setAuthReady(true)
+      } catch (err) {
+        router.push('/login')
+      }
     }
-    const parsedUser = JSON.parse(userData)
-    if (parsedUser.role !== 'admin' && parsedUser.role !== 'mechanic') {
-      router.push('/login')
-      return
-    }
-    setUser(parsedUser)
-    setAuthReady(true)
+
+    bootstrapUser()
   }, [router])
 
   // Optimized query functions with better caching
