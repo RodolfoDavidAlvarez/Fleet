@@ -4,24 +4,25 @@ import { QueryClient } from '@tanstack/react-query'
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Cache data for 5 minutes
-      staleTime: 5 * 60 * 1000,
-      // Keep data in cache for 15 minutes (longer for better performance)
-      gcTime: 15 * 60 * 1000,
-      // Retry failed requests 2 times
-      retry: 2,
-      // Refetch on window focus for fresh data (less aggressive)
-      refetchOnWindowFocus: 'always',
-      // Remove aggressive background refresh - let components control this
+      // Data is considered stale immediately to ensure freshness, 
+      // but will be served from cache while refetching
+      staleTime: 0,
+      // Keep data in cache for 5 minutes
+      gcTime: 5 * 60 * 1000,
+      // Retry failed requests 1 time to fail fast
+      retry: 1,
+      // Refetch on window focus to ensure data consistency
+      refetchOnWindowFocus: true,
+      // Remove aggressive background refresh
       refetchInterval: false,
-      // Faster refetch on reconnect
+      // Refetch on reconnect
       refetchOnReconnect: 'always',
-      // Enable background updates when component is active
+      // No background updates by default
       refetchIntervalInBackground: false,
     },
     mutations: {
-      // Retry mutations once on failure
-      retry: 1,
+      // No retries for mutations to prevent duplicate actions
+      retry: 0,
     },
   },
 })
@@ -49,12 +50,12 @@ export const prefetchQueries = {
       queryClient.prefetchQuery({
         queryKey: queryKeys.dashboardStats,
         queryFn: () => fetch('/api/dashboard').then(res => res.json()),
-        staleTime: 2 * 60 * 1000, // 2 minutes for dashboard
+        staleTime: 10 * 1000, // 10 seconds
       }),
       queryClient.prefetchQuery({
         queryKey: ['dashboard-jobs'],
         queryFn: () => fetch('/api/jobs').then(res => res.json()),
-        staleTime: 1 * 60 * 1000, // 1 minute for jobs
+        staleTime: 10 * 1000,
       }),
     ]
     return Promise.allSettled(queries)
@@ -65,7 +66,7 @@ export const prefetchQueries = {
     return queryClient.prefetchQuery({
       queryKey: queryKeys.vehicles,
       queryFn: () => fetch('/api/vehicles').then(res => res.json()),
-      staleTime: 3 * 60 * 1000, // 3 minutes for vehicles
+      staleTime: 10 * 1000,
     })
   },
 
@@ -74,7 +75,7 @@ export const prefetchQueries = {
     return queryClient.prefetchQuery({
       queryKey: queryKeys.repairRequests(),
       queryFn: () => fetch('/api/repair-requests').then(res => res.json()),
-      staleTime: 1 * 60 * 1000, // 1 minute for repairs (more dynamic)
+      staleTime: 10 * 1000,
     })
   },
 
@@ -83,7 +84,7 @@ export const prefetchQueries = {
     return queryClient.prefetchQuery({
       queryKey: queryKeys.serviceRecords,
       queryFn: () => fetch('/api/service-records').then(res => res.json()),
-      staleTime: 2 * 60 * 1000, // 2 minutes for service records
+      staleTime: 10 * 1000,
     })
   },
 }

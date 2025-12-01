@@ -10,3 +10,5 @@ ADD COLUMN IF NOT EXISTS is_immediate BOOLEAN DEFAULT false;
 
 
 
+
+

@@ -18,3 +18,5 @@ COMMENT ON COLUMN calendar_settings.advance_booking_window IS 'Number of hours o
 COMMENT ON COLUMN calendar_settings.advance_booking_unit IS 'Unit for advance booking window: hours or days';
 
 
+
+

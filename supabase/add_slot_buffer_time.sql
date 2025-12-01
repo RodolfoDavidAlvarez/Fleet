@@ -13,3 +13,5 @@ WHERE slot_buffer_time IS NULL;
 COMMENT ON COLUMN calendar_settings.slot_buffer_time IS 'Buffer time in minutes between booking slots (e.g., 15 minutes means 15 min gap between slots)';
 
 
+
+

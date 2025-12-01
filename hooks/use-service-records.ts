@@ -13,7 +13,8 @@ export function useServiceRecords() {
       const data = await response.json()
       return data.records || []
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes - service records change less frequently
+    // Keep previous data visible during refetch
+    placeholderData: (prev) => prev ?? [],
     select: (data) => {
       // Sort by date for consistent UI
       return data.sort((a: ServiceRecord, b: ServiceRecord) => 
