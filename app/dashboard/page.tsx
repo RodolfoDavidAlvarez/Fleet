@@ -19,7 +19,6 @@ export default function UnifiedDashboard() {
   const queryClient = useQueryClient()
   const [user, setUser] = useState<any>(null)
   const [authReady, setAuthReady] = useState(false)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   useEffect(() => {
     const bootstrapUser = async () => {
@@ -75,7 +74,7 @@ export default function UnifiedDashboard() {
       return data
     },
     enabled: authReady,
-    staleTime: 2 * 60 * 1000, // 2 minutes for stats
+    staleTime: 30 * 1000, // 30 seconds for stats
     select: useCallback((data: { stats: DashboardStats }) => data, [])
   })
 
@@ -90,7 +89,7 @@ export default function UnifiedDashboard() {
       return data
     },
     enabled: authReady,
-    staleTime: 1 * 60 * 1000, // 1 minute for jobs
+    staleTime: 30 * 1000, // 30 seconds for jobs
     select: useCallback((data: { jobs: any[] }) => data.jobs.slice(0, 5), []) // Limit to 5 jobs
   })
 
@@ -105,7 +104,7 @@ export default function UnifiedDashboard() {
       return data
     },
     enabled: authReady,
-    staleTime: 1 * 60 * 1000, // 1 minute for repairs
+    staleTime: 30 * 1000, // 30 seconds for repairs
     select: useCallback((data: { requests: RepairRequest[] }) => data.requests, [])
   })
 
@@ -136,7 +135,7 @@ export default function UnifiedDashboard() {
       showBookingsSkeleton: bookings.length === 0 && (statsQuery.isLoading || isInitialLoading)
     }
   }, [
-    statsQuery.data?.stats, 
+    statsQuery.data, 
     jobsQuery.data, 
     repairsQuery.data,
     statsQuery.isLoading,
@@ -150,12 +149,17 @@ export default function UnifiedDashboard() {
     repairsQuery.error
   ])
 
-  // Update last updated timestamp
-  useEffect(() => {
-    if (computedData.stats || computedData.jobs.length || computedData.repairRequests.length) {
-      setLastUpdated(new Date())
-    }
-  }, [computedData.stats, computedData.jobs.length, computedData.repairRequests.length])
+  // Derived last updated time from queries
+  const lastUpdated = useMemo(() => {
+    const times = [
+      statsQuery.dataUpdatedAt,
+      jobsQuery.dataUpdatedAt,
+      repairsQuery.dataUpdatedAt
+    ].filter(Boolean) as number[]
+    
+    if (times.length === 0) return null
+    return new Date(Math.max(...times))
+  }, [statsQuery.dataUpdatedAt, jobsQuery.dataUpdatedAt, repairsQuery.dataUpdatedAt])
 
   const {
     stats,

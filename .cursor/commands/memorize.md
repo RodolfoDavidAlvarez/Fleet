@@ -17,3 +17,5 @@ Full files make the app bulky unnecessarily. Git is the proper place for full fi
   - Interact/migrate data through the CLI for database supabase or other
   - USE CLI for vercel logs and more
 
+
+

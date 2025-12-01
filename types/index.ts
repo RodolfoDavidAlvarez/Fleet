@@ -153,7 +153,16 @@ export interface DashboardStats {
   recentBookings: Booking[]
   vehiclesByStatus: Record<string, number>
   maintenanceCostTrend: { date: string; cost: number }[]
-  bookingTrend: { date: string; count: number }[]
+  bookingTrend: { date: string; count: number; completed: number }[]
+  bookingStatusBreakdown: { status: string; count: number }[]
+  serviceTypeBreakdown: { type: string; count: number }[]
+  jobStatusBreakdown: { status: string; count: number }[]
+  jobPriorityBreakdown: { priority: string; count: number }[]
+  repairUrgencyBreakdown: { urgency: string; count: number }[]
+  departmentVehicleBreakdown: { department: string; count: number }[]
+  topVehiclesByMaintenanceCost: { vehicleId: string; label: string; cost: number }[]
+  avgBookingLeadTimeDays: number
+  openRepairAgingDays: number
 }
 
 export type RepairRequestStatus =
@@ -211,5 +220,4 @@ export interface RepairReport {
   totalCost?: number
   createdAt: string
 }
-
 

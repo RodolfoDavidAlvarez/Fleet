@@ -14,8 +14,8 @@ export function useRepairs(status?: string) {
       const data = await response.json()
       return data.requests || []
     },
-    // Keep 30 seconds fresh, cache for 5 min
-    staleTime: 30 * 1000, 
+    // Keep previous data visible during refetch
+    placeholderData: (prev) => prev ?? [],
   })
 }
 

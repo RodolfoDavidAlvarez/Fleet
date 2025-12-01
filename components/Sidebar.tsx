@@ -20,7 +20,6 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { prefetchQueries } from '@/lib/query-client'
 
 interface SidebarProps {
   role: 'admin' | 'mechanic'
@@ -78,25 +77,6 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
     }
   }, [])
 
-  // Optimized prefetching on hover
-  const handleLinkHover = useCallback((href: string) => {
-    // Prefetch data for common routes
-    switch (href) {
-      case '/dashboard':
-        prefetchQueries.dashboard().catch(console.warn)
-        break
-      case '/admin/vehicles':
-        prefetchQueries.vehicles().catch(console.warn)
-        break
-      case '/repairs':
-        prefetchQueries.repairs().catch(console.warn)
-        break
-      case '/service-records':
-        prefetchQueries.serviceRecords().catch(console.warn)
-        break
-    }
-  }, [])
-
   // Close sidebar on mobile when route changes
   useEffect(() => {
     if (window.innerWidth < 1024 && onClose) {
@@ -116,7 +96,7 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed lg:sticky top-0 h-screen flex flex-col surface-primary border-r border-[var(--border)] transition-all duration-300 z-50",
+        "fixed lg:sticky top-0 h-screen flex flex-col surface-primary border-r border-[var(--border)] transition-all duration-300 z-[100]",
         collapsed ? "w-16" : "w-64",
         isOpen ? "left-0" : "-left-64 lg:left-0"
       )}>
@@ -181,8 +161,8 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
         </button>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto no-scrollbar">
-          {links.map((link, index) => {
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto no-scrollbar relative z-10">
+          {links.map((link) => {
             const Icon = link.icon
             const isActive = pathname === link.href
             
@@ -190,7 +170,6 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
               <Link
                 key={link.href}
                 href={link.href}
-                onMouseEnter={() => handleLinkHover(link.href)}
                 className={cn(
                   'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group',
                   isActive
@@ -198,30 +177,27 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
                     : 'text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]',
                   collapsed && 'justify-center'
                 )}
-                style={{
-                  animationDelay: `${index * 50}ms`
-                }}
               >
                 {isActive && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-[var(--primary-500)] to-[var(--primary-600)] opacity-10 rounded-lg" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[var(--primary-500)] to-[var(--primary-600)] opacity-10 rounded-lg pointer-events-none" />
                 )}
                 
                 <Icon className={cn(
-                  'h-5 w-5 flex-shrink-0 z-10 transition-transform group-hover:scale-110',
+                  'h-5 w-5 flex-shrink-0 relative z-20 transition-transform group-hover:scale-110',
                   isActive ? 'text-[var(--primary-600)]' : ''
                 )} />
                 
                 {!collapsed && (
-                  <span className="truncate z-10 animate-fade-in">{link.label}</span>
+                  <span className="truncate relative z-20">{link.label}</span>
                 )}
                 
                 {isActive && !collapsed && (
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-[var(--primary-500)] rounded-l-full" />
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-[var(--primary-500)] rounded-l-full z-20" />
                 )}
                 
                 {/* Tooltip for collapsed state */}
                 {collapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-md text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-md text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
                     {link.label}
                   </div>
                 )}

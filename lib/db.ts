@@ -855,6 +855,38 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const date = new Date();
   date.setMonth(date.getMonth() - 6);
   const sixMonthsAgo = date.toISOString();
+  const monthBuckets = Array.from({ length: 6 }).map((_, idx) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - (5 - idx));
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+
+  const monthKey = (rawDate: string | Date | null | undefined) => {
+    if (!rawDate) return null;
+    const d = new Date(rawDate);
+    if (isNaN(d.getTime())) return null;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  };
+
+  const aggregateByMonth = (rows: any[], dateField: string, valueField?: string) => {
+    const map: Record<string, number> = {};
+    rows.forEach((row) => {
+      const key = monthKey(row?.[dateField]);
+      if (!key) return;
+      const value = valueField ? Number(row?.[valueField]) || 0 : 1;
+      map[key] = (map[key] || 0) + value;
+    });
+    return map;
+  };
+
+  const countByField = (rows: any[], field: string, fallback = "Unspecified") => {
+    const counts: Record<string, number> = {};
+    rows.forEach((row) => {
+      const value = row?.[field] || fallback;
+      counts[value] = (counts[value] || 0) + 1;
+    });
+    return counts;
+  };
 
   const [
     { count: totalVehicles },
@@ -862,11 +894,11 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { count: vehiclesInService },
     { count: totalBookings },
     { count: pendingBookings },
-    { count: completedJobs },
+    { count: completedJobsCount },
     { count: totalMechanics },
     { count: availableMechanics },
     { count: totalRepairRequests },
-    { count: openRepairRequests },
+    { count: openRepairRequestsCount },
     { count: waitingBookingRepairRequests },
     { count: completedRepairRequests },
     { count: urgentRepairRequests },
@@ -874,6 +906,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { data: recentBookingsData },
     { data: vehiclesData },
     { data: bookingsTrendData },
+    { data: repairRequestsData },
   ] = await Promise.all([
     supabase.from("vehicles").select("*", { count: "exact", head: true }),
     supabase.from("vehicles").select("*", { count: "exact", head: true }).eq("status", "active"),
@@ -895,13 +928,15 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .select("*", { count: "exact", head: true })
       .in("urgency", ["high", "critical"])
       .neq("status", "completed"),
-    supabase.from("jobs").select("total_cost, created_at").eq("status", "completed"),
+    supabase.from("jobs").select("id, total_cost, created_at, status, priority, vehicle_id"),
     supabase.from("bookings").select("*").order("created_at", { ascending: false }).limit(5),
-    supabase.from("vehicles").select("status"),
-    supabase.from("bookings").select("created_at").gte("created_at", sixMonthsAgo),
+    supabase.from("vehicles").select("id, status, department, vehicle_number, license_plate, make, model"),
+    supabase.from("bookings").select("created_at, status, service_type, scheduled_date").gte("created_at", sixMonthsAgo),
+    supabase.from("repair_requests").select("status, urgency, division, created_at").gte("created_at", sixMonthsAgo),
   ]);
 
-  const totalMaintenanceCost = (jobsData || []).reduce((sum, job) => sum + (job.total_cost || 0), 0);
+  const completedJobRows = (jobsData || []).filter((job) => job.status === "completed");
+  const totalMaintenanceCost = completedJobRows.reduce((sum, job) => sum + (job.total_cost || 0), 0);
   const recentBookings = (recentBookingsData || []).map(rowToBooking);
 
   const vehiclesByStatus: Record<string, number> = {};
@@ -910,35 +945,114 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     vehiclesByStatus[status] = (vehiclesByStatus[status] || 0) + 1;
   });
 
-  // Helper for grouping by month (YYYY-MM)
-  const groupByMonth = (data: any[], dateField: string, valueField?: string) => {
-    const groups: Record<string, number> = {};
-    data.forEach((item) => {
-      if (!item[dateField]) return;
-      const date = new Date(item[dateField]);
-      // simple check to ensure we only include valid dates within the last ~6 months range if desired
-      // but the query for bookings already filtered. For jobs we filtered in JS below.
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      
-      if (valueField) {
-        groups[key] = (groups[key] || 0) + (item[valueField] || 0);
-      } else {
-        groups[key] = (groups[key] || 0) + 1;
-      }
-    });
-    
-    return Object.entries(groups)
-      .map(([date, value]) => ({ date, value }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  };
+  const departmentVehicleBreakdown = Object.entries(
+    (vehiclesData || []).reduce((acc, vehicle) => {
+      const key = vehicle.department || "Unassigned";
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  )
+    .map(([department, count]) => ({ department, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
 
   // Filter jobs for the last 6 months for the trend
-  const recentJobs = (jobsData || []).filter(job => job.created_at >= sixMonthsAgo);
-  const maintenanceCostTrend = groupByMonth(recentJobs, "created_at", "total_cost")
-    .map((item) => ({ date: item.date, cost: item.value }));
+  const recentJobs = completedJobRows.filter((job) => job.created_at >= sixMonthsAgo);
+  const maintenanceCostByMonth = aggregateByMonth(recentJobs, "created_at", "total_cost");
+  const maintenanceCostTrend = monthBuckets.map((month) => ({
+    date: month,
+    cost: maintenanceCostByMonth[month] || 0,
+  }));
 
-  const bookingTrend = groupByMonth(bookingsTrendData || [], "created_at")
-    .map((item) => ({ date: item.date, count: item.value }));
+  const bookingByMonth = aggregateByMonth(bookingsTrendData || [], "created_at");
+  const completedBookingsByMonth = aggregateByMonth(
+    (bookingsTrendData || []).filter((b) => b.status === "completed"),
+    "created_at"
+  );
+  const bookingTrend = monthBuckets.map((month) => ({
+    date: month,
+    count: bookingByMonth[month] || 0,
+    completed: completedBookingsByMonth[month] || 0,
+  }));
+
+  const bookingStatusBreakdown = Object.entries(countByField(bookingsTrendData || [], "status"))
+    .map(([status, count]) => ({ status, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const serviceTypeBreakdown = Object.entries(countByField(bookingsTrendData || [], "service_type", "Unspecified service"))
+    .map(([type, count]) => ({ type, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+
+  const activeJobs = (jobsData || []).filter(
+    (job) => job.status && !["completed", "cancelled"].includes(job.status)
+  );
+  const jobStatusBreakdown = Object.entries(countByField(activeJobs, "status"))
+    .map(([status, count]) => ({ status, count }))
+    .sort((a, b) => b.count - a.count);
+  const jobPriorityBreakdown = Object.entries(countByField(activeJobs, "priority"))
+    .map(([priority, count]) => ({ priority, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const openRepairRequestsList = (repairRequestsData || []).filter(
+    (req) => req.status && !["completed", "cancelled"].includes(req.status)
+  );
+  const repairUrgencyBreakdown = Object.entries(countByField(openRepairRequestsList, "urgency"))
+    .map(([urgency, count]) => ({ urgency, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const openRepairAges = openRepairRequestsList
+    .map((req) => {
+      const createdAt = req.created_at ? new Date(req.created_at).getTime() : null;
+      if (!createdAt) return null;
+      const days = (Date.now() - createdAt) / (1000 * 60 * 60 * 24);
+      return Number.isFinite(days) && days >= 0 ? days : null;
+    })
+    .filter((val): val is number => val !== null);
+  const openRepairAgingDays =
+    openRepairAges.length > 0
+      ? Math.round((openRepairAges.reduce((sum, days) => sum + days, 0) / openRepairAges.length) * 10) / 10
+      : 0;
+
+  const bookingLeadTimes = (bookingsTrendData || [])
+    .map((booking) => {
+      if (!booking.scheduled_date || !booking.created_at) return null;
+      const created = new Date(booking.created_at).getTime();
+      const scheduled = new Date(booking.scheduled_date).getTime();
+      if (!Number.isFinite(created) || !Number.isFinite(scheduled)) return null;
+      const deltaDays = (scheduled - created) / (1000 * 60 * 60 * 24);
+      return deltaDays >= 0 ? deltaDays : null;
+    })
+    .filter((val): val is number => val !== null);
+  const avgBookingLeadTimeDays =
+    bookingLeadTimes.length > 0
+      ? Math.round((bookingLeadTimes.reduce((sum, days) => sum + days, 0) / bookingLeadTimes.length) * 10) / 10
+      : 0;
+
+  const vehicleLabelMap = new Map(
+    (vehiclesData || []).map((vehicle) => {
+      const label =
+        vehicle.vehicle_number ||
+        vehicle.license_plate ||
+        (vehicle.make && vehicle.model ? `${vehicle.make} ${vehicle.model}` : null);
+      return [vehicle.id, label || `Vehicle ${vehicle.id?.slice(0, 8) || ""}`];
+    })
+  );
+
+  const costByVehicle: Record<string, number> = {};
+  completedJobRows.forEach((job) => {
+    if (!job.vehicle_id) return;
+    costByVehicle[job.vehicle_id] = (costByVehicle[job.vehicle_id] || 0) + (job.total_cost || 0);
+  });
+
+  const topVehiclesByMaintenanceCost = Object.entries(costByVehicle)
+    .map(([vehicleId, cost]) => ({
+      vehicleId,
+      cost,
+      label: vehicleLabelMap.get(vehicleId) || `Vehicle ${vehicleId.slice(0, 8)}`,
+    }))
+    .sort((a, b) => b.cost - a.cost)
+    .slice(0, 5);
 
   return {
     totalVehicles: totalVehicles || 0,
@@ -946,11 +1060,11 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     vehiclesInService: vehiclesInService || 0,
     totalBookings: totalBookings || 0,
     pendingBookings: pendingBookings || 0,
-    completedJobs: completedJobs || 0,
+    completedJobs: completedJobsCount || 0,
     totalMechanics: totalMechanics || 0,
     availableMechanics: availableMechanics || 0,
     totalRepairRequests: totalRepairRequests || 0,
-    openRepairRequests: openRepairRequests || 0,
+    openRepairRequests: openRepairRequestsCount || 0,
     waitingBookingRepairRequests: waitingBookingRepairRequests || 0,
     completedRepairRequests: completedRepairRequests || 0,
     urgentRepairRequests: urgentRepairRequests || 0,
@@ -959,5 +1073,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     vehiclesByStatus,
     maintenanceCostTrend,
     bookingTrend,
+    bookingStatusBreakdown,
+    serviceTypeBreakdown,
+    jobStatusBreakdown,
+    jobPriorityBreakdown,
+    repairUrgencyBreakdown,
+    departmentVehicleBreakdown,
+    topVehiclesByMaintenanceCost,
+    avgBookingLeadTimeDays,
+    openRepairAgingDays,
   };
 }
