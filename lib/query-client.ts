@@ -4,19 +4,18 @@ import { QueryClient } from '@tanstack/react-query'
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Data is considered stale immediately to ensure freshness, 
-      // but will be served from cache while refetching
-      staleTime: 0,
-      // Keep data in cache for 5 minutes
-      gcTime: 5 * 60 * 1000,
+      // Data is fresh for 30 seconds, reducing unnecessary refetches
+      staleTime: 30 * 1000,
+      // Keep data in cache for 10 minutes
+      gcTime: 10 * 60 * 1000,
       // Retry failed requests 1 time to fail fast
       retry: 1,
-      // Refetch on window focus to ensure data consistency
-      refetchOnWindowFocus: true,
+      // Only refetch on window focus if data is stale (not constantly)
+      refetchOnWindowFocus: false,
       // Remove aggressive background refresh
       refetchInterval: false,
-      // Refetch on reconnect
-      refetchOnReconnect: 'always',
+      // Refetch on reconnect only if stale
+      refetchOnReconnect: true,
       // No background updates by default
       refetchIntervalInBackground: false,
     },
@@ -40,6 +39,8 @@ export const queryKeys = {
   serviceRecords: ['service-records'] as const,
   dashboardStats: ['dashboard-stats'] as const,
   drivers: ['drivers'] as const,
+  adminUsers: ['admin-users'] as const,
+  calendarSettings: ['calendar-settings'] as const,
 }
 
 // Performance utilities for prefetching

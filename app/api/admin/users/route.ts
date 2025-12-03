@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const roleFilter = searchParams.get("role");
 
-    // Build query - filter by role if specified, otherwise get all users
-    let query = supabase.from("users").select("*");
+    // Build query - only select needed fields for better performance
+    let query = supabase.from("users").select("id, email, name, role, phone, approval_status, last_seen_at, created_at, notify_on_repair");
 
     // If role filter is specified, apply it
     if (roleFilter) {
@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const { data: users, error } = await query.order("created_at", { ascending: false });
+    // Limit results to prevent loading too many users
+    const { data: users, error } = await query.order("created_at", { ascending: false }).limit(500);
 
     if (error) {
       console.error("Error fetching users:", error);

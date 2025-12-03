@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Users, Bell, CheckCircle, Clock, Send, Edit, Calendar, UserPlus } from "lucide-react";
+import { queryKeys } from "@/lib/query-client";
 
 interface User {
   id: string;
@@ -23,20 +25,62 @@ interface User {
 function AdminSettingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<any>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  
+
   // Get active tab from URL, default to 'users'
-  const tabParam = searchParams.get('tab');
-  const activeTab: "users" | "notifications" | "calendar" = 
-    (tabParam === 'calendar' || tabParam === 'notifications' || tabParam === 'users') 
-      ? tabParam 
-      : 'users';
+  const tabParam = searchParams.get("tab");
+  const activeTab: "users" | "notifications" | "calendar" =
+    tabParam === "calendar" || tabParam === "notifications" || tabParam === "users" ? tabParam : "users";
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteForm, setInviteForm] = useState({
+    email: "",
+    role: "driver",
+  });
+
+  // Load users with React Query for caching
+  const {
+    data: usersData,
+    isLoading: usersLoading,
+    refetch: refetchUsers,
+  } = useQuery({
+    queryKey: queryKeys.adminUsers,
+    queryFn: async () => {
+      const res = await fetch("/api/admin/users");
+      if (!res.ok) throw new Error("Failed to load users");
+      const data = await res.json();
+      return data.users || [];
+    },
+    staleTime: 60 * 1000, // Cache for 1 minute
+    placeholderData: (prev) => prev ?? [],
+  });
+  const users = usersData || [];
+
+  // Load calendar settings with React Query
+  const { data: calendarSettingsData } = useQuery({
+    queryKey: queryKeys.calendarSettings,
+    queryFn: async () => {
+      const res = await fetch("/api/calendar/settings");
+      const data = await res.json();
+      return (
+        data.settings || {
+          maxBookingsPerWeek: 5,
+          startTime: "06:00",
+          endTime: "14:00",
+          slotDuration: 30,
+          slotBufferTime: 0,
+          workingDays: [1, 2, 3, 4, 5],
+          advanceBookingWindow: 0,
+          advanceBookingUnit: "days",
+        }
+      );
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
   const [calendarSettings, setCalendarSettings] = useState({
     maxBookingsPerWeek: 5,
     startTime: "06:00",
@@ -47,11 +91,22 @@ function AdminSettingsPageContent() {
     advanceBookingWindow: 0,
     advanceBookingUnit: "days" as "hours" | "days",
   });
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteForm, setInviteForm] = useState({
-    email: "",
-    role: "driver",
-  });
+
+  // Update calendar settings when data loads
+  useEffect(() => {
+    if (calendarSettingsData) {
+      setCalendarSettings({
+        maxBookingsPerWeek: calendarSettingsData.maxBookingsPerWeek || 5,
+        startTime: calendarSettingsData.startTime || "06:00",
+        endTime: calendarSettingsData.endTime || "14:00",
+        slotDuration: calendarSettingsData.slotDuration || 30,
+        slotBufferTime: calendarSettingsData.slotBufferTime ?? 0,
+        workingDays: calendarSettingsData.workingDays || [1, 2, 3, 4, 5],
+        advanceBookingWindow: calendarSettingsData.advanceBookingWindow ?? 0,
+        advanceBookingUnit: calendarSettingsData.advanceBookingUnit || "days",
+      });
+    }
+  }, [calendarSettingsData]);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -70,50 +125,38 @@ function AdminSettingsPageContent() {
       return;
     }
     setUser(parsedUser);
-    loadUsers();
-    loadCalendarSettings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
-  const loadCalendarSettings = async () => {
-    try {
-      const res = await fetch("/api/calendar/settings");
-      const data = await res.json();
-      if (data.settings) {
-        setCalendarSettings({
-          maxBookingsPerWeek: data.settings.maxBookingsPerWeek || 5,
-          startTime: data.settings.startTime || "06:00",
-          endTime: data.settings.endTime || "14:00",
-          slotDuration: data.settings.slotDuration || 30,
-          slotBufferTime: data.settings.slotBufferTime ?? 0,
-          workingDays: data.settings.workingDays || [1, 2, 3, 4, 5],
-          advanceBookingWindow: data.settings.advanceBookingWindow ?? 0,
-          advanceBookingUnit: data.settings.advanceBookingUnit || "days",
-        });
+  // Mutation for saving calendar settings
+  const saveCalendarSettingsMutation = useMutation({
+    mutationFn: async (settings: typeof calendarSettings) => {
+      const res = await fetch("/api/calendar/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save calendar settings");
       }
-    } catch (err) {
-      console.error("Error loading calendar settings:", err);
-    }
-  };
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.calendarSettings });
+      setSuccess("Calendar settings saved successfully");
+      setTimeout(() => setSuccess(null), 3000);
+    },
+    onError: (err: Error) => {
+      setError(err.message || "Failed to save calendar settings");
+    },
+  });
 
   const handleSaveCalendarSettings = async () => {
     setSaving(true);
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch("/api/calendar/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(calendarSettings),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to save calendar settings");
-      }
-      setSuccess("Calendar settings saved successfully");
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save calendar settings");
+      await saveCalendarSettingsMutation.mutateAsync(calendarSettings);
     } finally {
       setSaving(false);
     }
@@ -144,64 +187,59 @@ function AdminSettingsPageContent() {
     }
   };
 
-  const loadUsers = async () => {
-    try {
-      const res = await fetch("/api/admin/users");
-      if (!res.ok) throw new Error("Failed to load users");
-      const data = await res.json();
-      setUsers(data.users || []);
-    } catch (err) {
-      console.error("Error loading users:", err);
-      setError("Failed to load users");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-  const handleUpdateUser = async (
-    userId: string, 
-    updates: { role?: string; approval_status?: string; approvalStatus?: string; notifyOnRepair?: boolean }
-  ) => {
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const payload: any = { userId };
-      
-      if (updates.role) {
-        payload.role = updates.role;
-      }
-      if (updates.approvalStatus || updates.approval_status) {
-        payload.approvalStatus = updates.approvalStatus || updates.approval_status;
-      }
-      if (typeof updates.notifyOnRepair === 'boolean') {
-        payload.notifyOnRepair = updates.notifyOnRepair;
-      }
-
+  // Mutation for updating users
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ userId, updates }: { userId: string; updates: any }) => {
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ userId, ...updates }),
       });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || "Failed to update user");
       }
-      await loadUsers();
-      setEditingUser(null);
-      if (updates.notifyOnRepair !== undefined) {
-        setSuccess("Notification preferences updated");
-      } else {
-        setSuccess("User updated successfully");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers });
+    },
+  });
+
+  const handleUpdateUser = useCallback(
+    async (userId: string, updates: { role?: string; approval_status?: string; approvalStatus?: string; notifyOnRepair?: boolean }) => {
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+      try {
+        const payload: any = {};
+
+        if (updates.role) {
+          payload.role = updates.role;
+        }
+        if (updates.approvalStatus || updates.approval_status) {
+          payload.approvalStatus = updates.approvalStatus || updates.approval_status;
+        }
+        if (typeof updates.notifyOnRepair === "boolean") {
+          payload.notifyOnRepair = updates.notifyOnRepair;
+        }
+
+        await updateUserMutation.mutateAsync({ userId, updates: payload });
+        setEditingUser(null);
+        if (updates.notifyOnRepair !== undefined) {
+          setSuccess("Notification preferences updated");
+        } else {
+          setSuccess("User updated successfully");
+        }
+        setTimeout(() => setSuccess(null), 3000);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to update user");
+      } finally {
+        setSaving(false);
       }
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update user");
-    } finally {
-      setSaving(false);
-    }
-  };
+    },
+    [updateUserMutation]
+  );
 
   const handlePasswordReset = async (userId: string, email: string) => {
     setSaving(true);
@@ -258,7 +296,7 @@ function AdminSettingsPageContent() {
     );
   };
 
-  if (!user || loading) {
+  if (!user || usersLoading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
 
@@ -279,7 +317,7 @@ function AdminSettingsPageContent() {
               <nav className="-mb-px flex space-x-8">
                 <button
                   onClick={() => {
-                    router.push('/admin/settings?tab=users', { scroll: false });
+                    router.push("/admin/settings?tab=users", { scroll: false });
                   }}
                   className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === "users"
@@ -294,7 +332,7 @@ function AdminSettingsPageContent() {
                 </button>
                 <button
                   onClick={() => {
-                    router.push('/admin/settings?tab=notifications', { scroll: false });
+                    router.push("/admin/settings?tab=notifications", { scroll: false });
                   }}
                   className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === "notifications"
@@ -309,7 +347,7 @@ function AdminSettingsPageContent() {
                 </button>
                 <button
                   onClick={() => {
-                    router.push('/admin/settings?tab=calendar', { scroll: false });
+                    router.push("/admin/settings?tab=calendar", { scroll: false });
                   }}
                   className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === "calendar"
@@ -665,8 +703,8 @@ function AdminSettingsPageContent() {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {users
-                          .filter((u) => u.role === "admin" || u.role === "mechanic")
-                          .map((u) => (
+                          .filter((u: User) => u.role === "admin" || u.role === "mechanic")
+                          .map((u: User) => (
                             <tr key={u.id} className="hover:bg-gray-50">
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div>
@@ -825,14 +863,16 @@ function AdminSettingsPageContent() {
 
 export default function AdminSettingsPage() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading settings...</p>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading settings...</p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <AdminSettingsPageContent />
     </Suspense>
   );
