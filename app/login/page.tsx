@@ -94,10 +94,12 @@ export default function LoginPage() {
 
       // Store user info in localStorage for legacy compatibility (if needed by other components)
       // But primarily we rely on cookies now.
-      localStorage.setItem('user', JSON.stringify({ 
-        ...data.user, 
-        role: profile.role, 
-        name: profile.name || data.user.user_metadata?.name 
+      localStorage.setItem('user', JSON.stringify({
+        id: profile.id,
+        email: profile.email,
+        role: profile.role,
+        name: profile.name || data.user.user_metadata?.name,
+        approval_status: profile.approval_status
       }))
 
       // Reset attempt counter on success

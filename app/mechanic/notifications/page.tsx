@@ -43,10 +43,9 @@ export default function NotificationsPage() {
         // Filter drivers that have phone numbers
         const driversWithPhone = (data.drivers || []).filter((d: User) => d.phone && d.phone.trim() !== '')
         setDrivers(driversWithPhone)
-        setError(null)
       } catch (err) {
         console.error('Error fetching drivers:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load drivers. Please try again.')
+        showToast(err instanceof Error ? err.message : 'Failed to load drivers. Please try again.', 'error')
       } finally {
         setLoading(false)
       }
@@ -77,18 +76,16 @@ export default function NotificationsPage() {
 
   const handleSendSMS = async () => {
     if (selectedDrivers.size === 0) {
-      setError('Please select at least one driver')
+      showToast('Please select at least one driver', 'error')
       return
     }
 
     if (!message.trim()) {
-      setError('Please enter a message')
+      showToast('Please enter a message', 'error')
       return
     }
 
     setSending(true)
-    setError(null)
-    setSuccess(null)
     setResults([])
 
     try {
