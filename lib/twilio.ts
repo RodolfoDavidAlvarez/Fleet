@@ -109,8 +109,8 @@ export async function sendRepairSubmissionNotice(
 ): Promise<boolean> {
   const message =
     details.language === 'es'
-      ? `Solicitud de reparación recibida (#${details.requestId}).\n${details.summary}\nResponder STOP para salir / HELP para ayuda.`
-      : `Repair request received (#${details.requestId}).\n${details.summary}\nReply STOP to opt out / HELP for help.`
+      ? `Solicitud de reparación recibida (#${details.requestId}). Su solicitud ha sido enviada y será revisada pronto.`
+      : `Repair request received (#${details.requestId}). Your request has been submitted and will be reviewed soon.`
   return sendSMS(phone, message)
 }
 
@@ -140,8 +140,8 @@ export async function sendRepairBookingLink(
 ) {
   const message =
     details.language === 'es'
-      ? `Agenda tu reparación (#${details.requestId}): ${details.link}\nMotivo: ${details.issueSummary}\n${details.suggestedSlot ? `Sugerencia: ${details.suggestedSlot}\n` : ''}Responder STOP para salir.`
-      : `Book your repair (#${details.requestId}): ${details.link}\nIssue: ${details.issueSummary}\n${details.suggestedSlot ? `Suggested: ${details.suggestedSlot}\n` : ''}Reply STOP to opt out.`
+      ? `Agenda tu reparación (#${details.requestId}): ${details.link}\nMotivo: ${details.issueSummary}${details.suggestedSlot ? `\nSugerencia: ${details.suggestedSlot}` : ''}`
+      : `Book your repair (#${details.requestId}): ${details.link}\nIssue: ${details.issueSummary}${details.suggestedSlot ? `\nSuggested: ${details.suggestedSlot}` : ''}`
   return sendSMS(phone, message)
 }
 

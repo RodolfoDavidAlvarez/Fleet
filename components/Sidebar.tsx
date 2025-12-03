@@ -8,7 +8,6 @@ import {
   Car,
   Calendar,
   Users,
-  BarChart3,
   Wrench,
   FileText,
   LogOut,
@@ -43,6 +42,7 @@ const mechanicOnlyLinks = [
 
 const adminOnlyLinks = [
   { href: '/admin/announcements', label: 'Announcements', icon: Megaphone },
+  { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) {
@@ -164,7 +164,9 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto no-scrollbar relative z-10">
           {links.map((link) => {
             const Icon = link.icon
-            const isActive = pathname === link.href
+            // Extract base path without query params for matching (pathname doesn't include query params)
+            const baseHref = link.href.split('?')[0]
+            const isActive = pathname === baseHref
             
             return (
               <Link

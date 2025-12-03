@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
 // Create a new notification
 export async function POST(request: NextRequest) {
   try {
-    const { title, message, type, recipientIds, recipientRoles } = await request.json()
+    const { title, message, type, recipientIds, recipientRoles, channel, templateId } = await request.json()
 
     if (!title || !message) {
       return NextResponse.json(
@@ -115,6 +115,17 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServerClient()
 
+    // If templateId is provided, update template usage stats
+    if (templateId) {
+      await supabase
+        .from('announcement_templates')
+        .update({
+          last_used_at: new Date().toISOString(),
+          use_count: supabase.rpc('increment', { row_id: templateId }),
+        })
+        .eq('id', templateId)
+    }
+
     // Create notification
     const { data: notification, error: notificationError } = await supabase
       .from('notifications')
@@ -122,6 +133,8 @@ export async function POST(request: NextRequest) {
         title,
         message,
         type: type || 'info',
+        channel: channel || 'in_app',
+        template_id: templateId || null,
         recipient_ids: recipientIds || [],
         recipient_roles: recipientRoles || [],
       })
@@ -136,9 +149,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If recipientIds are provided, create notification_recipients entries
-    if (recipientIds && recipientIds.length > 0) {
-      const recipients = recipientIds.map((userId: string) => ({
+    // Collect all recipient user IDs
+    let allRecipientIds: string[] = [...(recipientIds || [])]
+
+    // If recipientRoles are provided, find users with those roles
+    if (recipientRoles && recipientRoles.length > 0) {
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, phone')
+        .in('role', recipientRoles)
+
+      if (!usersError && users && users.length > 0) {
+        allRecipientIds = [...allRecipientIds, ...users.map((u) => u.id)]
+      }
+    }
+
+    // Remove duplicates
+    allRecipientIds = [...new Set(allRecipientIds)]
+
+    // Create notification_recipients entries
+    if (allRecipientIds.length > 0) {
+      const recipients = allRecipientIds.map((userId: string) => ({
         notification_id: notification.id,
         user_id: userId,
       }))
@@ -149,30 +180,53 @@ export async function POST(request: NextRequest) {
 
       if (recipientsError) {
         console.error('Error creating notification recipients:', recipientsError)
-        // Don't fail the request, just log the error
       }
     }
 
-    // If recipientRoles are provided, find users with those roles and create recipients
-    if (recipientRoles && recipientRoles.length > 0) {
-      const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select('id')
-        .in('role', recipientRoles)
+    // Send SMS if channel includes SMS
+    if ((channel === 'sms' || channel === 'both') && process.env.ENABLE_SMS === 'true') {
+      try {
+        // Get user phone numbers
+        const { data: users } = await supabase
+          .from('users')
+          .select('phone')
+          .in('id', allRecipientIds)
+          .not('phone', 'is', null)
 
-      if (!usersError && users && users.length > 0) {
-        const recipients = users.map((u) => ({
-          notification_id: notification.id,
-          user_id: u.id,
-        }))
+        if (users && users.length > 0) {
+          const phoneNumbers = users.map(u => u.phone).filter(Boolean)
 
-        const { error: recipientsError } = await supabase
-          .from('notification_recipients')
-          .insert(recipients)
+          // Send SMS to each recipient
+          const twilio = require('twilio')(
+            process.env.TWILIO_ACCOUNT_SID,
+            process.env.TWILIO_AUTH_TOKEN
+          )
 
-        if (recipientsError) {
-          console.error('Error creating role-based recipients:', recipientsError)
+          let sentCount = 0
+          for (const phone of phoneNumbers) {
+            try {
+              await twilio.messages.create({
+                body: `${title}\n\n${message}`,
+                from: process.env.TWILIO_PHONE_NUMBER,
+                to: phone,
+              })
+              sentCount++
+            } catch (smsError) {
+              console.error('Error sending SMS to', phone, smsError)
+            }
+          }
+
+          // Update notification with SMS stats
+          await supabase
+            .from('notifications')
+            .update({
+              sms_sent_count: sentCount,
+              sms_sent_at: new Date().toISOString(),
+            })
+            .eq('id', notification.id)
         }
+      } catch (smsError) {
+        console.error('Error sending SMS notifications:', smsError)
       }
     }
 

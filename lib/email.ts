@@ -708,7 +708,9 @@ export async function sendInvitationEmail(
   email: string,
   role: string
 ): Promise<boolean> {
-  const registerLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/register?email=${encodeURIComponent(email)}`
+  const registerLink = `${
+    process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  }/register?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role)}`
 
   const html = `
     <!DOCTYPE html>
@@ -732,6 +734,7 @@ export async function sendInvitationEmail(
         <div class="content">
           <p>Hello,</p>
           <p>You have been invited to join FleetPro Management System as a <strong>${role}</strong>.</p>
+          <p>After creating your account, it will remain <strong>Pending Approval</strong> until an administrator reviews and activates it.</p>
           <p>Please click the button below to create your account:</p>
           
           <p style="text-align: center;">

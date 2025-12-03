@@ -567,6 +567,67 @@ export default function RepairsPage() {
 
                 {!editing ? (
                   <>
+                    {/* AI Analysis Section - Only for Mechanics */}
+                    {(selected.aiSummary || selected.aiTags || selected.aiConfidence) && (
+                      <section className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border-2 border-indigo-200 p-5 shadow-md">
+                        <h3 className="text-sm font-bold text-indigo-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                            <BadgeCheck className="h-4 w-4 text-indigo-600" />
+                          </div>
+                          AI Analysis (For Mechanic Review)
+                        </h3>
+                        <div className="space-y-4">
+                          {selected.aiSummary && (
+                            <div>
+                              <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">AI Summary</p>
+                              <div className="bg-white border border-indigo-200 rounded-lg p-4 text-sm text-gray-800 leading-relaxed">
+                                {selected.aiSummary}
+                              </div>
+                            </div>
+                          )}
+
+                          {selected.aiTags && selected.aiTags.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">AI Tags</p>
+                              <div className="flex flex-wrap gap-2">
+                                {selected.aiTags.map((tag, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {selected.aiConfidence !== undefined && (
+                            <div>
+                              <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">AI Confidence</p>
+                              <div className="flex items-center gap-3">
+                                <div className="flex-1 bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${
+                                      selected.aiConfidence >= 0.8
+                                        ? "bg-green-500"
+                                        : selected.aiConfidence >= 0.6
+                                          ? "bg-yellow-500"
+                                          : "bg-orange-500"
+                                    }`}
+                                    style={{ width: `${selected.aiConfidence * 100}%` }}
+                                  />
+                                </div>
+                                <span className="text-sm font-bold text-gray-900 min-w-[3rem]">
+                                  {(selected.aiConfidence * 100).toFixed(0)}%
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </section>
+                    )}
+
                     {/* Read Only View */}
                     <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
                       <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">

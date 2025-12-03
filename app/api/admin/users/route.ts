@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 // Update user role or approval status
 export async function PATCH(request: NextRequest) {
   try {
-    const { userId, role, approvalStatus, notifyOnRepair } = await request.json();
+    const { userId, role, approvalStatus, approval_status, notifyOnRepair } = await request.json();
 
     if (!userId) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
@@ -57,6 +57,7 @@ export async function PATCH(request: NextRequest) {
 
     const supabase = createServerClient();
     const updates: any = {};
+    const normalizedApprovalStatus = approvalStatus || approval_status;
 
     if (role) {
       if (!["admin", "mechanic", "customer", "driver"].includes(role)) {
@@ -65,11 +66,11 @@ export async function PATCH(request: NextRequest) {
       updates.role = role;
     }
 
-    if (approvalStatus) {
-      if (!["pending_approval", "approved"].includes(approvalStatus)) {
+    if (normalizedApprovalStatus) {
+      if (!["pending_approval", "approved"].includes(normalizedApprovalStatus)) {
         return NextResponse.json({ error: "Invalid approval status" }, { status: 400 });
       }
-      updates.approval_status = approvalStatus;
+      updates.approval_status = normalizedApprovalStatus;
     }
     
     if (typeof notifyOnRepair === 'boolean') {
@@ -78,7 +79,7 @@ export async function PATCH(request: NextRequest) {
 
     // Check if we are approving the user
     let shouldSendEmail = false;
-    if (approvalStatus === 'approved') {
+    if (normalizedApprovalStatus === 'approved') {
       const { data: currentUser } = await supabase.from("users").select("approval_status").eq("id", userId).single();
       if (currentUser && currentUser.approval_status !== 'approved') {
         shouldSendEmail = true;

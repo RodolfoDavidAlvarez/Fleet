@@ -39,11 +39,38 @@ CREATE TABLE IF NOT EXISTS repair_requests (
 CREATE INDEX IF NOT EXISTS idx_vehicles_airtable_id ON vehicles(airtable_id);
 CREATE INDEX IF NOT EXISTS idx_vehicles_asset_number ON vehicles(asset_number);
 CREATE INDEX IF NOT EXISTS idx_users_airtable_id ON users(airtable_id);
-CREATE INDEX IF NOT EXISTS idx_repair_requests_status ON repair_requests(status);
-CREATE INDEX IF NOT EXISTS idx_repair_requests_priority ON repair_requests(priority);
-CREATE INDEX IF NOT EXISTS idx_repair_requests_vehicle_id ON repair_requests(vehicle_id);
-CREATE INDEX IF NOT EXISTS idx_repair_requests_assigned_to ON repair_requests(assigned_to);
+
+-- Only create repair_requests indexes if table exists and has the columns
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'repair_requests') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'repair_requests' AND column_name = 'status') THEN
+      CREATE INDEX IF NOT EXISTS idx_repair_requests_status ON repair_requests(status);
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'repair_requests' AND column_name = 'priority') THEN
+      CREATE INDEX IF NOT EXISTS idx_repair_requests_priority ON repair_requests(priority);
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'repair_requests' AND column_name = 'vehicle_id') THEN
+      CREATE INDEX IF NOT EXISTS idx_repair_requests_vehicle_id ON repair_requests(vehicle_id);
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'repair_requests' AND column_name = 'assigned_to') THEN
+      CREATE INDEX IF NOT EXISTS idx_repair_requests_assigned_to ON repair_requests(assigned_to);
+    END IF;
+  END IF;
+END $$;
 
 -- Add unique constraints where appropriate
-ALTER TABLE vehicles ADD CONSTRAINT IF NOT EXISTS unique_airtable_id UNIQUE (airtable_id);
-ALTER TABLE users ADD CONSTRAINT IF NOT EXISTS unique_user_airtable_id UNIQUE (airtable_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'unique_airtable_id'
+  ) THEN
+    ALTER TABLE vehicles ADD CONSTRAINT unique_airtable_id UNIQUE (airtable_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'unique_user_airtable_id'
+  ) THEN
+    ALTER TABLE users ADD CONSTRAINT unique_user_airtable_id UNIQUE (airtable_id);
+  END IF;
+END $$;

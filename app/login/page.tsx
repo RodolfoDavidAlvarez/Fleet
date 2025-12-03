@@ -5,7 +5,22 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import Footer from '@/components/Footer'
-import { Wrench, Mail, Lock, LogIn, Eye, EyeOff, UserPlus, Loader2 } from 'lucide-react'
+import { 
+  Wrench, 
+  Mail, 
+  Lock, 
+  LogIn, 
+  Eye, 
+  EyeOff, 
+  UserPlus, 
+  Loader2,
+  Navigation,
+  Calendar,
+  BarChart3,
+  FileText,
+  Shield,
+  Zap
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/toast'
 
@@ -106,8 +121,8 @@ export default function LoginPage() {
           {/* Left Side - Form */}
           <div className="w-full md:w-1/2 p-8 md:p-12">
             <div className="mb-8">
-              <div className="h-12 w-12 bg-primary-100 rounded-xl flex items-center justify-center mb-4 text-primary-600">
-                <Wrench className="h-6 w-6" />
+              <div className="h-14 w-14 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-primary-500/20">
+                <Shield className="h-7 w-7 text-white" />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
               <p className="text-gray-700 font-medium">Please sign in to your account</p>
@@ -150,7 +165,7 @@ export default function LoginPage() {
                     Forgot password?
                   </Link>
                 </div>
-                <div className="input-group">
+                <div className="input-group relative">
                   <span className="input-group-icon input-group-icon-left">
                     <Lock className="h-5 w-5" />
                   </span>
@@ -164,9 +179,13 @@ export default function LoginPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="input-group-icon input-group-icon-right pointer-events-auto text-gray-600 hover:text-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 rounded cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowPassword(!showPassword);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 rounded p-1 cursor-pointer z-10"
                     aria-label={showPassword ? "Hide password" : "Show password"}
+                    tabIndex={0}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -209,24 +228,32 @@ export default function LoginPage() {
               className="absolute inset-0 w-full h-full object-cover"
             />
             <div className="relative z-20 p-12 text-white space-y-6">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold">Fleet Management System</h2>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-12 w-12 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center">
+                    <Zap className="h-6 w-6 text-primary-400" />
+                  </div>
+                  <h2 className="text-3xl font-bold">Fleet Management System</h2>
+                </div>
                 <p className="text-gray-300 text-lg">Streamline your operations with our comprehensive management solution.</p>
               </div>
               <ul className="space-y-4">
                 {[
-                  'Real-time fleet tracking',
-                  'Automated maintenance scheduling',
-                  'Driver performance analytics',
-                  'Comprehensive reporting'
-                ].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <div className="h-6 w-6 rounded-full bg-primary-500/20 flex items-center justify-center">
-                      <div className="h-2 w-2 rounded-full bg-primary-400" />
-                    </div>
-                    <span className="text-gray-200">{item}</span>
-                  </li>
-                ))}
+                  { text: 'Real-time fleet tracking', icon: Navigation },
+                  { text: 'Automated maintenance scheduling', icon: Calendar },
+                  { text: 'Driver performance analytics', icon: BarChart3 },
+                  { text: 'Comprehensive reporting', icon: FileText }
+                ].map((item, i) => {
+                  const Icon = item.icon
+                  return (
+                    <li key={i} className="flex items-center gap-3 group">
+                      <div className="h-10 w-10 rounded-xl bg-primary-500/10 backdrop-blur-sm border border-primary-500/20 flex items-center justify-center group-hover:bg-primary-500/20 transition-all duration-200">
+                        <Icon className="h-5 w-5 text-primary-400" />
+                      </div>
+                      <span className="text-gray-200 font-medium">{item.text}</span>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           </div>
