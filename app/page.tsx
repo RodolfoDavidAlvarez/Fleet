@@ -2,47 +2,28 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Loader2, Shield } from 'lucide-react'
 
 export default function Home() {
   const router = useRouter()
 
   useEffect(() => {
-    const checkAuthAndRedirect = async () => {
+    // Immediate redirect - check localStorage synchronously
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
       try {
-        // Check localStorage first for faster redirect
-        const userStr = localStorage.getItem('user')
-        if (userStr) {
-          try {
-            const user = JSON.parse(userStr)
-            if (user && user.approval_status === 'approved') {
-              router.push('/dashboard')
-              return
-            }
-          } catch (e) {
-            console.error('Failed to parse user from localStorage:', e)
-          }
-        }
-
-        // Fallback: check Supabase session
-        const supabase = createClient()
-        const { data: { session }, error } = await supabase.auth.getSession()
-
-        if (error || !session) {
-          router.push('/login')
+        const user = JSON.parse(userStr)
+        if (user && user.approval_status === 'approved') {
+          router.replace('/dashboard')
           return
         }
-
-        // If we have a session but no localStorage, redirect to login to set it up
-        router.push('/login')
-      } catch (error) {
-        console.error('Auth redirect error:', error)
-        router.push('/login')
+      } catch (e) {
+        // Invalid JSON, clear it
+        localStorage.removeItem('user')
       }
     }
-
-    checkAuthAndRedirect()
+    // No valid user found, go to login
+    router.replace('/login')
   }, [router])
 
   return (
