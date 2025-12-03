@@ -930,9 +930,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .neq("status", "completed"),
     supabase.from("jobs").select("id, total_cost, created_at, status, priority, vehicle_id"),
     supabase.from("bookings").select("*").order("created_at", { ascending: false }).limit(5),
-    supabase.from("vehicles").select("id, status, department, vehicle_number, license_plate, make, model"),
-    supabase.from("bookings").select("created_at, status, service_type, scheduled_date").gte("created_at", sixMonthsAgo),
-    supabase.from("repair_requests").select("status, urgency, division, created_at").gte("created_at", sixMonthsAgo),
+    supabase.from("vehicles").select("id, status, department, vehicle_number, license_plate, make, model").limit(1000),
+    supabase.from("bookings").select("created_at, status, service_type, scheduled_date").gte("created_at", sixMonthsAgo).limit(1000),
+    supabase.from("repair_requests").select("status, urgency, division, created_at").gte("created_at", sixMonthsAgo).limit(1000),
   ]);
 
   const completedJobRows = (jobsData || []).filter((job) => job.status === "completed");
