@@ -342,7 +342,7 @@ export async function notifyAdminNewBooking(
   details: {
     bookingId: string
     customerName: string
-    customerEmail: string
+    customerEmail?: string
     customerPhone: string
     serviceType: string
     date: string
@@ -375,7 +375,7 @@ export async function notifyAdminNewBooking(
           <div class="info-box">
             <p><strong>Booking ID:</strong> ${details.bookingId}</p>
             <p><strong>Customer:</strong> ${details.customerName}</p>
-            <p><strong>Email:</strong> ${details.customerEmail}</p>
+            <p><strong>Email:</strong> ${details.customerEmail || 'Not provided'}</p>
             <p><strong>Phone:</strong> ${details.customerPhone}</p>
             <p><strong>Service:</strong> ${details.serviceType}</p>
             <p><strong>Date:</strong> ${details.date}</p>

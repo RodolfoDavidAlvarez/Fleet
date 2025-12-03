@@ -5,7 +5,7 @@ import { ServiceRecord } from '@/types'
 
 // Fetch service records with optimized caching
 export function useServiceRecords() {
-  return useQuery({
+  return useQuery<ServiceRecord[]>({
     queryKey: queryKeys.serviceRecords,
     queryFn: async () => {
       const response = await fetch('/api/service-records')
@@ -14,8 +14,8 @@ export function useServiceRecords() {
       return data.records || []
     },
     // Keep previous data visible during refetch
-    placeholderData: (prev) => prev ?? [],
-    select: (data) => {
+    placeholderData: (prev: ServiceRecord[] | undefined) => prev ?? [],
+    select: (data: ServiceRecord[]) => {
       // Sort by date for consistent UI
       return data.sort((a: ServiceRecord, b: ServiceRecord) => 
         new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()

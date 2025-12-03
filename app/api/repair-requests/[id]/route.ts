@@ -50,6 +50,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     const record = await repairRequestDB.update(params.id, updates);
 
+    if (!record) {
+      return NextResponse.json({ error: "Repair request not found" }, { status: 404 });
+    }
+
     // Send completion SMS if status changed to completed
     if (parsed.data.status === 'completed' && existingRecord.status !== 'completed' && record.driverPhone) {
         try {

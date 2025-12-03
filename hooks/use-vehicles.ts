@@ -187,7 +187,7 @@ export function useDeleteVehicle() {
 
 // Fetch drivers with caching
 export function useDrivers() {
-  return useQuery({
+  return useQuery<User[]>({
     queryKey: queryKeys.drivers,
     queryFn: async () => {
       const response = await fetch('/api/drivers')
@@ -195,6 +195,7 @@ export function useDrivers() {
       const data = await response.json()
       return data.drivers || []
     },
+    placeholderData: (prev) => prev ?? [],
     staleTime: 5 * 60 * 1000, // 5 minutes for less frequently updated data
   })
 }

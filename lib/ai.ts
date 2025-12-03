@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
 
 const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 const anthropic = anthropicApiKey ? new Anthropic({ apiKey: anthropicApiKey }) : null;
@@ -122,7 +123,7 @@ export async function analyzeRepairRequest(input: AnalysisInput): Promise<Analys
     // IMPORTANT: This is a VISION-FIRST analysis system - images are the primary input
     const hasImages = input.photoUrls && input.photoUrls.length > 0;
     
-    const content: Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }> = [
+    const content: ContentBlockParam[] = [
       {
         type: "text",
         text: `You are a fleet repair triage agent specializing in VISUAL ANALYSIS of vehicle repair requests.
@@ -170,12 +171,16 @@ ${hasImages ? "Focus on visual analysis - what can you see in the photos?" : "An
       
       let imagesAdded = 0;
       // Insert images at the beginning so they're analyzed first (vision-first approach)
-      const imageContent: Array<{ type: string; source?: { type: string; media_type: string; data: string } }> = [];
+      const imageContent: ContentBlockParam[] = [];
       
       for (const base64Image of imageData) {
         if (base64Image) {
           // Extract media type from data URL
-          const mediaType = base64Image.match(/data:([^;]+);/)?.[1] || "image/jpeg";
+          const allowedMediaTypes = ['image/webp', 'image/png', 'image/jpeg', 'image/gif'] as const;
+          const detectedMediaType = base64Image.match(/data:([^;]+);/)?.[1] || "image/jpeg";
+          const mediaType = allowedMediaTypes.includes(detectedMediaType as any)
+            ? (detectedMediaType as (typeof allowedMediaTypes)[number])
+            : 'image/jpeg';
           const base64Data = base64Image.split(",")[1];
           
           // Validate base64 data exists
