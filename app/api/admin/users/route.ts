@@ -5,7 +5,19 @@ import { sendAccountApprovedEmail } from "@/lib/email";
 // Get all users (admin only)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServerClient();
+    let supabase;
+    try {
+      supabase = createServerClient();
+    } catch (clientError: any) {
+      console.error("Error creating Supabase client:", clientError);
+      return NextResponse.json(
+        { 
+          error: clientError.message || "Failed to initialize database connection. Check SUPABASE_SERVICE_ROLE_KEY environment variable." 
+        },
+        { status: 500 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const roleFilter = searchParams.get("role");
 
@@ -23,11 +35,29 @@ export async function GET(request: NextRequest) {
     }
 
     // Limit results to prevent loading too many users
-    const { data: users, error } = await query.order("created_at", { ascending: false }).limit(500);
+    let { data: users, error } = await query.order("created_at", { ascending: false }).limit(500);
+
+    // If error is about missing notify_on_repair column, try query without it
+    if (error && error.message && error.message.includes('notify_on_repair')) {
+      console.warn("notify_on_repair column missing, fetching without it:", error.message);
+      // Retry without notify_on_repair column
+      query = supabase.from("users").select("id, email, name, role, phone, approval_status, last_seen_at, created_at");
+      const retryResult = await query.order("created_at", { ascending: false }).limit(500);
+      users = retryResult.data;
+      error = retryResult.error;
+    }
 
     if (error) {
-      console.error("Error fetching users:", error);
-      return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Error fetching users:", error);
+      }
+      return NextResponse.json(
+        { 
+          error: "Failed to fetch users",
+          details: error.message 
+        },
+        { status: 500 }
+      );
     }
 
     // Calculate online status (online if last_seen_at is within last 5 minutes)
@@ -37,13 +67,22 @@ export async function GET(request: NextRequest) {
     const usersWithOnlineStatus =
       users?.map((user) => ({
         ...user,
+        notify_on_repair: user.notify_on_repair ?? false, // Default to false if column doesn't exist
         isOnline: user.last_seen_at ? new Date(user.last_seen_at) > fiveMinutesAgo : false,
       })) || [];
 
     return NextResponse.json({ users: usersWithOnlineStatus });
-  } catch (error) {
-    console.error("Error in GET /api/admin/users:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: any) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Error in GET /api/admin/users:", error);
+    }
+    return NextResponse.json(
+      { 
+        error: "Internal server error",
+        details: error.message || String(error)
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -56,7 +95,18 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
 
-    const supabase = createServerClient();
+    let supabase;
+    try {
+      supabase = createServerClient();
+    } catch (clientError: any) {
+      console.error("Error creating Supabase client:", clientError);
+      return NextResponse.json(
+        { 
+          error: clientError.message || "Failed to initialize database connection. Check SUPABASE_SERVICE_ROLE_KEY environment variable." 
+        },
+        { status: 500 }
+      );
+    }
     const updates: any = {};
     const normalizedApprovalStatus = approvalStatus || approval_status;
 
@@ -90,21 +140,39 @@ export async function PATCH(request: NextRequest) {
     const { data, error } = await supabase.from("users").update(updates).eq("id", userId).select().single();
 
     if (error) {
-      console.error("Error updating user:", error);
-      return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Error updating user:", error);
+      }
+      return NextResponse.json(
+        { 
+          error: "Failed to update user",
+          details: error.message 
+        },
+        { status: 500 }
+      );
     }
 
     // Send email if approved
     if (shouldSendEmail) {
       // Run in background to not block response
-      sendAccountApprovedEmail(data.email, data.name, data.role).catch(err => 
-        console.error("Error sending approval email:", err)
-      );
+      sendAccountApprovedEmail(data.email, data.name, data.role).catch(err => {
+        if (process.env.NODE_ENV === 'development') {
+          console.error("Error sending approval email:", err);
+        }
+      });
     }
 
     return NextResponse.json({ user: data });
-  } catch (error) {
-    console.error("Error in PATCH /api/admin/users:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: any) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Error in PATCH /api/admin/users:", error);
+    }
+    return NextResponse.json(
+      { 
+        error: "Internal server error",
+        details: error.message || String(error)
+      },
+      { status: 500 }
+    );
   }
 }

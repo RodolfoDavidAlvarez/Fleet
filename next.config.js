@@ -3,6 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     domains: [],
+    formats: ['image/avif', 'image/webp'],
   },
   // Exclude fleet-app directory from build
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
@@ -13,6 +14,15 @@ const nextConfig = {
   // Ignore TypeScript errors during build
   typescript: {
     ignoreBuildErrors: true,
+  },
+  // Performance optimizations
+  compress: true,
+  poweredByHeader: false,
+  // Optimize production builds
+  swcMinify: true,
+  // Reduce Fast Refresh overhead in development
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@tanstack/react-query'],
   },
 }
 

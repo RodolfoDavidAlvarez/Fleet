@@ -74,7 +74,8 @@ export default function UnifiedDashboard() {
       return data
     },
     enabled: authReady,
-    staleTime: 30 * 1000, // 30 seconds for stats
+    staleTime: 5 * 60 * 1000, // 5 minutes - stats don't need constant updates
+    refetchOnMount: false, // Don't refetch if data exists
     select: useCallback((data: { stats: DashboardStats }) => data, [])
   })
 
@@ -89,7 +90,8 @@ export default function UnifiedDashboard() {
       return data
     },
     enabled: authReady,
-    staleTime: 30 * 1000, // 30 seconds for jobs
+    staleTime: 3 * 60 * 1000, // 3 minutes for jobs
+    refetchOnMount: false, // Don't refetch if data exists
     select: useCallback((data: { jobs: any[] }) => data.jobs.slice(0, 5), []) // Limit to 5 jobs
   })
 
@@ -272,6 +274,8 @@ export default function UnifiedDashboard() {
                 onClick={handleRefresh}
                 className="btn btn-secondary btn-sm"
                 disabled={isRefetching}
+                aria-label="Refresh dashboard data"
+                aria-busy={isRefetching}
               >
                 {isRefetching ? (
                   <span className="flex items-center gap-2">
@@ -304,13 +308,17 @@ export default function UnifiedDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 stagger">
           {showStatsSkeleton
             ? Array.from({ length: 4 }).map((_, idx) => <StatsCardSkeleton key={idx} />)
-            : statCards.map((stat) => {
+            : statCards.map((stat, idx) => {
                 const Icon = stat.icon
                 return (
-                  <div key={stat.title} className="card hover-lift group">
+                  <div 
+                    key={stat.title} 
+                    className="card hover-lift group"
+                    style={{ animationDelay: `${idx * 0.05}s` }}
+                  >
                     <div className="p-6">
                       <div className="flex items-center justify-between mb-4">
-                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
                           <Icon className="h-6 w-6 text-white" />
                         </div>
                         <div className="flex items-center gap-1">

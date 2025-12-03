@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense, useCallback } from "react";
+import { useEffect, useState, Suspense, useCallback, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/Sidebar";
@@ -46,17 +46,23 @@ function AdminSettingsPageContent() {
   const {
     data: usersData,
     isLoading: usersLoading,
+    error: usersError,
     refetch: refetchUsers,
   } = useQuery({
     queryKey: queryKeys.adminUsers,
     queryFn: async () => {
       const res = await fetch("/api/admin/users");
-      if (!res.ok) throw new Error("Failed to load users");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.details || "Failed to load users");
+      }
       const data = await res.json();
       return data.users || [];
     },
-    staleTime: 60 * 1000, // Cache for 1 minute
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnMount: false, // Don't refetch if data exists
     placeholderData: (prev) => prev ?? [],
+    retry: 1,
   });
   const users = usersData || [];
 
@@ -79,8 +85,10 @@ function AdminSettingsPageContent() {
         }
       );
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes - settings rarely change
+    refetchOnMount: false, // Don't refetch if data exists
   });
+  // Initialize calendar settings state
   const [calendarSettings, setCalendarSettings] = useState({
     maxBookingsPerWeek: 5,
     startTime: "06:00",
@@ -92,19 +100,38 @@ function AdminSettingsPageContent() {
     advanceBookingUnit: "days" as "hours" | "days",
   });
 
-  // Update calendar settings when data loads
+  // Track if we've initialized from query data to prevent infinite loop
+  const initializedRef = useRef<string | null>(null);
+
+  // Update calendar settings when data loads - only once per data version
   useEffect(() => {
     if (calendarSettingsData) {
-      setCalendarSettings({
-        maxBookingsPerWeek: calendarSettingsData.maxBookingsPerWeek || 5,
-        startTime: calendarSettingsData.startTime || "06:00",
-        endTime: calendarSettingsData.endTime || "14:00",
-        slotDuration: calendarSettingsData.slotDuration || 30,
-        slotBufferTime: calendarSettingsData.slotBufferTime ?? 0,
-        workingDays: calendarSettingsData.workingDays || [1, 2, 3, 4, 5],
-        advanceBookingWindow: calendarSettingsData.advanceBookingWindow ?? 0,
-        advanceBookingUnit: calendarSettingsData.advanceBookingUnit || "days",
+      // Create a stable key from the data to detect actual changes
+      const dataKey = JSON.stringify({
+        maxBookingsPerWeek: calendarSettingsData.maxBookingsPerWeek,
+        startTime: calendarSettingsData.startTime,
+        endTime: calendarSettingsData.endTime,
+        slotDuration: calendarSettingsData.slotDuration,
+        slotBufferTime: calendarSettingsData.slotBufferTime,
+        workingDays: calendarSettingsData.workingDays,
+        advanceBookingWindow: calendarSettingsData.advanceBookingWindow,
+        advanceBookingUnit: calendarSettingsData.advanceBookingUnit,
       });
+
+      // Only update if this is new data
+      if (initializedRef.current !== dataKey) {
+        initializedRef.current = dataKey;
+        setCalendarSettings({
+          maxBookingsPerWeek: calendarSettingsData.maxBookingsPerWeek || 5,
+          startTime: calendarSettingsData.startTime || "06:00",
+          endTime: calendarSettingsData.endTime || "14:00",
+          slotDuration: calendarSettingsData.slotDuration || 30,
+          slotBufferTime: calendarSettingsData.slotBufferTime ?? 0,
+          workingDays: calendarSettingsData.workingDays || [1, 2, 3, 4, 5],
+          advanceBookingWindow: calendarSettingsData.advanceBookingWindow ?? 0,
+          advanceBookingUnit: calendarSettingsData.advanceBookingUnit || "days",
+        });
+      }
     }
   }, [calendarSettingsData]);
 
@@ -142,6 +169,8 @@ function AdminSettingsPageContent() {
       return res.json();
     },
     onSuccess: () => {
+      // Reset initialization flag so new data can be loaded after save
+      initializedRef.current = null;
       queryClient.invalidateQueries({ queryKey: queryKeys.calendarSettings });
       setSuccess("Calendar settings saved successfully");
       setTimeout(() => setSuccess(null), 3000);
@@ -406,73 +435,100 @@ function AdminSettingsPageContent() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {[...users]
-                        .sort((a, b) => {
-                          // Sort pending users first
-                          if (a.approval_status === "pending_approval" && b.approval_status !== "pending_approval") return -1;
-                          if (a.approval_status !== "pending_approval" && b.approval_status === "pending_approval") return 1;
-                          return 0;
-                        })
-                        .map((u) => (
-                          <tr key={u.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">{u.name}</div>
-                                <div className="text-sm text-gray-500">{u.email}</div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">{getApprovalBadge(u.approval_status)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(u.role)}`}
-                              >
-                                {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <label className="flex items-center space-x-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={u.notify_on_repair || false}
-                                  onChange={(e) => handleUpdateUser(u.id, { notifyOnRepair: e.target.checked })}
-                                  className="form-checkbox h-4 w-4 text-primary-600 transition duration-150 ease-in-out"
-                                />
-                                <span className="text-sm text-gray-600">SMS/Email</span>
-                              </label>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {u.isOnline ? (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                                  Online
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                  <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
-                                  Offline
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <div className="flex items-center justify-end space-x-2">
-                                <button
-                                  onClick={() => setEditingUser(u)}
-                                  className="text-primary-600 hover:text-primary-900 p-2 hover:bg-primary-50 rounded-lg transition-colors"
-                                  title="Edit user"
+                      {usersError ? (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-8 text-center">
+                            <div className="text-red-600 mb-2">
+                              <p className="font-medium">Error loading users</p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {usersError instanceof Error ? usersError.message : "Failed to load users"}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => refetchUsers()}
+                              className="mt-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
+                            >
+                              Retry
+                            </button>
+                          </td>
+                        </tr>
+                      ) : users.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                            <Users className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                            <p className="font-medium">No users found</p>
+                            <p className="text-sm mt-1">Users will appear here once they register</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        [...users]
+                          .sort((a, b) => {
+                            // Sort pending users first
+                            if (a.approval_status === "pending_approval" && b.approval_status !== "pending_approval") return -1;
+                            if (a.approval_status !== "pending_approval" && b.approval_status === "pending_approval") return 1;
+                            return 0;
+                          })
+                          .map((u) => (
+                            <tr key={u.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{u.name}</div>
+                                  <div className="text-sm text-gray-500">{u.email}</div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">{getApprovalBadge(u.approval_status)}</td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(u.role)}`}
                                 >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => handlePasswordReset(u.id, u.email)}
-                                  className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                                  title="Send password reset"
-                                >
-                                  <Send className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                                  {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <label className="flex items-center space-x-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={u.notify_on_repair || false}
+                                    onChange={(e) => handleUpdateUser(u.id, { notifyOnRepair: e.target.checked })}
+                                    className="form-checkbox h-4 w-4 text-primary-600 transition duration-150 ease-in-out"
+                                  />
+                                  <span className="text-sm text-gray-600">SMS/Email</span>
+                                </label>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {u.isOnline ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                                    Online
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
+                                    Offline
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex items-center justify-end space-x-2">
+                                  <button
+                                    onClick={() => setEditingUser(u)}
+                                    className="text-primary-600 hover:text-primary-900 p-2 hover:bg-primary-50 rounded-lg transition-colors"
+                                    title="Edit user"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handlePasswordReset(u.id, u.email)}
+                                    className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Send password reset"
+                                  >
+                                    <Send className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                      )}
                     </tbody>
                   </table>
                 </div>

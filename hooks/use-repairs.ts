@@ -16,6 +16,10 @@ export function useRepairs(status?: string) {
     },
     // Keep previous data visible during refetch
     placeholderData: (prev) => prev ?? [],
+    // Don't refetch on mount if data exists
+    refetchOnMount: false,
+    // Data stays fresh for 3 minutes
+    staleTime: 3 * 60 * 1000,
   })
 }
 

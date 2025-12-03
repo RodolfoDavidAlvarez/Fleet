@@ -131,7 +131,7 @@ export default function DriversPage() {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1)
     }
-  }, [totalPages])
+  }, [currentPage, totalPages])
 
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
     setItemsPerPage(newItemsPerPage)
@@ -190,18 +190,33 @@ export default function DriversPage() {
     }
   }
 
-  // Load vehicles assigned to the selected driver
+  // Create stable key from vehicles to detect actual changes (prevents infinite loops)
+  const vehiclesKey = useMemo(() => 
+    allVehicles.map(v => `${v.id}:${v.driverId}`).join(','),
+    [allVehicles]
+  )
+
+  // Track previous key to prevent unnecessary updates
+  const previousKeyRef = useRef<string>('')
+
+  // Load vehicles assigned to the selected driver - only when data actually changes
   useEffect(() => {
-    if (selectedDriver?.id) {
-      setLoadingVehicles(true)
-      // Get all vehicles and filter by driver_id
-      const assigned = allVehicles.filter(v => v.driverId === selectedDriver.id)
-      setAssignedVehicles(assigned)
-      setLoadingVehicles(false)
-    } else {
-      setAssignedVehicles([])
+    const currentKey = `${selectedDriver?.id || ''}:${vehiclesKey}`
+    
+    // Only update if the key actually changed
+    if (previousKeyRef.current !== currentKey) {
+      previousKeyRef.current = currentKey
+      
+      if (selectedDriver?.id) {
+        setLoadingVehicles(true)
+        const assigned = allVehicles.filter(v => v.driverId === selectedDriver.id)
+        setAssignedVehicles(assigned)
+        setLoadingVehicles(false)
+      } else {
+        setAssignedVehicles([])
+      }
     }
-  }, [selectedDriver?.id, allVehicles])
+  }, [selectedDriver?.id, vehiclesKey, allVehicles])
 
   // Handle click outside for vehicle dropdown
   useEffect(() => {

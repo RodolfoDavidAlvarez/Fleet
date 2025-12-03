@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
@@ -115,6 +116,7 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
                     width={140}
                     height={36}
                     className="object-contain"
+                    style={{ width: 'auto', height: '36px' }}
                     priority
                   />
                 </div>
@@ -148,11 +150,13 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
 
         {/* Collapse button - desktop only */}
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={useCallback(() => setCollapsed(!collapsed), [collapsed])}
           className={cn(
             "hidden lg:flex absolute -right-3 top-20 w-6 h-6 bg-[var(--surface)] border border-[var(--border)] rounded-full items-center justify-center hover:bg-[var(--surface-hover)] transition-all",
-            "shadow-sm z-10"
+            "shadow-sm z-10 focus:outline-none focus:ring-2 focus:ring-primary-500"
           )}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
         >
           <ChevronRight className={cn(
             "h-3 w-3 transition-transform",
@@ -172,13 +176,15 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
               <Link
                 key={link.href}
                 href={link.href}
+                prefetch={true}
                 className={cn(
-                  'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group',
+                  'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
                   isActive
                     ? 'bg-gradient-to-r from-[var(--primary-50)] to-[var(--primary-100)] text-[var(--primary-700)]'
-                    : 'text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]',
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] hover:translate-x-1',
                   collapsed && 'justify-center'
                 )}
+                aria-current={isActive ? 'page' : undefined}
               >
                 {isActive && (
                   <div className="absolute inset-0 bg-gradient-to-r from-[var(--primary-500)] to-[var(--primary-600)] opacity-10 rounded-lg pointer-events-none" />
