@@ -67,7 +67,8 @@ export default function DriversPage() {
     }
 
     loadDrivers()
-  }, [router])
+  // Run once on mount; router object identity can change and cause loops
+  }, [])
 
   // Load view preference from localStorage
   useEffect(() => {
@@ -130,7 +131,7 @@ export default function DriversPage() {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1)
     }
-  }, [currentPage, totalPages])
+  }, [totalPages])
 
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
     setItemsPerPage(newItemsPerPage)
@@ -191,24 +192,16 @@ export default function DriversPage() {
 
   // Load vehicles assigned to the selected driver
   useEffect(() => {
-    if (selectedDriver) {
-      const loadAssignedVehicles = async () => {
-        try {
-          setLoadingVehicles(true)
-          // Get all vehicles and filter by driver_id
-          const assigned = allVehicles.filter(v => v.driverId === selectedDriver.id)
-          setAssignedVehicles(assigned)
-        } catch (err) {
-          console.error('Error loading assigned vehicles:', err)
-        } finally {
-          setLoadingVehicles(false)
-        }
-      }
-      loadAssignedVehicles()
+    if (selectedDriver?.id) {
+      setLoadingVehicles(true)
+      // Get all vehicles and filter by driver_id
+      const assigned = allVehicles.filter(v => v.driverId === selectedDriver.id)
+      setAssignedVehicles(assigned)
+      setLoadingVehicles(false)
     } else {
       setAssignedVehicles([])
     }
-  }, [selectedDriver, allVehicles])
+  }, [selectedDriver?.id, allVehicles])
 
   // Handle click outside for vehicle dropdown
   useEffect(() => {
