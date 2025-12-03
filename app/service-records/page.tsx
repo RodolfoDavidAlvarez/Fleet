@@ -95,15 +95,15 @@ export default function ServiceRecordsPage() {
     }
   };
 
-  const filtered = useMemo(() => {
-    let list = records;
+  const filtered = useMemo<ServiceRecord[]>(() => {
+    let list: ServiceRecord[] = records;
     if (filter !== "all") {
-      list = list.filter((r) => (r.status || "in_progress") === filter);
+      list = list.filter((r: ServiceRecord) => (r.status || "in_progress") === filter);
     }
     if (search.trim()) {
       const s = search.toLowerCase();
       list = list.filter(
-        (r) =>
+        (r: ServiceRecord) =>
           r.serviceType?.toLowerCase().includes(s) ||
           r.description?.toLowerCase().includes(s) ||
           r.mechanicName?.toLowerCase().includes(s) ||
@@ -115,7 +115,7 @@ export default function ServiceRecordsPage() {
   }, [filter, search, records]);
 
   // Calculate pagination
-  const paginatedRecords = useMemo(() => {
+  const paginatedRecords = useMemo<ServiceRecord[]>(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filtered.slice(startIndex, endIndex);
@@ -142,7 +142,7 @@ export default function ServiceRecordsPage() {
 
   const statusCounts = useMemo(() => {
     return records.reduce(
-      (acc, r) => {
+      (acc: { active: number; completed: number; cancelled: number }, r: ServiceRecord) => {
         const s = (r.status as string) || "in_progress";
         if (s === "completed") acc.completed++;
         else if (s === "cancelled") acc.cancelled++;

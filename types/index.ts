@@ -30,8 +30,8 @@ export interface Vehicle {
   lastServiceDate?: string
   nextServiceDue?: string
   mileage: number
-  serviceHistory: ServiceRecord[]
-  driverId?: string
+  serviceHistory?: ServiceRecord[]
+  driverId?: string | null
   driverName?: string
   driverPhone?: string
   driverEmail?: string
@@ -89,7 +89,7 @@ export interface Booking {
   id: string
   vehicleId?: string
   customerName: string
-  customerEmail: string
+  customerEmail?: string
   customerPhone: string
   serviceType: string
   scheduledDate: string
@@ -103,6 +103,13 @@ export interface Booking {
   notes?: string
   createdAt: string
   updatedAt: string
+  repairRequest?: {
+    id: string
+    status?: RepairRequestStatus
+    urgency?: RepairRequest['urgency']
+    description?: string
+    aiCategory?: string
+  } | null
 }
 
 export interface Job {
@@ -220,4 +227,3 @@ export interface RepairReport {
   totalCost?: number
   createdAt: string
 }
-

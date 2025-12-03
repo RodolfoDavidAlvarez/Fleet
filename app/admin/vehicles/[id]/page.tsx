@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import { Car, ArrowLeft, Edit, Loader2, Save, X, User as UserIcon, Gauge, Calendar, Wrench, Mail, Phone, UserPlus, UserMinus } from 'lucide-react'
-import { Vehicle } from '@/types'
+import { Vehicle, User } from '@/types'
 import { getStatusColor, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -498,7 +498,7 @@ export default function VehicleDetailPage() {
                                     {record.cost && <span>${record.cost.toLocaleString()}</span>}
                                   </div>
                                 </div>
-                                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(record.status)}`}>
+                                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(record.status || 'open')}`}>
                                   {record.status?.replace('_', ' ')}
                                 </span>
                               </div>
@@ -552,7 +552,7 @@ export default function VehicleDetailPage() {
                               disabled={assigningDriver || driversLoading}
                             >
                               <option value="">No driver assigned</option>
-                              {drivers.map((driver) => (
+                              {drivers.map((driver: User) => (
                                 <option key={driver.id} value={driver.id}>
                                   {driver.name} {driver.email ? `(${driver.email})` : ''}
                                 </option>
@@ -660,5 +660,4 @@ export default function VehicleDetailPage() {
     </div>
   )
 }
-
 

@@ -617,9 +617,9 @@ function NewBookingModal({
     }
   }
 
-  const getTimeSlots = () => {
+  const getTimeSlots = (): string[] => {
     if (!availability?.availableSlots) {
-      const slots = []
+      const slots: string[] = []
       const [startHour, startMin] = calendarSettings.startTime.split(':').map(Number)
       const [endHour, endMin] = calendarSettings.endTime.split(':').map(Number)
       const startMinutes = startHour * 60 + startMin
@@ -1025,7 +1025,7 @@ function NewBookingModal({
                   ) : formData.scheduledDate ? (
                     <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
                       {timeSlots.length > 0 ? (
-                        timeSlots.map((time) => (
+                        timeSlots.map((time: string) => (
                           <button
                             key={time}
                             type="button"
