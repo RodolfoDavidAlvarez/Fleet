@@ -717,13 +717,107 @@ export async function sendInvitationEmail(
     <html>
     <head>
       <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-        .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 5px 5px; }
-        .button { display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0; }
-        .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px; }
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
+          line-height: 1.6; 
+          color: #1f2937; 
+          background-color: #ffffff;
+          margin: 0;
+          padding: 0;
+        }
+        .container { 
+          max-width: 600px; 
+          margin: 0 auto; 
+          padding: 0;
+          background-color: #ffffff;
+        }
+        .header { 
+          background-color: #2563eb; 
+          color: #ffffff; 
+          padding: 30px 20px; 
+          text-align: center; 
+          border-radius: 8px 8px 0 0;
+        }
+        .header h1 {
+          margin: 0;
+          font-size: 28px;
+          font-weight: 700;
+          color: #ffffff;
+          text-shadow: none;
+        }
+        .content { 
+          background-color: #ffffff; 
+          padding: 40px 30px; 
+          border-radius: 0 0 8px 8px;
+          border: 1px solid #e5e7eb;
+          border-top: none;
+        }
+        .content p {
+          margin: 0 0 16px 0;
+          font-size: 16px;
+          color: #1f2937;
+          line-height: 1.6;
+        }
+        .content strong {
+          color: #1f2937;
+          font-weight: 600;
+          background-color: #f3f4f6;
+          padding: 2px 6px;
+          border-radius: 4px;
+        }
+        .button { 
+          display: inline-block; 
+          padding: 14px 32px; 
+          background-color: #2563eb; 
+          color: #ffffff !important; 
+          text-decoration: none; 
+          border-radius: 6px; 
+          margin: 20px 0;
+          font-weight: 600;
+          font-size: 16px;
+          text-align: center;
+          box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+        }
+        .button:hover {
+          background-color: #1d4ed8;
+        }
+        .link-text {
+          word-break: break-all; 
+          color: #2563eb !important; 
+          font-size: 14px;
+          font-weight: 500;
+          text-decoration: underline;
+          background-color: #eff6ff;
+          padding: 8px 12px;
+          border-radius: 4px;
+          display: inline-block;
+          margin-top: 8px;
+        }
+        .footer { 
+          text-align: center; 
+          margin-top: 30px; 
+          padding-top: 20px;
+          border-top: 1px solid #e5e7eb;
+          color: #6b7280; 
+          font-size: 14px;
+        }
+        .footer p {
+          margin: 0;
+          color: #6b7280;
+        }
+        @media only screen and (max-width: 600px) {
+          .content {
+            padding: 30px 20px;
+          }
+          .header {
+            padding: 24px 16px;
+          }
+          .header h1 {
+            font-size: 24px;
+          }
+        }
       </style>
     </head>
     <body>
@@ -733,17 +827,17 @@ export async function sendInvitationEmail(
         </div>
         <div class="content">
           <p>Hello,</p>
-          <p>You have been invited to join FleetPro Management System as a <strong>${role}</strong>.</p>
+          <p>You have been invited to join FleetPro Management System as an <strong>${role}</strong>.</p>
           <p>After creating your account, it will remain <strong>Pending Approval</strong> until an administrator reviews and activates it.</p>
           <p>Please click the button below to create your account:</p>
           
           <p style="text-align: center;">
-            <a href="${registerLink}" class="button">Create Account</a>
+            <a href="${registerLink}" class="button" style="color: #ffffff !important;">Create Account</a>
           </p>
           
-          <p style="text-align: center; margin-top: 15px;">
+          <p style="text-align: center; margin-top: 20px; color: #4b5563; font-size: 14px;">
             Or copy and paste this link into your browser:<br>
-            <span style="word-break: break-all; color: #2563eb; font-size: 12px;">${registerLink}</span>
+            <a href="${registerLink}" class="link-text" style="color: #2563eb !important;">${registerLink}</a>
           </p>
         </div>
         <div class="footer">
