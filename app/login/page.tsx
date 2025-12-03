@@ -106,7 +106,7 @@ export default function LoginPage() {
       setAttemptCount(0)
 
       router.push('/dashboard')
-      router.refresh() // Refresh to update server components with new cookie
+      // Removed router.refresh() - causes unnecessary Fast Refresh and delays
     } catch (err: any) {
       console.error('Login error:', err)
       setError(err.message || 'Invalid email or password')

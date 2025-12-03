@@ -15,6 +15,10 @@ export function useServiceRecords() {
     },
     // Keep previous data visible during refetch
     placeholderData: (prev: ServiceRecord[] | undefined) => prev ?? [],
+    // Don't refetch on mount if data exists
+    refetchOnMount: false,
+    // Data stays fresh for 5 minutes
+    staleTime: 5 * 60 * 1000,
     select: (data: ServiceRecord[]) => {
       // Sort by date for consistent UI
       return data.sort((a: ServiceRecord, b: ServiceRecord) => 

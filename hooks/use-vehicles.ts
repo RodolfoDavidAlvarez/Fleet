@@ -14,6 +14,8 @@ export function useVehicles() {
       return data.vehicles || []
     },
     placeholderData: (prev: Vehicle[] | undefined) => prev ?? [],
+    // Don't refetch on mount if data exists
+    refetchOnMount: false,
     // Keep the last good payload if a transient refetch returns an empty array
     structuralSharing: (oldData, newData) => {
       if (Array.isArray(newData) && newData.length === 0 && Array.isArray(oldData) && oldData.length > 0) {
@@ -30,7 +32,7 @@ export function useVehicles() {
         if (!isCompleteA && isCompleteB) return 1;
         return (a.make || '').localeCompare(b.make || '');
       }),
-    staleTime: 2 * 60 * 1000, // 2 minutes for frequently updated data
+    staleTime: 5 * 60 * 1000, // 5 minutes - data doesn't change that often
   })
 }
 

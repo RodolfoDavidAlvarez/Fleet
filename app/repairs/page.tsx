@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -62,26 +62,26 @@ export default function RepairsPage() {
     setUser(parsedUser);
   }, [router]);
 
-  const copyLink = (link?: string) => {
+  const copyLink = useCallback((link?: string) => {
     if (!link) return;
     navigator.clipboard.writeText(link);
     showToast("Link copied to clipboard", "success", 3000);
-  };
+  }, [showToast]);
 
-  const getRepairFormLink = () => {
+  const getRepairFormLink = useCallback(() => {
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
     return `${baseUrl}/repair`;
-  };
+  }, []);
 
-  const copyRepairFormLink = () => {
+  const copyRepairFormLink = useCallback(() => {
     const link = getRepairFormLink();
     navigator.clipboard.writeText(link);
     showToast("Repair submission form link copied to clipboard!", "success", 3000);
-  };
+  }, [getRepairFormLink, showToast]);
 
-  const openRepairForm = () => {
+  const openRepairForm = useCallback(() => {
     window.open(getRepairFormLink(), "_blank");
-  };
+  }, [getRepairFormLink]);
 
   const checkDuplicatePhone = useCallback(async (phone: string, excludeId: string) => {
     try {
@@ -98,12 +98,15 @@ export default function RepairsPage() {
         return duplicates.length > 0;
       }
     } catch (err) {
-      console.error('Error checking duplicate phone:', err);
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error checking duplicate phone:', err);
+      }
     }
     return false;
   }, []);
 
-  const handleSendLinkClick = async (request: RepairRequest) => {
+  const handleSendLinkClick = useCallback(async (request: RepairRequest) => {
     if (!request.driverPhone) {
       showToast("No phone number available for this repair request.", "error");
       return;
@@ -114,7 +117,7 @@ export default function RepairsPage() {
     
     // Show confirmation modal
     setShowSendLinkConfirm(request);
-  };
+  }, [checkDuplicatePhone, showToast]);
 
   const sendBookingLink = async (request: RepairRequest, confirmed: boolean = false, customPhone?: string) => {
     if (!confirmed) {
@@ -162,7 +165,10 @@ export default function RepairsPage() {
             body: JSON.stringify({ driverPhone: customPhone }),
           });
         } catch (updateErr) {
-          console.error("Error updating phone number:", updateErr);
+          // Only log in development
+          if (process.env.NODE_ENV === 'development') {
+            console.error("Error updating phone number:", updateErr);
+          }
           // Don't fail the whole operation if phone update fails
         }
       }
@@ -198,7 +204,10 @@ export default function RepairsPage() {
       }
       setDuplicatePhoneCheck([]);
     } catch (err) {
-      console.error(err);
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error(err);
+      }
       const errorMessage = err instanceof Error ? err.message : "Failed to send booking link";
       showToast(errorMessage, "error");
     } finally {
@@ -206,9 +215,9 @@ export default function RepairsPage() {
     }
   };
 
-  const openReport = async (request: RepairRequest) => {
+  const openReport = useCallback((request: RepairRequest) => {
     setReportModalOpen(true);
-  };
+  }, []);
 
   const submitServiceReport = async (formData: ServiceReportFormData) => {
     if (!selected) return;
@@ -266,12 +275,15 @@ export default function RepairsPage() {
         router.push("/service-records");
       }, 1000);
     } catch (error) {
-      console.error("Failed to submit service report:", error);
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Failed to submit service report:", error);
+      }
       showToast(error instanceof Error ? error.message : "Failed to submit service report", "error");
     }
   };
 
-  const openEdit = (req: RepairRequest) => {
+  const openEdit = useCallback((req: RepairRequest) => {
     setEditing(true);
     setEditForm({
       description: req.description,
@@ -282,9 +294,9 @@ export default function RepairsPage() {
       vehicleIdentifier: req.vehicleIdentifier,
       odometer: req.odometer,
     });
-  };
+  }, []);
 
-  const submitEdit = () => {
+  const submitEdit = useCallback(() => {
     if (!selected) return;
     updateRepair.mutate(
       { id: selected.id, updates: editForm },
@@ -296,7 +308,19 @@ export default function RepairsPage() {
         },
       }
     );
-  };
+  }, [selected, editForm, updateRepair]);
+
+  const handleFilterChange = useCallback((status: string) => {
+    setFilter(status);
+  }, []);
+
+  const handleRefreshClick = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  const handleRowClick = useCallback((req: RepairRequest) => {
+    setSelected(req);
+  }, []);
 
   const filteredRequests = useMemo(() => {
     if (!Array.isArray(requests)) {
@@ -346,10 +370,11 @@ export default function RepairsPage() {
                   New Repair Request
                 </button>
                 <button 
-                  onClick={() => refetch()} 
+                  onClick={handleRefreshClick} 
                   className="btn btn-secondary flex items-center gap-2" 
                   disabled={isRefetching || isLoading}
                   title="Refresh repair requests"
+                  aria-label="Refresh repair requests list"
                 >
                   <Loader2 className={`h-4 w-4 ${isRefetching || isLoading ? "animate-spin" : ""}`} />
                   Refresh
@@ -359,12 +384,15 @@ export default function RepairsPage() {
 
             {/* Filters and Search */}
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-1 overflow-x-auto w-full md:w-auto p-1 no-scrollbar">
+              <div className="flex items-center gap-1 overflow-x-auto w-full md:w-auto p-1 no-scrollbar" role="tablist" aria-label="Filter repair requests by status">
                 {["all", "submitted", "waiting_booking", "scheduled", "in_progress", "completed"].map((status) => (
                   <button
                     key={status}
-                    onClick={() => setFilter(status)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                    onClick={() => handleFilterChange(status)}
+                    role="tab"
+                    aria-selected={filter === status}
+                    aria-controls="repair-requests-table"
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
                       filter === status ? "bg-gray-900 text-white shadow-md" : "text-gray-600 hover:bg-gray-100"
                     }`}
                   >
@@ -414,11 +442,26 @@ export default function RepairsPage() {
                         {filteredRequests.map((req, i) => (
                           <motion.tr
                             key={req.id}
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.2, delay: i * 0.05 }}
-                            onClick={() => setSelected(req)}
-                            className="group hover:bg-gray-50 cursor-pointer transition-colors"
+                            exit={{ opacity: 0, y: -8 }}
+                            transition={{ 
+                              duration: 0.3, 
+                              delay: Math.min(i * 0.03, 0.3),
+                              ease: [0.16, 1, 0.3, 1]
+                            }}
+                            whileHover={{ scale: 1.01, transition: { duration: 0.2 } }}
+                            onClick={() => handleRowClick(req)}
+                            className="group hover:bg-gray-50 cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`View repair request from ${req.driverName}`}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleRowClick(req);
+                              }
+                            }}
                           >
                             <td className="px-6 py-4 align-top">
                               <div className="space-y-1">
@@ -487,14 +530,32 @@ export default function RepairsPage() {
       {/* Side Panel */}
       <AnimatePresence>
         {selected && (
-          <motion.div className="fixed inset-0 z-50 overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" onClick={() => setSelected(null)} />
+          <motion.div 
+            className="fixed inset-0 z-50 overflow-hidden" 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.div 
+              className="absolute inset-0 bg-black/30 backdrop-blur-sm" 
+              onClick={() => setSelected(null)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            />
             <motion.div
               className="absolute inset-y-0 right-0 w-full max-w-2xl bg-white shadow-2xl flex flex-col h-full"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              transition={{ 
+                type: "spring", 
+                stiffness: 400, 
+                damping: 35,
+                mass: 0.8
+              }}
             >
               <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white flex items-center justify-between sticky top-0 z-10 shadow-sm">
                 <div className="flex items-center gap-3">
@@ -976,32 +1037,30 @@ function SendLinkConfirmationModal({
 }) {
   const [phoneNumber, setPhoneNumber] = useState(request.driverPhone || '');
   const hasDuplicates = duplicateRequests.length > 0;
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handlePhoneChange = (value: string) => {
+  const handlePhoneChange = useCallback((value: string) => {
     setPhoneNumber(value);
     
-    // Debounce duplicate check
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
+    // Debounce duplicate check - use ref to avoid re-renders
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
     }
     
-    const timer = setTimeout(() => {
+    debounceTimerRef.current = setTimeout(() => {
       if (onPhoneChange && value.trim()) {
         onPhoneChange(value);
       }
-    }, 500);
-    
-    setDebounceTimer(timer);
-  };
+    }, 300); // Reduced from 500ms to 300ms
+  }, [onPhoneChange]);
 
   useEffect(() => {
     return () => {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [debounceTimer]);
+  }, []);
 
   const handleConfirm = () => {
     if (!phoneNumber.trim()) return;
