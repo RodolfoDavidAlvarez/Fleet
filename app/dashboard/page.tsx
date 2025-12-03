@@ -78,7 +78,7 @@ export default function UnifiedDashboard() {
     select: useCallback((data: { stats: DashboardStats }) => data, [])
   })
 
-  const jobsQuery = useQuery<{ jobs: any[] }>({
+  const jobsQuery = useQuery<{ jobs: any[] }, Error, any[]>({
     queryKey: ['dashboard-jobs'],
     queryFn: async () => {
       const res = await fetch('/api/jobs')
@@ -93,7 +93,7 @@ export default function UnifiedDashboard() {
     select: useCallback((data: { jobs: any[] }) => data.jobs.slice(0, 5), []) // Limit to 5 jobs
   })
 
-  const repairsQuery = useQuery<{ requests: RepairRequest[] }>({
+  const repairsQuery = useQuery<{ requests: RepairRequest[] }, Error, RepairRequest[]>({
     queryKey: ['dashboard-repair-requests'],
     queryFn: async () => {
       const res = await fetch('/api/repair-requests?limit=4')

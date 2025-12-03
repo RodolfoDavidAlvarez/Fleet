@@ -13,8 +13,7 @@ export function useVehicles() {
       const data = await response.json()
       return data.vehicles || []
     },
-    keepPreviousData: true,
-    placeholderData: (prev) => prev ?? [],
+    placeholderData: (prev: Vehicle[] | undefined) => prev ?? [],
     // Keep the last good payload if a transient refetch returns an empty array
     structuralSharing: (oldData, newData) => {
       if (Array.isArray(newData) && newData.length === 0 && Array.isArray(oldData) && oldData.length > 0) {
