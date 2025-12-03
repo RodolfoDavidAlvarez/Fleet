@@ -37,9 +37,10 @@ function AdminSettingsPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [inviteForm, setInviteForm] = useState({
     email: "",
-    role: "driver",
+    role: "admin", // Default to admin for admin onboarding
   });
 
   // Load users with React Query for caching
@@ -64,7 +65,8 @@ function AdminSettingsPageContent() {
     placeholderData: (prev) => prev ?? [],
     retry: 1,
   });
-  const users = usersData || [];
+  // Filter to show only admin users
+  const adminUsers = (usersData || []).filter((user: User) => user.role === "admin");
 
   // Load calendar settings with React Query
   const { data: calendarSettingsData } = useQuery({
@@ -191,26 +193,38 @@ function AdminSettingsPageContent() {
     }
   };
 
-  const handleInviteUser = async () => {
+  const handleInviteUser = () => {
+    // Show confirmation dialog first
+    if (!inviteForm.email.trim()) {
+      setError("Please enter an email address");
+      return;
+    }
+    setShowConfirmDialog(true);
+  };
+
+  const confirmSendInvitation = async () => {
     setSaving(true);
     setError(null);
     setSuccess(null);
+    setShowConfirmDialog(false);
+
     try {
       const res = await fetch("/api/admin/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(inviteForm),
+        body: JSON.stringify({ ...inviteForm, role: "admin" }), // Force admin role
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to invite user");
+        throw new Error(data.error || "Failed to send onboarding email");
       }
-      setSuccess(`Invitation sent to ${inviteForm.email}. They'll show up here as pending after they register.`);
+      setSuccess(`Onboarding email sent to ${inviteForm.email}. They'll appear here for approval after they register.`);
       setShowInviteModal(false);
-      setInviteForm({ email: "", role: "driver" });
-      setTimeout(() => setSuccess(null), 3000);
+      setInviteForm({ email: "", role: "admin" });
+      refetchUsers(); // Refresh the list
+      setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to invite user");
+      setError(err instanceof Error ? err.message : "Failed to send onboarding email");
     } finally {
       setSaving(false);
     }
@@ -404,21 +418,21 @@ function AdminSettingsPageContent() {
               </div>
             )}
 
-            {/* Users Tab */}
+            {/* Admin Users Tab */}
             {activeTab === "users" && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200">
                   <div className="flex justify-between items-center mb-4">
                     <div>
-                      <h2 className="text-xl font-semibold text-gray-900">Users Management</h2>
-                      <p className="text-sm text-gray-600 mt-1">Manage user accounts, roles, and approvals</p>
+                      <h2 className="text-xl font-semibold text-gray-900">Admin Management</h2>
+                      <p className="text-sm text-gray-600 mt-1">Manage admin accounts and send onboarding invitations</p>
                     </div>
                     <button
                       onClick={() => setShowInviteModal(true)}
                       className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
                     >
                       <UserPlus className="w-4 h-4" />
-                      <span>Invite User</span>
+                      <span>Send Onboarding Email to New Admin</span>
                     </button>
                   </div>
                 </div>
@@ -452,16 +466,16 @@ function AdminSettingsPageContent() {
                             </button>
                           </td>
                         </tr>
-                      ) : users.length === 0 ? (
+                      ) : adminUsers.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                             <Users className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                            <p className="font-medium">No users found</p>
-                            <p className="text-sm mt-1">Users will appear here once they register</p>
+                            <p className="font-medium">No admins found</p>
+                            <p className="text-sm mt-1">Admins will appear here once they register after receiving an invitation</p>
                           </td>
                         </tr>
                       ) : (
-                        [...users]
+                        [...adminUsers]
                           .sort((a, b) => {
                             // Sort pending users first
                             if (a.approval_status === "pending_approval" && b.approval_status !== "pending_approval") return -1;
@@ -758,37 +772,35 @@ function AdminSettingsPageContent() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {users
-                          .filter((u: User) => u.role === "admin" || u.role === "mechanic")
-                          .map((u: User) => (
-                            <tr key={u.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div>
-                                  <div className="text-sm font-medium text-gray-900">{u.name}</div>
-                                  <div className="text-sm text-gray-500">{u.email}</div>
-                                  {u.phone && <div className="text-xs text-gray-400">{u.phone}</div>}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span
-                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(u.role)}`}
-                                >
-                                  {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <label className="flex items-center space-x-2 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={u.notify_on_repair || false}
-                                    onChange={(e) => handleUpdateUser(u.id, { notifyOnRepair: e.target.checked })}
-                                    className="form-checkbox h-4 w-4 text-primary-600 transition duration-150 ease-in-out"
-                                  />
-                                  <span className="text-sm text-gray-600">{u.notify_on_repair ? "Enabled" : "Disabled"}</span>
-                                </label>
-                              </td>
-                            </tr>
-                          ))}
+                        {adminUsers.map((u: User) => (
+                          <tr key={u.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{u.name}</div>
+                                <div className="text-sm text-gray-500">{u.email}</div>
+                                {u.phone && <div className="text-xs text-gray-400">{u.phone}</div>}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(u.role)}`}
+                              >
+                                {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <label className="flex items-center space-x-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={u.notify_on_repair || false}
+                                  onChange={(e) => handleUpdateUser(u.id, { notifyOnRepair: e.target.checked })}
+                                  className="form-checkbox h-4 w-4 text-primary-600 transition duration-150 ease-in-out"
+                                />
+                                <span className="text-sm text-gray-600">{u.notify_on_repair ? "Enabled" : "Disabled"}</span>
+                              </label>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -800,13 +812,13 @@ function AdminSettingsPageContent() {
         <Footer />
       </div>
 
-      {/* Invite User Modal */}
+      {/* Invite Admin Modal */}
       {showInviteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Invite User</h3>
-              <p className="text-sm text-gray-600 mt-1">Send an invitation email to a new user</p>
+              <h3 className="text-lg font-semibold text-gray-900">Send Onboarding Email to New Admin</h3>
+              <p className="text-sm text-gray-600 mt-1">Send an invitation email to onboard a new administrator</p>
             </div>
             <div className="p-6 space-y-4">
               <div>
@@ -816,26 +828,17 @@ function AdminSettingsPageContent() {
                   value={inviteForm.email}
                   onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
                   className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
-                  placeholder="user@example.com"
+                  placeholder="admin@example.com"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-                <select
-                  value={inviteForm.role}
-                  onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="mechanic">Mechanic</option>
-                  <option value="driver">Driver</option>
-                  <option value="customer">Customer</option>
-                </select>
+                <p className="text-xs text-gray-500 mt-1">They will receive an email with a link to register as an admin</p>
               </div>
             </div>
             <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
               <button
-                onClick={() => setShowInviteModal(false)}
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setInviteForm({ email: "", role: "admin" });
+                }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
                 disabled={saving}
               >
@@ -846,7 +849,42 @@ function AdminSettingsPageContent() {
                 className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
                 disabled={saving || !inviteForm.email}
               >
-                {saving ? "Sending..." : "Send Invitation"}
+                {saving ? "Sending..." : "Send Onboarding Email"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[101]">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Confirm Send Onboarding Email</h3>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-700 mb-4">Are you sure you want to send an onboarding email to:</p>
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <p className="font-medium text-gray-900">{inviteForm.email}</p>
+                <p className="text-xs text-gray-500 mt-1">They will receive an email with a registration link</p>
+              </div>
+              <p className="text-sm text-gray-600">After they register, they will appear in the admin section for approval.</p>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowConfirmDialog(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmSendInvitation}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                disabled={saving}
+              >
+                {saving ? "Sending..." : "Yes, Send Email"}
               </button>
             </div>
           </div>
