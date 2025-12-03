@@ -7,10 +7,11 @@ import { useRouter } from 'next/navigation'
 interface HeaderProps {
   userName: string
   userRole: string
+  userEmail?: string
   onMenuClick?: () => void
 }
 
-export default function Header({ userName, userRole, onMenuClick }: HeaderProps) {
+export default function Header({ userName, userRole, userEmail, onMenuClick }: HeaderProps) {
   const router = useRouter()
   const [showNotifications, setShowNotifications] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -126,11 +127,19 @@ export default function Header({ userName, userRole, onMenuClick }: HeaderProps)
                   className="fixed inset-0 z-10"
                   onClick={() => setShowUserMenu(false)}
                 />
-                <div className="absolute right-0 mt-2 w-48 card card-glass animate-slide-down shadow-xl z-20">
+                <div className="absolute right-0 mt-2 w-56 card card-glass animate-slide-down shadow-xl z-20">
+                  {/* User info section */}
+                  {userEmail && (
+                    <div className="p-3 border-b border-[var(--border)]">
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">{userName}</p>
+                      <p className="text-xs text-[var(--text-secondary)] mt-0.5 break-all">{userEmail}</p>
+                      <p className="text-xs text-muted capitalize mt-1">{userRole}</p>
+                    </div>
+                  )}
                   <div className="p-2">
                     <button
                       onClick={() => {
-                        router.push('/admin/settings?tab=users')
+                        router.push('/admin/settings')
                         setShowUserMenu(false)
                       }}
                       className="w-full flex items-center gap-3 px-3 py-2 hover:bg-[var(--surface-hover)] rounded-lg transition-colors text-left"

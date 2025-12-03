@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Users, Bell, CheckCircle, Clock, Send, Edit, Calendar, UserPlus } from "lucide-react";
+import { Users, Bell, CheckCircle, Clock, Send, Edit, Calendar, UserPlus, Trash2, Mail } from "lucide-react";
 import { queryKeys } from "@/lib/query-client";
 
 interface User {
@@ -38,6 +38,11 @@ function AdminSettingsPageContent() {
   const [success, setSuccess] = useState<string | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  const [showResendDialog, setShowResendDialog] = useState<User | null>(null);
+  const [resendEmail, setResendEmail] = useState("");
   const [inviteForm, setInviteForm] = useState({
     email: "",
     role: "admin", // Default to admin for admin onboarding
@@ -60,8 +65,9 @@ function AdminSettingsPageContent() {
       const data = await res.json();
       return data.users || [];
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    refetchOnMount: false, // Don't refetch if data exists
+    staleTime: 30 * 1000, // 30 seconds - refresh more frequently to update online status
+    refetchOnMount: true, // Always refetch to get latest online status
+    refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds to update online status
     placeholderData: (prev) => prev ?? [],
     retry: 1,
   });
@@ -154,6 +160,25 @@ function AdminSettingsPageContent() {
       return;
     }
     setUser(parsedUser);
+
+    // Send heartbeat to update online status
+    const sendHeartbeat = async () => {
+      try {
+        await fetch("/api/auth/heartbeat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: parsedUser.id }),
+        });
+      } catch (error) {
+        // Silently fail - heartbeat is not critical
+      }
+    };
+
+    // Send heartbeat immediately and then every 2 minutes
+    sendHeartbeat();
+    const heartbeatInterval = setInterval(sendHeartbeat, 2 * 60 * 1000);
+
+    return () => clearInterval(heartbeatInterval);
   }, [router]);
 
   // Mutation for saving calendar settings
@@ -284,6 +309,69 @@ function AdminSettingsPageContent() {
     [updateUserMutation]
   );
 
+  const handleResendOnboarding = async () => {
+    if (!showResendDialog || !resendEmail.trim()) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const res = await fetch("/api/admin/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resendEmail.trim(), role: "admin" }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send onboarding email");
+      }
+
+      setSuccess(`Onboarding email sent to ${resendEmail.trim()}`);
+      setShowResendDialog(null);
+      setResendEmail("");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send onboarding email");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteUser = async (userToDelete: User) => {
+    if (!userToDelete) return;
+
+    setDeleting(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const res = await fetch(`/api/admin/users/${userToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete user");
+      }
+
+      setSuccess(`Admin ${userToDelete.name} has been deleted successfully.`);
+      setShowDeleteDialog(null);
+      refetchUsers(); // Refresh the list
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete user");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handlePasswordReset = async (userId: string, email: string) => {
     setSaving(true);
     setError(null);
@@ -347,7 +435,7 @@ function AdminSettingsPageContent() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar role={user.role} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user.name} userRole={user.role} />
+        <Header userName={user.name} userRole={user.role} userEmail={user.email} />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto">
             <div className="mb-6">
@@ -443,7 +531,6 @@ function AdminSettingsPageContent() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Repair Alerts</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Online</th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
@@ -451,7 +538,7 @@ function AdminSettingsPageContent() {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {usersError ? (
                         <tr>
-                          <td colSpan={6} className="px-6 py-8 text-center">
+                          <td colSpan={5} className="px-6 py-8 text-center">
                             <div className="text-red-600 mb-2">
                               <p className="font-medium">Error loading users</p>
                               <p className="text-sm text-gray-600 mt-1">
@@ -468,7 +555,7 @@ function AdminSettingsPageContent() {
                         </tr>
                       ) : adminUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                          <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                             <Users className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                             <p className="font-medium">No admins found</p>
                             <p className="text-sm mt-1">Admins will appear here once they register after receiving an invitation</p>
@@ -492,51 +579,65 @@ function AdminSettingsPageContent() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">{getApprovalBadge(u.approval_status)}</td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <span
-                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(u.role)}`}
-                                >
-                                  {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <label className="flex items-center space-x-2 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={u.notify_on_repair || false}
-                                    onChange={(e) => handleUpdateUser(u.id, { notifyOnRepair: e.target.checked })}
-                                    className="form-checkbox h-4 w-4 text-primary-600 transition duration-150 ease-in-out"
-                                  />
-                                  <span className="text-sm text-gray-600">SMS/Email</span>
-                                </label>
+                                {editingRoleId === u.id ? (
+                                  <select
+                                    value={u.role}
+                                    onChange={(e) => {
+                                      handleUpdateUser(u.id, { role: e.target.value });
+                                      setEditingRoleId(null);
+                                    }}
+                                    onBlur={() => setEditingRoleId(null)}
+                                    autoFocus
+                                    className="px-2.5 py-0.5 rounded-full text-xs font-medium border border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white"
+                                  >
+                                    <option value="admin">Admin</option>
+                                    <option value="mechanic">Mechanic</option>
+                                    <option value="driver">Driver</option>
+                                    <option value="customer">Customer</option>
+                                  </select>
+                                ) : (
+                                  <span
+                                    onClick={() => setEditingRoleId(u.id)}
+                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(u.role)} cursor-pointer hover:opacity-80 transition-opacity`}
+                                    title="Click to edit role"
+                                  >
+                                    {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
+                                  </span>
+                                )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 {u.isOnline ? (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
                                     Online
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
                                     <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
                                     Offline
                                   </span>
                                 )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div className="flex items-center justify-end space-x-2">
+                                <div className="flex items-center justify-end gap-2">
                                   <button
-                                    onClick={() => setEditingUser(u)}
-                                    className="text-primary-600 hover:text-primary-900 p-2 hover:bg-primary-50 rounded-lg transition-colors"
-                                    title="Edit user"
+                                    onClick={() => {
+                                      setShowResendDialog(u);
+                                      setResendEmail(u.email);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Resend onboarding email"
+                                    disabled={saving}
                                   >
-                                    <Edit className="w-4 h-4" />
+                                    <Mail className="w-4 h-4" />
                                   </button>
                                   <button
-                                    onClick={() => handlePasswordReset(u.id, u.email)}
-                                    className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                                    title="Send password reset"
+                                    onClick={() => setShowDeleteDialog(u)}
+                                    className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Delete admin"
+                                    disabled={deleting}
                                   >
-                                    <Send className="w-4 h-4" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
                               </td>
@@ -885,6 +986,91 @@ function AdminSettingsPageContent() {
                 disabled={saving}
               >
                 {saving ? "Sending..." : "Yes, Send Email"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resend Onboarding Email Dialog */}
+      {showResendDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[101]">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Resend Onboarding Email</h3>
+              <p className="text-sm text-gray-600 mt-1">Send onboarding invitation to this admin</p>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                <input
+                  type="email"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
+                  placeholder="admin@example.com"
+                />
+                <p className="text-xs text-gray-500 mt-1">You can edit the email address before sending</p>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-4">
+                <p className="text-sm text-gray-700">
+                  <strong>Admin:</strong> {showResendDialog.name}
+                </p>
+                <p className="text-xs text-gray-600 mt-1">They will receive an email with a registration link to create their account.</p>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowResendDialog(null);
+                  setResendEmail("");
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResendOnboarding}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                disabled={saving || !resendEmail.trim()}
+              >
+                {saving ? "Sending..." : "Send Onboarding Email"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[101]">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Delete Admin</h3>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-700 mb-4">Are you sure you want to delete this admin? This action cannot be undone.</p>
+              <div className="bg-red-50 rounded-lg p-4 mb-4">
+                <p className="font-medium text-gray-900">{showDeleteDialog.name}</p>
+                <p className="text-xs text-gray-600 mt-1">{showDeleteDialog.email}</p>
+              </div>
+              <p className="text-sm text-red-600 font-medium">⚠️ Warning: This will permanently delete the admin account and all associated data.</p>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteDialog(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteUser(showDeleteDialog)}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Yes, Delete"}
               </button>
             </div>
           </div>

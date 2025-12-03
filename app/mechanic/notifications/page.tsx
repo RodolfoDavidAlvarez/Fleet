@@ -170,7 +170,7 @@ export default function NotificationsPage() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar role={user?.role || 'mechanic'} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user.name} userRole={user.role} />
+        <Header userName={user.name} userRole={user.role} userEmail={user.email} />
         <main className="flex-1 overflow-y-auto bg-slate-50">
           <div className="max-w-7xl mx-auto p-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
