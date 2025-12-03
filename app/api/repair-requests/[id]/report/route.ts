@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { repairReportDB, repairRequestDB } from "@/lib/db";
-import { sendRepairCompletion } from "@/lib/twilio";
 import { sendRepairCompletionEmail } from "@/lib/email";
 
 const reportSchema = z.object({
