@@ -3,11 +3,16 @@ import { createServerClient } from "@/lib/supabase";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password, phone } = await request.json();
+    const { name, email, password, phone, role } = await request.json();
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: "Name, email, and password are required" }, { status: 400 });
     }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const allowedRoles = ["admin", "mechanic", "customer", "driver"];
+    const normalizedRole = typeof role === "string" ? role.toLowerCase().trim() : "";
+    const userRole = allowedRoles.includes(normalizedRole) ? normalizedRole : "driver";
 
     // Use the service role client (createServerClient from lib/supabase)
     const supabase = createServerClient();
@@ -16,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { data: existingUser } = await supabase
       .from("users")
       .select("id")
-      .eq("email", email.toLowerCase())
+      .eq("email", normalizedEmail)
       .single();
 
     if (existingUser) {
@@ -27,7 +32,7 @@ export async function POST(request: NextRequest) {
     // We auto-confirm the email for now to allow immediate "pending approval" state interaction.
     // If you want email verification, set email_confirm: false.
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       password: password,
       email_confirm: true,
       user_metadata: { name, phone }
@@ -48,9 +53,9 @@ export async function POST(request: NextRequest) {
       .insert({
         id: authData.user.id, // Link to Auth ID
         name,
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         phone: phone || null,
-        role: 'driver', // Default role
+        role: userRole,
         approval_status: 'pending_approval'
       })
       .select("id, email, name, role, approval_status")
@@ -69,4 +74,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

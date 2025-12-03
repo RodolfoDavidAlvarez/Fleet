@@ -14,7 +14,13 @@
       "Bash(node:*)",
       "Bash(PGPASSWORD:*)",
       "Bash(grep:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(cd:*)",
+      "Bash(docker info:*)",
+      "Bash(PGPASSWORD='zuhtag-jizNoj-4gihqi' psql:*)",
+      "Bash(pkill:*)",
+      "Bash(SUPABASE_DB_PASSWORD='zuhtag-jizNoj-4gihqi' npx supabase db push --password 'zuhtag-jizNoj-4gihqi')",
+      "Bash(npm run build)"
     ],
     "deny": []
   }

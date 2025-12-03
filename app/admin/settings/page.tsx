@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -20,14 +20,20 @@ interface User {
   notify_on_repair?: boolean;
 }
 
-export default function AdminSettingsPage() {
+function AdminSettingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"users" | "notifications" | "calendar">("users");
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  
+  // Get active tab from URL, default to 'users'
+  const tabParam = searchParams.get('tab');
+  const activeTab: "users" | "notifications" | "calendar" = 
+    (tabParam === 'calendar' || tabParam === 'notifications' || tabParam === 'users') 
+      ? tabParam 
+      : 'users';
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -66,13 +72,8 @@ export default function AdminSettingsPage() {
     setUser(parsedUser);
     loadUsers();
     loadCalendarSettings();
-    
-    // Check for tab query parameter
-    const tabParam = searchParams.get('tab');
-    if (tabParam === 'calendar' || tabParam === 'notifications' || tabParam === 'users') {
-      setActiveTab(tabParam);
-    }
-  }, [router, searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
 
   const loadCalendarSettings = async () => {
     try {
@@ -132,7 +133,7 @@ export default function AdminSettingsPage() {
       if (!res.ok) {
         throw new Error(data.error || "Failed to invite user");
       }
-      setSuccess(`Invitation sent to ${inviteForm.email}`);
+      setSuccess(`Invitation sent to ${inviteForm.email}. They'll show up here as pending after they register.`);
       setShowInviteModal(false);
       setInviteForm({ email: "", role: "driver" });
       setTimeout(() => setSuccess(null), 3000);
@@ -145,8 +146,7 @@ export default function AdminSettingsPage() {
 
   const loadUsers = async () => {
     try {
-      // Fetch only admins and mechanics
-      const res = await fetch("/api/admin/users?role=admin,mechanic");
+      const res = await fetch("/api/admin/users");
       if (!res.ok) throw new Error("Failed to load users");
       const data = await res.json();
       setUsers(data.users || []);
@@ -158,15 +158,31 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const handleUpdateUser = async (userId: string, updates: { role?: string; approval_status?: string; notifyOnRepair?: boolean }) => {
+
+  const handleUpdateUser = async (
+    userId: string, 
+    updates: { role?: string; approval_status?: string; approvalStatus?: string; notifyOnRepair?: boolean }
+  ) => {
     setSaving(true);
     setError(null);
     setSuccess(null);
     try {
+      const payload: any = { userId };
+      
+      if (updates.role) {
+        payload.role = updates.role;
+      }
+      if (updates.approvalStatus || updates.approval_status) {
+        payload.approvalStatus = updates.approvalStatus || updates.approval_status;
+      }
+      if (typeof updates.notifyOnRepair === 'boolean') {
+        payload.notifyOnRepair = updates.notifyOnRepair;
+      }
+
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, ...updates }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -262,8 +278,10 @@ export default function AdminSettingsPage() {
             <div className="mb-6 border-b border-gray-200">
               <nav className="-mb-px flex space-x-8">
                 <button
-                  onClick={() => setActiveTab("users")}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  onClick={() => {
+                    router.push('/admin/settings?tab=users', { scroll: false });
+                  }}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === "users"
                       ? "border-primary-500 text-primary-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -275,8 +293,10 @@ export default function AdminSettingsPage() {
                   </div>
                 </button>
                 <button
-                  onClick={() => setActiveTab("notifications")}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  onClick={() => {
+                    router.push('/admin/settings?tab=notifications', { scroll: false });
+                  }}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === "notifications"
                       ? "border-primary-500 text-primary-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -288,8 +308,10 @@ export default function AdminSettingsPage() {
                   </div>
                 </button>
                 <button
-                  onClick={() => setActiveTab("calendar")}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  onClick={() => {
+                    router.push('/admin/settings?tab=calendar', { scroll: false });
+                  }}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === "calendar"
                       ? "border-primary-500 text-primary-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -346,12 +368,7 @@ export default function AdminSettingsPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {users
-                        .filter((u) => {
-                          // Only show admins and mechanics
-                          if (u.role !== "admin" && u.role !== "mechanic") return false;
-                          return true;
-                        })
+                      {[...users]
                         .sort((a, b) => {
                           // Sort pending users first
                           if (a.approval_status === "pending_approval" && b.approval_status !== "pending_approval") return -1;
@@ -790,7 +807,7 @@ export default function AdminSettingsPage() {
                 onClick={() => {
                   handleUpdateUser(editingUser.id, {
                     role: editingUser.role,
-                    approval_status: editingUser.approval_status,
+                    approvalStatus: editingUser.approval_status,
                   });
                 }}
                 className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
@@ -803,5 +820,20 @@ export default function AdminSettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminSettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading settings...</p>
+        </div>
+      </div>
+    }>
+      <AdminSettingsPageContent />
+    </Suspense>
   );
 }

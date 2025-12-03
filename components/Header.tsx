@@ -130,7 +130,7 @@ export default function Header({ userName, userRole, onMenuClick }: HeaderProps)
                   <div className="p-2">
                     <button
                       onClick={() => {
-                        router.push('/admin/settings')
+                        router.push('/admin/settings?tab=users')
                         setShowUserMenu(false)
                       }}
                       className="w-full flex items-center gap-3 px-3 py-2 hover:bg-[var(--surface-hover)] rounded-lg transition-colors text-left"

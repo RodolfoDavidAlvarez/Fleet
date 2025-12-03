@@ -11,12 +11,17 @@ export default function RegisterPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const emailParam = searchParams.get('email')
+  const roleParam = searchParams.get('role')
+  const allowedRoles = ['admin', 'mechanic', 'customer', 'driver'] as const
+  const hasInvitedRole = !!(roleParam && allowedRoles.includes(roleParam as any))
+  const invitedRole = hasInvitedRole ? (roleParam as typeof allowedRoles[number]) : 'driver'
 
   const [formData, setFormData] = useState({
     name: '',
     email: emailParam || '',
     password: '',
     phone: '',
+    role: invitedRole,
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -27,6 +32,12 @@ export default function RegisterPage() {
       setFormData(prev => ({ ...prev, email: emailParam }))
     }
   }, [emailParam])
+
+  useEffect(() => {
+    if (roleParam && allowedRoles.includes(roleParam as any)) {
+      setFormData(prev => ({ ...prev, role: roleParam as typeof allowedRoles[number] }))
+    }
+  }, [roleParam])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,6 +93,14 @@ export default function RegisterPage() {
               </div>
               <h1 className="text-3xl font-bold text-gradient">Create Account</h1>
               <p className="text-muted mt-2">Join the fleet management system</p>
+              {hasInvitedRole && (
+                <div className="mt-3 flex flex-col items-center gap-1">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--primary-50)] text-[var(--primary-700)] rounded-full text-xs font-semibold border border-[var(--primary-200)]">
+                    Signing up as {invitedRole.charAt(0).toUpperCase() + invitedRole.slice(1)}
+                  </span>
+                  <span className="text-xs text-muted">Account stays pending until an admin approves access.</span>
+                </div>
+              )}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in">

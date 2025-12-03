@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { sendInvitationEmail } from "@/lib/email";
+
+const ALLOWED_ROLES = ["admin", "mechanic", "customer", "driver"] as const;
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,43 +12,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and role are required" }, { status: 400 });
     }
 
-    if (!["admin", "mechanic", "customer", "driver"].includes(role)) {
+    const normalizedRole = typeof role === "string" ? role.toLowerCase().trim() : "";
+
+    if (!ALLOWED_ROLES.includes(normalizedRole as (typeof ALLOWED_ROLES)[number])) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
     const supabase = createServerClient();
 
-    // Invite user using Supabase Auth
-    // This sends an email automatically if configured, or returns user data
-    const { data, error } = await supabase.auth.admin.inviteUserByEmail(email);
+    // Prevent duplicate invitations/accounts
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id, approval_status, role")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
 
-    if (error) {
-      console.error("Supabase invite error:", error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (existingUser) {
+      return NextResponse.json(
+        {
+          error:
+            existingUser.approval_status === "approved"
+              ? "A user with this email is already approved."
+              : "A user with this email is already pending approval.",
+        },
+        { status: 400 }
+      );
     }
 
-    // Upsert into public.users to set role
-    // user.id comes from the invited auth user
-    if (data.user) {
-      const { error: profileError } = await supabase.from('users').upsert({
-        id: data.user.id,
-        email: email.toLowerCase(),
-        role: role,
-        name: email.split('@')[0], // Default name
-        approval_status: 'approved' // Invited users are implicitly approved
-      });
+    const emailSent = await sendInvitationEmail(normalizedEmail, normalizedRole);
 
-      if (profileError) {
-        console.error("Failed to create profile:", profileError);
-        // We don't fail the request because the auth invite succeeded, 
-        // but we log it. The user might need to be fixed manually or on login.
-      }
+    if (!emailSent) {
+      return NextResponse.json(
+        { error: "Unable to send invitation email. Check RESEND_API_KEY and RESEND_FROM_EMAIL configuration." },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ success: true, user: data.user });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Invite error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

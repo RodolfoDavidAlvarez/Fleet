@@ -46,20 +46,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       status: newStatus,
     });
 
-    // Send SMS notification if phone provided (fail silently if Twilio is misconfigured)
-    if (existing.driverPhone) {
-      try {
-        await sendRepairCompletion(existing.driverPhone, {
-          requestId: existing.id,
-          summary: parsed.data.summary,
-          totalCost: parsed.data.totalCost,
-          language: existing.preferredLanguage,
-        });
-      } catch (smsError) {
-        console.error('Failed to send SMS notification (non-critical):', smsError);
-        // Continue execution - SMS failure shouldn't block the report submission
-      }
-    }
+    // Note: SMS notification is sent automatically when status changes to 'completed' via PATCH route
+    // No need to send duplicate SMS here
 
     // Send email notification if email provided
     if (existing.driverEmail) {
