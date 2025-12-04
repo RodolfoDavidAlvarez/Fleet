@@ -6,7 +6,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Users, Bell, CheckCircle, Clock, Send, Edit, Calendar, UserPlus, Trash2, Mail } from "lucide-react";
+import { NotificationsSection } from "./notifications-section";
+import { Users, Bell, CheckCircle, Clock, Send, Edit, Calendar, UserPlus, Trash2, Mail, ChevronDown, X, Plus } from "lucide-react";
 import { queryKeys } from "@/lib/query-client";
 
 interface User {
@@ -73,6 +74,328 @@ function AdminSettingsPageContent() {
   });
   // Filter to show only admin users
   const adminUsers = (usersData || []).filter((user: User) => user.role === "admin");
+
+  // Categorize notifications by recipient type
+  const isAdminNotification = (id: string) => {
+    return id.includes("admin") || id.includes("mechanic") || id.includes("password") || id.includes("invitation") || id.includes("account_approved");
+  };
+
+  const isDriverNotification = (id: string) => {
+    return id.includes("repair") || id.includes("service_record") || id.includes("booking");
+  };
+
+  // Default message templates for driver notifications (matching actual code in lib/twilio.ts and lib/email.ts)
+  const defaultDriverTemplates: Record<string, { en: string; es: string }> = {
+    sms_repair_submission: {
+      en: "Repair request received (#${details.requestId}). Your request has been submitted and will be reviewed soon.",
+      es: "Solicitud de reparación recibida (#${details.requestId}). Su solicitud ha sido enviada y será revisada pronto.",
+    },
+    sms_repair_booking_link: {
+      en: "Book your repair (#${details.requestId}): ${details.link}\nIssue: ${details.issueSummary}${details.suggestedSlot ? `\nSuggested: ${details.suggestedSlot}` : ''}",
+      es: "Agenda tu reparación (#${details.requestId}): ${details.link}\nMotivo: ${details.issueSummary}${details.suggestedSlot ? `\nSugerencia: ${details.suggestedSlot}` : ''}",
+    },
+    sms_repair_completion: {
+      en: "Repair completed (#${details.requestId}). ${details.summary}${details.totalCost ? `\nTotal: $${details.totalCost.toFixed(2)}` : ''}",
+      es: "Reparación completada (#${details.requestId}). ${details.summary}${details.totalCost ? `\nTotal: $${details.totalCost.toFixed(2)}` : ''}",
+    },
+    sms_service_record_status: {
+      en: "${driverName}, your repair request is completed and ready for pickup.",
+      es: "${driverName}, su solicitud de reparación está completada y lista para recoger.",
+    },
+    email_repair_submission: {
+      en: "Hello ${details.driverName},\n\nWe have received your repair request:\n\nRequest ID: ${details.requestId}\nSummary: ${details.summary}\nUrgency: ${details.urgency}\n\nWe will contact you soon.\n\nThank you for using FleetPro!",
+      es: "Hola ${details.driverName},\n\nHemos recibido su solicitud de reparación:\n\nID de Solicitud: ${details.requestId}\nResumen: ${details.summary}\nUrgencia: ${details.urgency}\n\nNos pondremos en contacto con usted pronto.\n\nGracias por usar FleetPro!",
+    },
+    email_repair_booking_link: {
+      en: "Hello ${details.driverName},\n\nPlease schedule your repair using the following link:\n\nRequest ID: ${details.requestId}\nIssue: ${details.issueSummary}\nSuggested Time: ${details.suggestedSlot}\n\n[Schedule Now] → ${details.link}",
+      es: "Hola ${details.driverName},\n\nPor favor, agende su reparación usando el siguiente enlace:\n\nID de Solicitud: ${details.requestId}\nMotivo: ${details.issueSummary}\nSugerencia: ${details.suggestedSlot}\n\n[Agendar Ahora] → ${details.link}",
+    },
+    email_repair_completion: {
+      en: "Hello ${details.driverName},\n\nYour repair has been completed:\n\nRequest ID: ${details.requestId}\nSummary: ${details.summary}\nTotal Cost: $${details.totalCost}\n\nThank you for using FleetPro!",
+      es: "Hola ${details.driverName},\n\nSu reparación ha sido completada:\n\nID de Solicitud: ${details.requestId}\nResumen: ${details.summary}\nCosto Total: $${details.totalCost}\n\nGracias por usar FleetPro!",
+    },
+  };
+
+  // Load notification assignments from database
+  const { data: assignmentsData } = useQuery({
+    queryKey: ["notification-assignments"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/notification-assignments");
+      if (!res.ok) throw new Error("Failed to load assignments");
+      const data = await res.json();
+      return data.assignments || {};
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Load message templates from database
+  const { data: templatesData } = useQuery({
+    queryKey: ["notification-templates"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/notification-templates");
+      if (!res.ok) throw new Error("Failed to load templates");
+      const data = await res.json();
+      return data.templates || {};
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Initialize assignments and templates from database
+  useEffect(() => {
+    if (assignmentsData) {
+      setNotificationAssignments(assignmentsData);
+    }
+  }, [assignmentsData]);
+
+  useEffect(() => {
+    if (templatesData) {
+      // Merge with defaults for any missing templates
+      setDriverMessageTemplates({ ...defaultDriverTemplates, ...templatesData });
+    } else if (Object.keys(driverMessageTemplates).length === 0) {
+      setDriverMessageTemplates(defaultDriverTemplates);
+    }
+  }, [templatesData]);
+
+  // Define all notification types in the system
+  const notificationTypes = [
+    // Email Notifications
+    {
+      id: "email_booking_confirmation",
+      name: "Booking Confirmation Email",
+      type: "email",
+      category: "booking",
+      description: "Sent to customer when a new booking is created",
+      channel: "email",
+    },
+    {
+      id: "email_booking_reminder",
+      name: "Booking Reminder Email",
+      type: "email",
+      category: "booking",
+      description: "Reminder sent to customer before appointment",
+      channel: "email",
+    },
+    {
+      id: "email_booking_status_update",
+      name: "Booking Status Update Email",
+      type: "email",
+      category: "booking",
+      description: "Sent to customer when booking status changes",
+      channel: "email",
+    },
+    {
+      id: "email_job_completion",
+      name: "Job Completion Email",
+      type: "email",
+      category: "booking",
+      description: "Sent to customer when job is completed",
+      channel: "email",
+    },
+    {
+      id: "email_repair_submission",
+      name: "Repair Request Submission Email",
+      type: "email",
+      category: "repair",
+      description: "Sent to driver when repair request is submitted (Bilingual)",
+      channel: "email",
+    },
+    {
+      id: "email_repair_booking_link",
+      name: "Repair Booking Link Email",
+      type: "email",
+      category: "repair",
+      description: "Sent to driver with booking link when repair is scheduled (Bilingual)",
+      channel: "email",
+    },
+    {
+      id: "email_repair_completion",
+      name: "Repair Completion Email",
+      type: "email",
+      category: "repair",
+      description: "Sent to driver when repair is completed (Bilingual)",
+      channel: "email",
+    },
+    {
+      id: "email_admin_new_booking",
+      name: "Admin Notification - New Booking",
+      type: "email",
+      category: "admin",
+      description: "Sent to admins when a new booking is created",
+      channel: "email",
+    },
+    {
+      id: "email_admin_new_repair",
+      name: "Admin Notification - New Repair Request",
+      type: "email",
+      category: "admin",
+      description: "Sent to admins when a repair request is submitted",
+      channel: "email",
+    },
+    {
+      id: "email_mechanic_assignment",
+      name: "Mechanic Assignment Email",
+      type: "email",
+      category: "admin",
+      description: "Sent to mechanic when job is assigned",
+      channel: "email",
+    },
+    {
+      id: "email_password_reset",
+      name: "Password Reset Email",
+      type: "email",
+      category: "system",
+      description: "Sent when password reset is requested",
+      channel: "email",
+    },
+    {
+      id: "email_invitation",
+      name: "Invitation Email (Admin Onboarding)",
+      type: "email",
+      category: "system",
+      description: "Sent to new admin when invited to join",
+      channel: "email",
+    },
+    {
+      id: "email_account_approved",
+      name: "Account Approved Email",
+      type: "email",
+      category: "system",
+      description: "Sent when admin approves a user account",
+      channel: "email",
+    },
+    // SMS Notifications
+    {
+      id: "sms_booking_confirmation",
+      name: "Booking Confirmation SMS",
+      type: "sms",
+      category: "booking",
+      description: "Sent to customer when a new booking is created",
+      channel: "sms",
+    },
+    {
+      id: "sms_booking_reminder",
+      name: "Booking Reminder SMS",
+      type: "sms",
+      category: "booking",
+      description: "Reminder sent to customer before appointment",
+      channel: "sms",
+    },
+    {
+      id: "sms_booking_status_update",
+      name: "Booking Status Update SMS",
+      type: "sms",
+      category: "booking",
+      description: "Sent to customer when booking status changes",
+      channel: "sms",
+    },
+    {
+      id: "sms_job_completion",
+      name: "Job Completion SMS",
+      type: "sms",
+      category: "booking",
+      description: "Sent to customer when job is completed",
+      channel: "sms",
+    },
+    {
+      id: "sms_repair_submission",
+      name: "Repair Request Submission SMS",
+      type: "sms",
+      category: "repair",
+      description: "Sent to driver when repair request is submitted (Bilingual)",
+      channel: "sms",
+    },
+    {
+      id: "sms_admin_new_repair",
+      name: "Admin Notification SMS (Repair Request)",
+      type: "sms",
+      category: "admin",
+      description: "Sent to admins when a repair request is submitted",
+      channel: "sms",
+    },
+    {
+      id: "sms_repair_booking_link",
+      name: "Repair Booking Link SMS",
+      type: "sms",
+      category: "repair",
+      description: "Sent to driver with booking link when repair is scheduled (Bilingual)",
+      channel: "sms",
+    },
+    {
+      id: "sms_repair_completion",
+      name: "Repair Completion SMS",
+      type: "sms",
+      category: "repair",
+      description: "Sent to driver when repair is completed (Bilingual)",
+      channel: "sms",
+    },
+    {
+      id: "sms_service_record_status",
+      name: "Service Record Status Update SMS",
+      type: "sms",
+      category: "repair",
+      description: "Sent to driver when service record status is updated (Bilingual)",
+      channel: "sms",
+    },
+  ];
+
+  // State to track which admins are assigned to each notification type
+  const [notificationAssignments, setNotificationAssignments] = useState<Record<string, string[]>>({});
+  // State to track which dropdown is open
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+
+  // Save notification assignment to database
+  const saveNotificationAssignment = useCallback(
+    async (notificationType: string, adminUserIds: string[]) => {
+      try {
+        const res = await fetch("/api/admin/notification-assignments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notificationType, adminUserIds }),
+        });
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || "Failed to save assignment");
+        }
+        // Invalidate query to refresh
+        queryClient.invalidateQueries({ queryKey: ["notification-assignments"] });
+      } catch (err) {
+        console.error("Error saving notification assignment:", err);
+        setError(err instanceof Error ? err.message : "Failed to save assignment");
+      }
+    },
+    [queryClient]
+  );
+
+  // Save message template to database
+  const saveMessageTemplate = useCallback(
+    async (notificationType: string, messageEn: string, messageEs: string) => {
+      try {
+        const res = await fetch("/api/admin/notification-templates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notificationType, messageEn, messageEs }),
+        });
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || "Failed to save template");
+        }
+        // Invalidate query to refresh
+        queryClient.invalidateQueries({ queryKey: ["notification-templates"] });
+        return true;
+      } catch (err) {
+        console.error("Error saving message template:", err);
+        setError(err instanceof Error ? err.message : "Failed to save template");
+        return false;
+      }
+    },
+    [queryClient]
+  );
+  // Sub-tab for notifications (admin vs driver)
+  const [notificationSubTab, setNotificationSubTab] = useState<"admin" | "driver">("admin");
+  // State for driver notification message templates
+  const [driverMessageTemplates, setDriverMessageTemplates] = useState<Record<string, { en: string; es: string }>>({});
+  // State for editing message templates
+  const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
 
   // Load calendar settings with React Query
   const { data: calendarSettingsData } = useQuery({
@@ -458,7 +781,7 @@ function AdminSettingsPageContent() {
                 >
                   <div className="flex items-center space-x-2">
                     <Users className="w-5 h-5" />
-                    <span>Users</span>
+                    <span>admin</span>
                   </div>
                 </button>
                 <button
@@ -575,6 +898,7 @@ function AdminSettingsPageContent() {
                                 <div>
                                   <div className="text-sm font-medium text-gray-900">{u.name}</div>
                                   <div className="text-sm text-gray-500">{u.email}</div>
+                                  {u.phone && <div className="text-sm text-gray-400 mt-1">{u.phone}</div>}
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">{getApprovalBadge(u.approval_status)}</td>
@@ -855,59 +1179,7 @@ function AdminSettingsPageContent() {
             )}
 
             {/* Notification Recipients Tab */}
-            {activeTab === "notifications" && (
-              <div className="space-y-6">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <div className="mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900">Notification Recipients</h2>
-                    <p className="text-sm text-gray-600 mt-1">Select users who should receive system alerts and repair requests via SMS/Email.</p>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receive Alerts</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {adminUsers.map((u: User) => (
-                          <tr key={u.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">{u.name}</div>
-                                <div className="text-sm text-gray-500">{u.email}</div>
-                                {u.phone && <div className="text-xs text-gray-400">{u.phone}</div>}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(u.role)}`}
-                              >
-                                {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <label className="flex items-center space-x-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={u.notify_on_repair || false}
-                                  onChange={(e) => handleUpdateUser(u.id, { notifyOnRepair: e.target.checked })}
-                                  className="form-checkbox h-4 w-4 text-primary-600 transition duration-150 ease-in-out"
-                                />
-                                <span className="text-sm text-gray-600">{u.notify_on_repair ? "Enabled" : "Disabled"}</span>
-                              </label>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
+            {activeTab === "notifications" && <NotificationsSection />}
           </div>
         </main>
         <Footer />

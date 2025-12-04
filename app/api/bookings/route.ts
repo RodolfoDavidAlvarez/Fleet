@@ -139,20 +139,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Notify admin of new booking
-    const adminEmail = process.env.ADMIN_EMAIL || 'ralvarez@bettersystems.ai';
-    asyncNotifications.push(
-      notifyAdminNewBooking(adminEmail, {
-        bookingId: booking.id,
-        customerName: parsed.data.customerName,
-        customerEmail: parsed.data.customerEmail,
-        customerPhone: parsed.data.customerPhone,
-        serviceType: parsed.data.serviceType,
-        date: parsed.data.scheduledDate,
-        time: parsed.data.scheduledTime,
-        vehicleInfo: parsed.data.vehicleInfo,
-      })
-    );
+    // Notify admins based on notification assignments ONLY
+    try {
+      const supabase = createServerClient();
+      const { data: assignments } = await supabase
+        .from("notification_assignments")
+        .select("notification_type, admin_user_ids")
+        .eq("notification_type", "email_admin_new_booking")
+        .single();
+
+      if (assignments && assignments.admin_user_ids && assignments.admin_user_ids.length > 0) {
+        const { data: assignedAdmins } = await supabase
+          .from("users")
+          .select("id, email")
+          .in("id", assignments.admin_user_ids);
+
+        if (assignedAdmins && assignedAdmins.length > 0) {
+          assignedAdmins.forEach((admin) => {
+            if (admin.email) {
+              asyncNotifications.push(
+                notifyAdminNewBooking(admin.email, {
+                  bookingId: booking.id,
+                  customerName: parsed.data.customerName,
+                  customerEmail: parsed.data.customerEmail,
+                  customerPhone: parsed.data.customerPhone,
+                  serviceType: parsed.data.serviceType,
+                  date: parsed.data.scheduledDate,
+                  time: parsed.data.scheduledTime,
+                  vehicleInfo: parsed.data.vehicleInfo,
+                })
+              );
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch booking notification assignments:", err);
+    }
 
     Promise.allSettled(asyncNotifications).catch((err) => {
       console.error("Background booking notifications failed", err);

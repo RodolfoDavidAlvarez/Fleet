@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleet Management - Notifications Catalog</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            padding: 20px 30px;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .stat {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+        
+        .section {
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .section-header {
+            background: #f9fafb;
+            padding: 20px 30px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        
+        .section-header:hover {
+            background: #f3f4f6;
+        }
+        
+        .section-header h2 {
+            font-size: 1.3em;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-header .icon {
+            font-size: 1.5em;
+            transition: transform 0.3s;
+        }
+        
+        .section-header.expanded .icon {
+            transform: rotate(180deg);
+        }
+        
+        .section-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        
+        .section-content.expanded {
+            max-height: 10000px;
+        }
+        
+        .notification-item {
+            padding: 25px 30px;
+            border-bottom: 1px solid #e5e7eb;
+            background: white;
+        }
+        
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+        
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+        
+        .notification-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        
+        .notification-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .badge-email {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .badge-sms {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .badge-both {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .notification-meta {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            color: #6b7280;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .notification-preview {
+            background: #f9fafb;
+            border-left: 4px solid #2563eb;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        
+        .preview-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+        
+        .preview-content {
+            color: #1f2937;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+        
+        .preview-html {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .language-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .language-tab {
+            padding: 6px 12px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+        
+        .language-tab.active {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+        
+        .language-content {
+            display: none;
+        }
+        
+        .language-content.active {
+            display: block;
+        }
+        
+        .expand-all {
+            padding: 15px 30px;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: center;
+        }
+        
+        .expand-all button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        
+        .expand-all button:hover {
+            background: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📬 Notifications Catalog</h1>
+            <p>Complete list of all SMS and Email notifications in the Fleet Management System</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-number">13</div>
+                <div class="stat-label">Email Notifications</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">9</div>
+                <div class="stat-label">SMS Notifications</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">5</div>
+                <div class="stat-label">Bilingual Support</div>
+            </div>
+        </div>
+        
+        <div class="expand-all">
+            <button onclick="expandAll()">Expand All Sections</button>
+        </div>
+        
+        <!-- EMAIL NOTIFICATIONS SECTION -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>📧 Email Notifications (13)</h2>
+                <span class="icon">▼</span>
+            </div>
+            <div class="section-content">
+                
+                <!-- Email 1: Booking Confirmation -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">1. Booking Confirmation Email</div>
+                        <span class="notification-badge badge-email">Email</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> New booking created</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Customer</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/email.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Subject:</div>
+                        <div class="preview-content">Booking Confirmed - {bookingId}</div>
+                        <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                        <div class="preview-content">Hello {customerName},
+
+Your service booking has been confirmed. Here are the details:
+
+Booking ID: {bookingId}
+Service: {serviceType}
+Date: {date}
+Time: {time}
+Vehicle: {vehicleInfo} (if provided)
+Notes: {notes} (if provided)
+
+We look forward to serving you!
+If you have any questions or need to make changes, please contact us.
+
+Thank you for choosing FleetPro!</div>
+                    </div>
+                </div>
+                
+                <!-- Email 2: Booking Reminder -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">2. Booking Reminder Email</div>
+                        <span class="notification-badge badge-email">Email</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Reminder before appointment</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Customer</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/email.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Subject:</div>
+                        <div class="preview-content">Reminder: Service Appointment Tomorrow - {date}</div>
+                        <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                        <div class="preview-content">Hello {customerName},
+
+This is a reminder that you have a service appointment tomorrow:
+
+Service: {serviceType}
+Date: {date}
+Time: {time}
+Booking ID: {bookingId}
+
+We look forward to seeing you!
+
+Thank you for choosing FleetPro!</div>
+                    </div>
+                </div>
+                
+                <!-- Email 3: Status Update -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">3. Booking Status Update Email</div>
+                        <span class="notification-badge badge-email">Email</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Booking status changes</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Customer</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/email.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Subject:</div>
+                        <div class="preview-content">Booking Status Updated - {statusLabel}</div>
+                        <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                        <div class="preview-content">Hello {customerName},
+
+Your booking status has been updated:
+
+Booking ID: {bookingId}
+Service: {serviceType} (if provided)
+New Status: {statusLabel} (Pending/Confirmed/In Progress/Completed/Cancelled)
+
+Check your booking for more details.
+
+Thank you for choosing FleetPro!</div>
+                    </div>
+                </div>
+                
+                <!-- Email 4: Job Completion -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">4. Job Completion Email</div>
+                        <span class="notification-badge badge-email">Email</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Job marked as completed</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Customer</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/email.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Subject:</div>
+                        <div class="preview-content">Service Completed - {bookingId}</div>
+                        <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                        <div class="preview-content">Hello {customerName},
+
+Your service has been completed successfully. Here are the details:
+
+Service: {serviceType}
+Booking ID: {bookingId}
+Total Cost: ${totalCost}
+
+Thank you for your business!
+
+Thank you for choosing FleetPro!</div>
+                    </div>
+                </div>
+                
+                <!-- Email 5: Repair Submission -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">5. Repair Request Submission Email</div>
+                        <span class="notification-badge badge-both">Bilingual</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Repair request submitted</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Driver (if email provided)</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/email.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="language-tabs">
+                            <div class="language-tab active" onclick="switchLanguage(this, 'en-5')">English</div>
+                            <div class="language-tab" onclick="switchLanguage(this, 'es-5')">Spanish</div>
+                        </div>
+                        <div id="en-5" class="language-content active">
+                            <div class="preview-label">Subject:</div>
+                            <div class="preview-content">Repair Request Received - #{requestId}</div>
+                            <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                            <div class="preview-content">Hello {driverName},
+
+We have received your repair request:
+
+Request ID: {requestId}
+Summary: {summary}
+Urgency: {urgency}
+
+We will contact you soon.
+
+Thank you for using FleetPro!</div>
+                        </div>
+                        <div id="es-5" class="language-content">
+                            <div class="preview-label">Subject:</div>
+                            <div class="preview-content">Solicitud de Reparación Recibida - #{requestId}</div>
+                            <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                            <div class="preview-content">Hola {driverName},
+
+Hemos recibido su solicitud de reparación:
+
+ID de Solicitud: {requestId}
+Resumen: {summary}
+Urgencia: {urgency}
+
+Nos pondremos en contacto con usted pronto.
+
+Gracias por usar FleetPro!</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Email 6: Repair Booking Link -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">6. Repair Booking Link Email</div>
+                        <span class="notification-badge badge-both">Bilingual</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Repair scheduled, booking link generated</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Driver (if email provided)</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/email.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="language-tabs">
+                            <div class="language-tab active" onclick="switchLanguage(this, 'en-6')">English</div>
+                            <div class="language-tab" onclick="switchLanguage(this, 'es-6')">Spanish</div>
+                        </div>
+                        <div id="en-6" class="language-content active">
+                            <div class="preview-label">Subject:</div>
+                            <div class="preview-content">Schedule Your Repair - #{requestId}</div>
+                            <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                            <div class="preview-content">Hello {driverName},
+
+Please schedule your repair using the following link:
+
+Request ID: {requestId}
+Issue: {issueSummary}
+Suggested Time: {suggestedSlot} (if provided)
+
+[Schedule Now Button] → {link}
+
+Or copy and paste this link into your browser:
+{link}
+
+Thank you for using FleetPro!</div>
+                        </div>
+                        <div id="es-6" class="language-content">
+                            <div class="preview-label">Subject:</div>
+                            <div class="preview-content">Agendar Reparación - #{requestId}</div>
+                            <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                            <div class="preview-content">Hola {driverName},
+
+Por favor, agende su reparación usando el siguiente enlace:
+
+ID de Solicitud: {requestId}
+Motivo: {issueSummary}
+Sugerencia: {suggestedSlot} (if provided)
+
+[Agendar Ahora Button] → {link}
+
+O copie y pegue este enlace en su navegador:
+{link}
+
+Gracias por usar FleetPro!</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Email 7: Repair Completion -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">7. Repair Completion Email</div>
+                        <span class="notification-badge badge-both">Bilingual</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Repair completed, report submitted</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Driver (if email provided)</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/email.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="language-tabs">
+                            <div class="language-tab active" onclick="switchLanguage(this, 'en-7')">English</div>
+                            <div class="language-tab" onclick="switchLanguage(this, 'es-7')">Spanish</div>
+                        </div>
+                        <div id="en-7" class="language-content active">
+                            <div class="preview-label">Subject:</div>
+                            <div class="preview-content">Repair Completed - #{requestId}</div>
+                            <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                            <div class="preview-content">Hello {driverName},
+
+Your repair has been completed:
+
+Request ID: {requestId}
+Summary: {summary}
+Total Cost: ${totalCost} (if provided)
+
+Thank you for using FleetPro!</div>
+                        </div>
+                        <div id="es-7" class="language-content">
+                            <div class="preview-label">Subject:</div>
+                            <div class="preview-content">Reparación Completada - #{requestId}</div>
+                            <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                            <div class="preview-content">Hola {driverName},
+
+Su reparación ha sido completada:
+
+ID de Solicitud: {requestId}
+Resumen: {summary}
+Total: ${totalCost} (if provided)
+
+Gracias por usar FleetPro!</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Email 8: Admin New Booking -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">8. Admin Notification - New Booking</div>
+                        <span class="notification-badge badge-email">Email</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> New booking created</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Admin (ADMIN_EMAIL)</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/email.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Subject:</div>
+                        <div class="preview-content">New Booking: {bookingId}</div>
+                        <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                        <div class="preview-content">A new booking has been created:
+
+Booking ID: {bookingId}
+Customer: {customerName}
+Email: {customerEmail} (or "Not provided")
+Phone: {customerPhone}
+Service: {serviceType}
+Date: {date}
+Time: {time}
+Vehicle: {vehicleInfo} (if provided)
+
+Please review and assign a mechanic if needed.
+
+FleetPro Management System</div>
+                    </div>
+                </div>
+                
+                <!-- Email 9: Admin New Repair -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">9. Admin Notification - New Repair Request</div>
+                        <span class="notification-badge badge-email">Email</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Repair request submitted</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Admins with notify_on_repair=true</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/email.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Subject:</div>
+                        <div class="preview-content">[{Urgency}] New Repair Request: {requestId}</div>
+                        <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                        <div class="preview-content">A new repair request has been submitted:
+
+Request ID: {requestId}
+Driver: {driverName}
+Phone: {driverPhone} (if provided)
+Email: {driverEmail} (if provided)
+Urgency: {urgency}
+Vehicle: {vehicleIdentifier} (if provided)
+Summary: {summary}
+
+Please review and schedule as needed.
+
+FleetPro Management System</div>
+                    </div>
+                </div>
+                
+                <!-- Email 10: Mechanic Assignment -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">10. Mechanic Assignment Email</div>
+                        <span class="notification-badge badge-email">Email</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Job assigned to mechanic</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Mechanic</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/email.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Subject:</div>
+                        <div class="preview-content">New Job Assignment - {jobId}</div>
+                        <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                        <div class="preview-content">Hello {mechanicName},
+
+You have been assigned a new job:
+
+Job ID: {jobId}
+Booking ID: {bookingId}
+Customer: {customerName}
+Service: {serviceType}
+Date: {date}
+Time: {time}
+Priority: {priority}
+Vehicle: {vehicleInfo} (if provided)
+
+Please log in to your dashboard to view full details and update the job status.
+
+FleetPro Management System</div>
+                    </div>
+                </div>
+                
+                <!-- Email 11: Password Reset -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">11. Password Reset Email</div>
+                        <span class="notification-badge badge-email">Email</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Password reset requested</span>
+                        <span class="meta-item"><strong>Recipients:</strong> User requesting reset</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/email.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Subject:</div>
+                        <div class="preview-content">Password Reset Request - FleetPro</div>
+                        <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                        <div class="preview-content">Hello {userName},
+
+We received a request to reset your password. Click the button below to reset it:
+
+[Reset Password Button] → {resetLink}
+
+Or copy and paste this link into your browser:
+{resetLink}
+
+⚠️ This link will expire in 1 hour. If you didn't request this, please ignore this email.
+
+If the button doesn't work, copy and paste the link above into your browser.
+
+FleetPro Management System
+If you didn't request this, you can safely ignore this email.</div>
+                    </div>
+                </div>
+                
+                <!-- Email 12: Invitation -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">12. Invitation Email (Admin Onboarding)</div>
+                        <span class="notification-badge badge-email">Email</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Admin sends onboarding invitation</span>
+                        <span class="meta-item"><strong>Recipients:</strong> New admin</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/email.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Subject:</div>
+                        <div class="preview-content">Invitation to join FleetPro</div>
+                        <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                        <div class="preview-content">Hello,
+
+You have been invited to join FleetPro Management System as an {role}.
+
+After creating your account, it will remain Pending Approval until an administrator reviews and activates it.
+
+Please click the button below to create your account:
+
+[Create Account Button] → {registerLink}
+
+Or copy and paste this link into your browser:
+{registerLink}
+
+FleetPro Management System</div>
+                    </div>
+                </div>
+                
+                <!-- Email 13: Account Approved -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">13. Account Approved Email</div>
+                        <span class="notification-badge badge-email">Email</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Admin approves user account</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Approved user</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/email.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Subject:</div>
+                        <div class="preview-content">Account Approved - FleetPro</div>
+                        <div class="preview-label" style="margin-top: 15px;">Content:</div>
+                        <div class="preview-content">Hello {name},
+
+Your account has been approved! You can now access the FleetPro Management System as a {role}.
+
+[Log In Button] → {loginLink}
+
+FleetPro Management System</div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+        
+        <!-- SMS NOTIFICATIONS SECTION -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2>📱 SMS Notifications (9)</h2>
+                <span class="icon">▼</span>
+            </div>
+            <div class="section-content">
+                
+                <!-- SMS 1: Booking Confirmation -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">1. Booking Confirmation SMS</div>
+                        <span class="notification-badge badge-sms">SMS</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> New booking created</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Customer (if SMS consent)</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/twilio.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Message:</div>
+                        <div class="preview-content">Your booking has been confirmed!
+
+Service: {serviceType}
+Date: {date}
+Time: {time}
+Booking ID: {bookingId}
+
+Thank you for choosing FleetPro!</div>
+                    </div>
+                </div>
+                
+                <!-- SMS 2: Booking Reminder -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">2. Booking Reminder SMS</div>
+                        <span class="notification-badge badge-sms">SMS</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Reminder before appointment</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Customer</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/twilio.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Message:</div>
+                        <div class="preview-content">Reminder: You have a service appointment tomorrow!
+
+Service: {serviceType}
+Date: {date}
+Time: {time}
+
+See you soon!</div>
+                    </div>
+                </div>
+                
+                <!-- SMS 3: Status Update -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">3. Booking Status Update SMS</div>
+                        <span class="notification-badge badge-sms">SMS</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Booking status changes</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Customer</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/twilio.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Message:</div>
+                        <div class="preview-content">Your booking status has been updated!
+
+Booking ID: {bookingId}
+Status: {status}
+
+Check your booking for more details.</div>
+                    </div>
+                </div>
+                
+                <!-- SMS 4: Job Completion -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">4. Job Completion SMS</div>
+                        <span class="notification-badge badge-sms">SMS</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Job marked as completed</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Customer</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/twilio.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Message:</div>
+                        <div class="preview-content">Your service is complete!
+
+Service: {serviceType}
+Total Cost: ${totalCost}
+Booking ID: {bookingId}
+
+Thank you for your business!</div>
+                    </div>
+                </div>
+                
+                <!-- SMS 5: Repair Submission -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">5. Repair Request Submission SMS (Driver)</div>
+                        <span class="notification-badge badge-both">Bilingual</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Repair request submitted</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Driver</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/twilio.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="language-tabs">
+                            <div class="language-tab active" onclick="switchLanguage(this, 'sms-en-5')">English</div>
+                            <div class="language-tab" onclick="switchLanguage(this, 'sms-es-5')">Spanish</div>
+                        </div>
+                        <div id="sms-en-5" class="language-content active">
+                            <div class="preview-label">Message:</div>
+                            <div class="preview-content">Repair request received (#{requestId}). Your request has been submitted and will be reviewed soon.</div>
+                        </div>
+                        <div id="sms-es-5" class="language-content">
+                            <div class="preview-label">Message:</div>
+                            <div class="preview-content">Solicitud de reparación recibida (#{requestId}). Su solicitud ha sido enviada y será revisada pronto.</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- SMS 6: Admin Notification -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">6. Admin Notification SMS (Repair Request)</div>
+                        <span class="notification-badge badge-sms">SMS</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Repair request submitted</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Admins with notify_on_repair=true</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/twilio.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="preview-label">Message:</div>
+                        <div class="preview-content">New repair request #{requestId}
+Driver: {driverName} ({driverPhone})
+Urgency: {urgency}.</div>
+                    </div>
+                </div>
+                
+                <!-- SMS 7: Repair Booking Link -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">7. Repair Booking Link SMS</div>
+                        <span class="notification-badge badge-both">Bilingual</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Repair scheduled, booking link generated</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Driver</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/twilio.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="language-tabs">
+                            <div class="language-tab active" onclick="switchLanguage(this, 'sms-en-7')">English</div>
+                            <div class="language-tab" onclick="switchLanguage(this, 'sms-es-7')">Spanish</div>
+                        </div>
+                        <div id="sms-en-7" class="language-content active">
+                            <div class="preview-label">Message:</div>
+                            <div class="preview-content">Book your repair (#{requestId}): {link}
+Issue: {issueSummary}
+Suggested: {suggestedSlot} (if provided)</div>
+                        </div>
+                        <div id="sms-es-7" class="language-content">
+                            <div class="preview-label">Message:</div>
+                            <div class="preview-content">Agenda tu reparación (#{requestId}): {link}
+Motivo: {issueSummary}
+Sugerencia: {suggestedSlot} (if provided)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- SMS 8: Repair Completion -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">8. Repair Completion SMS</div>
+                        <span class="notification-badge badge-both">Bilingual</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Repair completed</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Driver</span>
+                        <span class="meta-item"><strong>Location:</strong> lib/twilio.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="language-tabs">
+                            <div class="language-tab active" onclick="switchLanguage(this, 'sms-en-8')">English</div>
+                            <div class="language-tab" onclick="switchLanguage(this, 'sms-es-8')">Spanish</div>
+                        </div>
+                        <div id="sms-en-8" class="language-content active">
+                            <div class="preview-label">Message:</div>
+                            <div class="preview-content">Repair completed (#{requestId}). {summary}
+Total: ${totalCost} (if provided)</div>
+                        </div>
+                        <div id="sms-es-8" class="language-content">
+                            <div class="preview-label">Message:</div>
+                            <div class="preview-content">Reparación completada (#{requestId}). {summary}
+Total: ${totalCost} (if provided)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- SMS 9: Service Record Status Update -->
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <div class="notification-title">9. Service Record Status Update SMS</div>
+                        <span class="notification-badge badge-both">Bilingual</span>
+                    </div>
+                    <div class="notification-meta">
+                        <span class="meta-item"><strong>Trigger:</strong> Service record status updated</span>
+                        <span class="meta-item"><strong>Recipients:</strong> Driver (linked to repair request)</span>
+                        <span class="meta-item"><strong>Location:</strong> app/api/service-records/route.ts</span>
+                    </div>
+                    <div class="notification-preview">
+                        <div class="language-tabs">
+                            <div class="language-tab active" onclick="switchLanguage(this, 'sms-en-9')">English</div>
+                            <div class="language-tab" onclick="switchLanguage(this, 'sms-es-9')">Spanish</div>
+                        </div>
+                        <div id="sms-en-9" class="language-content active">
+                            <div class="preview-label">Message:</div>
+                            <div class="preview-content">{driverName}, your repair request is completed and ready for pickup.
+(Other statuses: "is completed", "is on hold", "is waiting for parts")</div>
+                        </div>
+                        <div id="sms-es-9" class="language-content">
+                            <div class="preview-label">Message:</div>
+                            <div class="preview-content">{driverName}, su solicitud de reparación está completada y lista para recoger.
+(Other statuses: "está completada", "está en espera", "está esperando repuestos")</div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+        
+    </div>
+    
+    <script>
+        function toggleSection(header) {
+            const content = header.nextElementSibling;
+            const isExpanded = content.classList.contains('expanded');
+            
+            if (isExpanded) {
+                content.classList.remove('expanded');
+                header.classList.remove('expanded');
+            } else {
+                content.classList.add('expanded');
+                header.classList.add('expanded');
+            }
+        }
+        
+        function expandAll() {
+            const sections = document.querySelectorAll('.section-content');
+            const headers = document.querySelectorAll('.section-header');
+            
+            sections.forEach(content => {
+                content.classList.add('expanded');
+            });
+            
+            headers.forEach(header => {
+                header.classList.add('expanded');
+            });
+        }
+        
+        function switchLanguage(tab, contentId) {
+            // Remove active class from all tabs in this group
+            const tabs = tab.parentElement.querySelectorAll('.language-tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            
+            // Add active class to clicked tab
+            tab.classList.add('active');
+            
+            // Hide all language contents in this group
+            const contents = tab.parentElement.parentElement.querySelectorAll('.language-content');
+            contents.forEach(c => c.classList.remove('active'));
+            
+            // Show selected language content
+            document.getElementById(contentId).classList.add('active');
+        }
+    </script>
+</body>
+</html>
+
