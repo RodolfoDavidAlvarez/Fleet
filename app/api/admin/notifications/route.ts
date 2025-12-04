@@ -62,11 +62,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ notifications: notificationsWithRecipients })
     }
 
-    // Get all notifications
-    const { data: notifications, error } = await supabase
+    // Get date filters if provided
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+
+    // Build query
+    let query = supabase
       .from('notifications')
       .select('*')
-      .order('created_at', { ascending: false })
+
+    // Apply date filters if provided
+    if (startDate) {
+      query = query.gte('created_at', startDate)
+    }
+    if (endDate) {
+      query = query.lt('created_at', endDate)
+    }
+
+    const { data: notifications, error } = await query.order('created_at', { ascending: false })
 
     if (error) {
       console.error('Error fetching notifications:', error)

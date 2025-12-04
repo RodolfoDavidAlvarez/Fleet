@@ -141,71 +141,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Notify admins and mechanics who have opted in
+    // Notify admins based on notification assignments ONLY
     const supabase = createServerClient();
-    let subscribedUsers: any[] | null = null;
-
+    
     try {
-      const { data } = await supabase.from("users").select("phone, email").eq("notify_on_repair", true);
-      subscribedUsers = data;
+      // Get notification assignments for SMS and Email repair alerts
+      const { data: assignments } = await supabase
+        .from("notification_assignments")
+        .select("notification_type, admin_user_ids")
+        .in("notification_type", ["sms_admin_new_repair", "email_admin_new_repair"]);
+
+      if (assignments && assignments.length > 0) {
+        const smsAssignment = assignments.find(a => a.notification_type === "sms_admin_new_repair");
+        const emailAssignment = assignments.find(a => a.notification_type === "email_admin_new_repair");
+
+        const allAssignedUserIds = [
+          ...(smsAssignment?.admin_user_ids || []),
+          ...(emailAssignment?.admin_user_ids || [])
+        ];
+
+        if (allAssignedUserIds.length > 0) {
+          const { data: assignedAdmins } = await supabase
+            .from("users")
+            .select("id, email, phone")
+            .in("id", allAssignedUserIds);
+
+          if (assignedAdmins && assignedAdmins.length > 0) {
+            assignedAdmins.forEach((admin) => {
+              // SMS notification - only if assigned to SMS notifications
+              if (admin.phone && smsAssignment?.admin_user_ids?.includes(admin.id)) {
+                asyncNotifications.push(
+                  notifyAdminOfRepair(
+                    {
+                      requestId: record.id,
+                      driverName: record.driverName,
+                      driverPhone: record.driverPhone,
+                      urgency: record.urgency,
+                    },
+                    admin.phone
+                  )
+                );
+              }
+              // Email notification - only if assigned to email notifications
+              if (admin.email && emailAssignment?.admin_user_ids?.includes(admin.id)) {
+                asyncNotifications.push(
+                  notifyAdminNewRepairRequest(admin.email, {
+                    requestId: record.id,
+                    driverName: record.driverName,
+                    driverPhone: record.driverPhone,
+                    driverEmail: record.driverEmail,
+                    urgency: record.urgency,
+                    summary: ai.summary,
+                    vehicleIdentifier: record.vehicleIdentifier,
+                  })
+                );
+              }
+            });
+          }
+        }
+      }
     } catch (err) {
-      console.warn("Failed to fetch subscribed users for notifications (column might be missing)", err);
-    }
-
-    if (subscribedUsers && subscribedUsers.length > 0) {
-      subscribedUsers.forEach((user) => {
-        // SMS
-        if (user.phone) {
-          asyncNotifications.push(
-            notifyAdminOfRepair(
-              {
-                requestId: record.id,
-                driverName: record.driverName,
-                driverPhone: record.driverPhone,
-                urgency: record.urgency,
-              },
-              user.phone
-            )
-          );
-        }
-        // Email
-        if (user.email) {
-          asyncNotifications.push(
-            notifyAdminNewRepairRequest(user.email, {
-              requestId: record.id,
-              driverName: record.driverName,
-              driverPhone: record.driverPhone,
-              driverEmail: record.driverEmail,
-              urgency: record.urgency,
-              summary: ai.summary,
-              vehicleIdentifier: record.vehicleIdentifier,
-            })
-          );
-        }
-      });
-    } else {
-      // Fallback to env var if no users subscribed (legacy behavior)
-      asyncNotifications.push(
-        notifyAdminOfRepair({
-          requestId: record.id,
-          driverName: record.driverName,
-          driverPhone: record.driverPhone,
-          urgency: record.urgency,
-        })
-      );
-
-      const adminEmail = process.env.ADMIN_EMAIL || "ralvarez@bettersystems.ai";
-      asyncNotifications.push(
-        notifyAdminNewRepairRequest(adminEmail, {
-          requestId: record.id,
-          driverName: record.driverName,
-          driverPhone: record.driverPhone,
-          driverEmail: record.driverEmail,
-          urgency: record.urgency,
-          summary: ai.summary,
-          vehicleIdentifier: record.vehicleIdentifier,
-        })
-      );
+      console.error("Failed to fetch notification assignments:", err);
     }
 
     Promise.allSettled(asyncNotifications).catch((err) => {
