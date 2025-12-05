@@ -11,6 +11,8 @@ export async function POST(request: NextRequest) {
 
     let allRecipients: any[] = [];
     let sentCount = 0;
+    let failedCount = 0;
+    const errors: string[] = [];
 
     // Fetch recipients from groups
     if (recipientGroups && recipientGroups.length > 0) {
@@ -53,13 +55,24 @@ export async function POST(request: NextRequest) {
         // Send email
         if (type === "email" || type === "both") {
           if (recipient.email) {
-            await sendEmail({
-              to: recipient.email,
-              subject: subject || "Announcement from FleetPro",
-              text: messageEn,
-              html: `<p>${messageEn.replace(/\n/g, "<br>")}</p>`,
-            });
-            sentCount++;
+            try {
+              const emailSuccess = await sendEmail({
+                to: recipient.email,
+                subject: subject || "Announcement from FleetPro",
+                text: messageEn,
+                html: `<p>${messageEn.replace(/\n/g, "<br>")}</p>`,
+              });
+              if (emailSuccess) {
+                sentCount++;
+              } else {
+                failedCount++;
+                errors.push(`Email to ${recipient.email} failed`);
+              }
+            } catch (emailError: any) {
+              failedCount++;
+              errors.push(`Email to ${recipient.email}: ${emailError?.message || 'Unknown error'}`);
+              console.error(`Failed to send email to ${recipient.email}:`, emailError);
+            }
           }
         }
 
@@ -70,11 +83,14 @@ export async function POST(request: NextRequest) {
               const smsSuccess = await sendSMS(recipient.phone, messageEn);
               if (smsSuccess) {
                 sentCount++;
+              } else {
+                failedCount++;
+                errors.push(`SMS to ${recipient.phone} failed - Check Twilio credentials`);
               }
             } catch (smsError: any) {
-              // Log error but don't fail the entire request
+              failedCount++;
+              errors.push(`SMS to ${recipient.phone}: ${smsError?.message || 'Unknown error'}`);
               console.error(`Failed to send SMS to ${recipient.phone}:`, smsError?.message || smsError);
-              // Continue with other recipients
             }
           }
         }
@@ -94,13 +110,24 @@ export async function POST(request: NextRequest) {
           if (cleanRecipient.includes("@")) {
             // It's an email
             if (type === "email" || type === "both") {
-              await sendEmail({
-                to: cleanRecipient,
-                subject: subject || "Announcement from FleetPro",
-                text: messageEn,
-                html: `<p>${messageEn.replace(/\n/g, "<br>")}</p>`,
-              });
-              sentCount++;
+              try {
+                const emailSuccess = await sendEmail({
+                  to: cleanRecipient,
+                  subject: subject || "Announcement from FleetPro",
+                  text: messageEn,
+                  html: `<p>${messageEn.replace(/\n/g, "<br>")}</p>`,
+                });
+                if (emailSuccess) {
+                  sentCount++;
+                } else {
+                  failedCount++;
+                  errors.push(`Email to ${cleanRecipient} failed`);
+                }
+              } catch (emailError: any) {
+                failedCount++;
+                errors.push(`Email to ${cleanRecipient}: ${emailError?.message || 'Unknown error'}`);
+                console.error(`Failed to send email to ${cleanRecipient}:`, emailError);
+              }
             }
           } else {
             // It's a phone number
@@ -109,11 +136,14 @@ export async function POST(request: NextRequest) {
                 const smsSuccess = await sendSMS(cleanRecipient, messageEn);
                 if (smsSuccess) {
                   sentCount++;
+                } else {
+                  failedCount++;
+                  errors.push(`SMS to ${cleanRecipient} failed - Check Twilio credentials`);
                 }
               } catch (smsError: any) {
-                // Log error but don't fail the entire request
+                failedCount++;
+                errors.push(`SMS to ${cleanRecipient}: ${smsError?.message || 'Unknown error'}`);
                 console.error(`Failed to send SMS to ${cleanRecipient}:`, smsError?.message || smsError);
-                // Continue with other recipients
               }
             }
           }
@@ -123,7 +153,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, sentCount }, { status: 200 });
+    // Check for Twilio/Email configuration issues
+    const smsEnabled = process.env.ENABLE_SMS === 'true';
+    const emailEnabled = process.env.ENABLE_EMAIL !== 'false';
+    const twilioConfigured = !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN);
+    const emailConfigured = !!process.env.RESEND_API_KEY;
+
+    const warnings: string[] = [];
+    if ((type === 'sms' || type === 'both') && !smsEnabled) {
+      warnings.push('SMS is disabled. Set ENABLE_SMS=true to enable SMS notifications.');
+    }
+    if ((type === 'sms' || type === 'both') && smsEnabled && !twilioConfigured) {
+      warnings.push('SMS enabled but Twilio credentials are missing. Please configure TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.');
+    }
+    if ((type === 'email' || type === 'both') && !emailConfigured) {
+      warnings.push('Email credentials missing. Please configure RESEND_API_KEY.');
+    }
+
+    return NextResponse.json({
+      success: true,
+      sentCount,
+      failedCount,
+      errors: errors.length > 0 ? errors : undefined,
+      warnings: warnings.length > 0 ? warnings : undefined,
+      configuration: {
+        smsEnabled,
+        twilioConfigured,
+        emailEnabled,
+        emailConfigured
+      }
+    }, { status: 200 });
   } catch (error) {
     console.error("Error in POST /api/admin/send-announcement:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
