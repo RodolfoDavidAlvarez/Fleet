@@ -1,11 +1,13 @@
 import twilio from "twilio";
 
 // Helper function to check SMS enabled at runtime (not module load time)
-// Handles both string "true" and boolean true (though env vars should be strings)
+// Handles string "true" (case-insensitive) and trims whitespace/newlines
 function isSmsEnabled(): boolean {
   const value = process.env.ENABLE_SMS;
-  // Check for string "true" (case-insensitive) or boolean true
-  return value === "true" || value === "True" || value === "TRUE" || value === true;
+  if (!value) return false;
+  // Trim whitespace and newlines, then check for "true" (case-insensitive)
+  const trimmed = String(value).trim().toLowerCase();
+  return trimmed === "true";
 }
 
 // Helper function to get Twilio client (recreated if needed)
