@@ -1,30 +1,51 @@
 import twilio from 'twilio'
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID
-const authToken = process.env.TWILIO_AUTH_TOKEN
-const phoneNumber = process.env.TWILIO_PHONE_NUMBER
-const adminPhone = process.env.ADMIN_PHONE_NUMBER
-const smsEnabled = process.env.ENABLE_SMS === 'true'
+// Helper function to check SMS enabled at runtime (not module load time)
+function isSmsEnabled(): boolean {
+  return process.env.ENABLE_SMS === 'true'
+}
 
-let client: twilio.Twilio | null = null
-
-if (accountSid && authToken && smsEnabled) {
-  client = twilio(accountSid, authToken)
+// Helper function to get Twilio client (recreated if needed)
+function getTwilioClient(): twilio.Twilio | null {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID
+  const authToken = process.env.TWILIO_AUTH_TOKEN
+  const smsEnabled = isSmsEnabled()
+  
+  if (accountSid && authToken && smsEnabled) {
+    return twilio(accountSid, authToken)
+  }
+  return null
 }
 
 export async function sendSMS(to: string, message: string): Promise<boolean> {
+  // Check SMS enabled at runtime, not module load time
+  const smsEnabled = isSmsEnabled()
+  
   if (!smsEnabled) {
     console.info('[SMS disabled] Would send to:', to, message)
+    console.info('[SMS disabled] ENABLE_SMS value:', process.env.ENABLE_SMS)
     return false
   }
+  
+  const accountSid = process.env.TWILIO_ACCOUNT_SID
+  const authToken = process.env.TWILIO_AUTH_TOKEN
+  const phoneNumber = process.env.TWILIO_PHONE_NUMBER
 
   if (!accountSid || !authToken) {
     console.warn('Twilio credentials missing. Please set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN environment variables.')
+    console.warn('TWILIO_ACCOUNT_SID:', accountSid ? 'SET' : 'MISSING')
+    console.warn('TWILIO_AUTH_TOKEN:', authToken ? 'SET' : 'MISSING')
     return false
   }
 
-  if (!client || !phoneNumber) {
-    console.warn('Twilio not configured. SMS would be sent to:', to, message)
+  if (!phoneNumber) {
+    console.warn('TWILIO_PHONE_NUMBER missing. SMS would be sent to:', to, message)
+    return false
+  }
+
+  const client = getTwilioClient()
+  if (!client) {
+    console.warn('Twilio client not initialized. SMS would be sent to:', to, message)
     return false
   }
 
@@ -120,6 +141,7 @@ export async function notifyAdminOfRepair(details: {
   driverPhone?: string
   urgency?: string
 }, toPhone?: string) {
+  const adminPhone = process.env.ADMIN_PHONE_NUMBER
   const targetPhone = toPhone || adminPhone
   if (!targetPhone) {
     return false
