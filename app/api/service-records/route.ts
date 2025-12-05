@@ -56,11 +56,8 @@ export async function GET(request: NextRequest) {
             .in("id", repairRequestIds)
         : { data: [] },
       vehicleIds.length ? supabase.from("vehicles").select("id, license_plate, make, model, vehicle_number").in("id", vehicleIds) : { data: [] },
-      mechanicIds.length 
-        ? supabase
-            .from("mechanics")
-            .select("id, name, email, airtable_id, user_id, users(role)")
-            .in("id", mechanicIds)
+      mechanicIds.length
+        ? supabase.from("mechanics").select("id, name, email, airtable_id, user_id, users(role)").in("id", mechanicIds)
         : { data: [] },
     ]);
 
@@ -100,7 +97,7 @@ export async function GET(request: NextRequest) {
       const mechanic = r.mechanic_id ? mechanicMap.get(r.mechanic_id) : null;
       const mechanicName = cleanMechanicName(r.mechanic_name, mechanic);
 
-      const mechanicRole = mechanic?.users?.role || (mechanic?.user_id ? 'mechanic' : undefined);
+      const mechanicRole = mechanic?.users?.role || (mechanic?.user_id ? "mechanic" : undefined);
 
       return {
         id: r.id,
@@ -195,11 +192,7 @@ export async function POST(request: NextRequest) {
     if (payload.mileage && vehicleId) {
       try {
         // Get current vehicle mileage
-        const { data: currentVehicle } = await supabase
-          .from("vehicles")
-          .select("mileage")
-          .eq("id", vehicleId)
-          .single();
+        const { data: currentVehicle } = await supabase.from("vehicles").select("mileage").eq("id", vehicleId).single();
 
         const previousMileage = currentVehicle?.mileage || null;
         const newMileage = payload.mileage;
@@ -207,21 +200,16 @@ export async function POST(request: NextRequest) {
         // Only update if new mileage is higher than current (or if current is null/0)
         if (!previousMileage || newMileage > previousMileage) {
           // Update vehicle mileage
-          await supabase
-            .from("vehicles")
-            .update({ mileage: newMileage })
-            .eq("id", vehicleId);
+          await supabase.from("vehicles").update({ mileage: newMileage }).eq("id", vehicleId);
 
           // Create mileage history record
-          await supabase
-            .from("vehicle_mileage_history")
-            .insert({
-              vehicle_id: vehicleId,
-              mileage: newMileage,
-              previous_mileage: previousMileage,
-              updated_by_service_record_id: data.id,
-              notes: `Updated via service record: ${payload.serviceType || "Service"}`,
-            });
+          await supabase.from("vehicle_mileage_history").insert({
+            vehicle_id: vehicleId,
+            mileage: newMileage,
+            previous_mileage: previousMileage,
+            updated_by_service_record_id: data.id,
+            notes: `Updated via service record: ${payload.serviceType || "Service"}`,
+          });
         }
       } catch (mileageError) {
         console.error("Failed to update vehicle mileage", mileageError);

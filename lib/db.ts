@@ -22,7 +22,7 @@ function rowToVehicle(row: any): Vehicle {
     driverName: row.driver_name || row.driver?.name,
     driverPhone: row.driver_phone || row.driver?.phone,
     driverEmail: row.driver_email || row.driver?.email,
-    driverRole: row.users?.role || (row.driver_name ? 'driver' : undefined),
+    driverRole: row.users?.role || (row.driver_name ? "driver" : undefined),
     driverAssignedDate: row.assigned_date,
     photoUrl: row.photo_url,
     // Enhanced fields mapping
@@ -298,10 +298,12 @@ export const vehicleDB = {
     const supabase = createServerClient();
     const { data, error } = await supabase
       .from("vehicles")
-      .select(`
+      .select(
+        `
         *,
         driver:users!driver_id(*)
-      `)
+      `
+      )
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -318,10 +320,12 @@ export const vehicleDB = {
     const supabase = createServerClient();
     const { data, error } = await supabase
       .from("vehicles")
-      .select(`
+      .select(
+        `
         *,
         driver:users!driver_id(*)
-      `)
+      `
+      )
       .eq("id", id)
       .single();
 
@@ -330,11 +334,7 @@ export const vehicleDB = {
     }
 
     // Fetch service history
-    const { data: serviceHistory } = await supabase
-      .from("service_records")
-      .select("*")
-      .eq("vehicle_id", id)
-      .order("date", { ascending: false });
+    const { data: serviceHistory } = await supabase.from("service_records").select("*").eq("vehicle_id", id).order("date", { ascending: false });
 
     // Fetch mileage history
     const { data: mileageHistory } = await supabase
@@ -348,34 +348,34 @@ export const vehicleDB = {
     const { data: repairRequests } = await supabase
       .from("repair_requests")
       .select("*")
-      .or(`vehicle_id.eq.${id},vehicle_identifier.eq.${data.vin},vehicle_identifier.eq.${data.vehicle_number || 'fallback'}`)
+      .or(`vehicle_id.eq.${id},vehicle_identifier.eq.${data.vin},vehicle_identifier.eq.${data.vehicle_number || "fallback"}`)
       .order("created_at", { ascending: false });
 
     const vehicle = rowToVehicle(data);
-    
+
     vehicle.serviceHistory = (serviceHistory || []).map((record: any) => ({
-        id: record.id,
-        vehicleId: record.vehicle_id,
-        date: record.date,
-        serviceType: record.service_type,
-        description: record.description,
-        cost: record.cost,
-        mechanicId: record.mechanic_id,
-        mechanicName: record.mechanic_name,
-        status: record.status,
-        mileage: record.mileage,
-        nextServiceDue: record.next_service_due,
-        createdAt: record.created_at
+      id: record.id,
+      vehicleId: record.vehicle_id,
+      date: record.date,
+      serviceType: record.service_type,
+      description: record.description,
+      cost: record.cost,
+      mechanicId: record.mechanic_id,
+      mechanicName: record.mechanic_name,
+      status: record.status,
+      mileage: record.mileage,
+      nextServiceDue: record.next_service_due,
+      createdAt: record.created_at,
     }));
 
     vehicle.mileageHistory = (mileageHistory || []).map((record: any) => ({
-        id: record.id,
-        vehicleId: record.vehicle_id,
-        mileage: record.mileage,
-        previousMileage: record.previous_mileage,
-        updatedByServiceRecordId: record.updated_by_service_record_id,
-        notes: record.notes,
-        createdAt: record.created_at
+      id: record.id,
+      vehicleId: record.vehicle_id,
+      mileage: record.mileage,
+      previousMileage: record.previous_mileage,
+      updatedByServiceRecordId: record.updated_by_service_record_id,
+      notes: record.notes,
+      createdAt: record.created_at,
     }));
 
     vehicle.repairRequests = (repairRequests || []).map(rowToRepairRequest);
@@ -397,21 +397,21 @@ export const vehicleDB = {
 
   update: async (id: string, updates: Partial<Vehicle>): Promise<Vehicle | null> => {
     const supabase = createServerClient();
-    
+
     // Handle driver assignment separately using the assign_driver_to_vehicle function
     const driverId = updates.driverId;
     const updatesWithoutDriver = { ...updates };
     delete (updatesWithoutDriver as any).driverId;
-    
+
     // Update vehicle fields (excluding driverId)
     const vehicleRow = vehicleToRow(updatesWithoutDriver);
     // Remove undefined/null values
-    Object.keys(vehicleRow).forEach(key => {
+    Object.keys(vehicleRow).forEach((key) => {
       if (vehicleRow[key] === undefined || vehicleRow[key] === null) {
         delete vehicleRow[key];
       }
     });
-    
+
     if (Object.keys(vehicleRow).length > 0) {
       const { data, error } = await supabase.from("vehicles").update(vehicleRow).eq("id", id).select().single();
       if (error) {
@@ -419,18 +419,18 @@ export const vehicleDB = {
         return null;
       }
     }
-    
+
     // Handle driver assignment
     if (driverId !== undefined) {
-      if (driverId === null || driverId === '') {
+      if (driverId === null || driverId === "") {
         // Remove driver assignment
         await supabase.from("vehicle_drivers").delete().eq("vehicle_id", id).eq("is_primary", true);
       } else {
         // Assign driver using the database function
-        const { error: assignError } = await supabase.rpc('assign_driver_to_vehicle', {
+        const { error: assignError } = await supabase.rpc("assign_driver_to_vehicle", {
           p_vehicle_id: id,
           p_driver_id: driverId,
-          p_is_primary: true
+          p_is_primary: true,
         });
         if (assignError) {
           console.error("Error assigning driver:", assignError);
@@ -941,11 +941,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .in("status", ["submitted", "triaged", "waiting_booking", "scheduled", "in_progress"]),
     supabase.from("repair_requests").select("*", { count: "exact", head: true }).eq("status", "waiting_booking"),
     supabase.from("repair_requests").select("*", { count: "exact", head: true }).eq("status", "completed"),
-    supabase
-      .from("repair_requests")
-      .select("*", { count: "exact", head: true })
-      .in("urgency", ["high", "critical"])
-      .neq("status", "completed"),
+    supabase.from("repair_requests").select("*", { count: "exact", head: true }).in("urgency", ["high", "critical"]).neq("status", "completed"),
     supabase.from("jobs").select("id, total_cost, created_at, status, priority, vehicle_id"),
     supabase.from("bookings").select("*").order("created_at", { ascending: false }).limit(5),
     supabase.from("vehicles").select("id, status, department, vehicle_number, license_plate, make, model").limit(1000),
@@ -964,11 +960,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   });
 
   const departmentVehicleBreakdown = Object.entries(
-    (vehiclesData || []).reduce((acc, vehicle) => {
-      const key = vehicle.department || "Unassigned";
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>)
+    (vehiclesData || []).reduce(
+      (acc, vehicle) => {
+        const key = vehicle.department || "Unassigned";
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    )
   )
     .map(([department, count]) => ({ department, count }))
     .sort((a, b) => b.count - a.count)
@@ -1002,9 +1001,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
 
-  const activeJobs = (jobsData || []).filter(
-    (job) => job.status && !["completed", "cancelled"].includes(job.status)
-  );
+  const activeJobs = (jobsData || []).filter((job) => job.status && !["completed", "cancelled"].includes(job.status));
   const jobStatusBreakdown = Object.entries(countByField(activeJobs, "status"))
     .map(([status, count]) => ({ status, count }))
     .sort((a, b) => b.count - a.count);
@@ -1012,9 +1009,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     .map(([priority, count]) => ({ priority, count }))
     .sort((a, b) => b.count - a.count);
 
-  const openRepairRequestsList = (repairRequestsData || []).filter(
-    (req) => req.status && !["completed", "cancelled"].includes(req.status)
-  );
+  const openRepairRequestsList = (repairRequestsData || []).filter((req) => req.status && !["completed", "cancelled"].includes(req.status));
   const repairUrgencyBreakdown = Object.entries(countByField(openRepairRequestsList, "urgency"))
     .map(([urgency, count]) => ({ urgency, count }))
     .sort((a, b) => b.count - a.count);
@@ -1028,9 +1023,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     })
     .filter((val): val is number => val !== null);
   const openRepairAgingDays =
-    openRepairAges.length > 0
-      ? Math.round((openRepairAges.reduce((sum, days) => sum + days, 0) / openRepairAges.length) * 10) / 10
-      : 0;
+    openRepairAges.length > 0 ? Math.round((openRepairAges.reduce((sum, days) => sum + days, 0) / openRepairAges.length) * 10) / 10 : 0;
 
   const bookingLeadTimes = (bookingsTrendData || [])
     .map((booking) => {
@@ -1043,16 +1036,11 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     })
     .filter((val): val is number => val !== null);
   const avgBookingLeadTimeDays =
-    bookingLeadTimes.length > 0
-      ? Math.round((bookingLeadTimes.reduce((sum, days) => sum + days, 0) / bookingLeadTimes.length) * 10) / 10
-      : 0;
+    bookingLeadTimes.length > 0 ? Math.round((bookingLeadTimes.reduce((sum, days) => sum + days, 0) / bookingLeadTimes.length) * 10) / 10 : 0;
 
   const vehicleLabelMap = new Map(
     (vehiclesData || []).map((vehicle) => {
-      const label =
-        vehicle.vehicle_number ||
-        vehicle.license_plate ||
-        (vehicle.make && vehicle.model ? `${vehicle.make} ${vehicle.model}` : null);
+      const label = vehicle.vehicle_number || vehicle.license_plate || (vehicle.make && vehicle.model ? `${vehicle.make} ${vehicle.model}` : null);
       return [vehicle.id, label || `Vehicle ${vehicle.id?.slice(0, 8) || ""}`];
     })
   );
