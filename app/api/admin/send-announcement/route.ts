@@ -66,8 +66,16 @@ export async function POST(request: NextRequest) {
         // Send SMS
         if (type === "sms" || type === "both") {
           if (recipient.phone) {
-            await sendSMS(recipient.phone, messageEn);
-            sentCount++;
+            try {
+              const smsSuccess = await sendSMS(recipient.phone, messageEn);
+              if (smsSuccess) {
+                sentCount++;
+              }
+            } catch (smsError: any) {
+              // Log error but don't fail the entire request
+              console.error(`Failed to send SMS to ${recipient.phone}:`, smsError?.message || smsError);
+              // Continue with other recipients
+            }
           }
         }
       } catch (error) {
@@ -97,8 +105,16 @@ export async function POST(request: NextRequest) {
           } else {
             // It's a phone number
             if (type === "sms" || type === "both") {
-              await sendSMS(cleanRecipient, messageEn);
-              sentCount++;
+              try {
+                const smsSuccess = await sendSMS(cleanRecipient, messageEn);
+                if (smsSuccess) {
+                  sentCount++;
+                }
+              } catch (smsError: any) {
+                // Log error but don't fail the entire request
+                console.error(`Failed to send SMS to ${cleanRecipient}:`, smsError?.message || smsError);
+                // Continue with other recipients
+              }
             }
           }
         } catch (error) {
