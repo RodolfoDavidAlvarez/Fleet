@@ -102,7 +102,7 @@ async function applyMigration() {
       console.log("✅ Verification successful!");
       console.log(`   Column: ${column.column_name}`);
       console.log(`   Type: ${column.data_type}`);
-      console.log(`   Default: ${column.column_default || 'NULL'}\n`);
+      console.log(`   Default: ${column.column_default || "NULL"}\n`);
 
       // Check how many users have it set to true
       const countResult = await client.query(`
@@ -119,7 +119,7 @@ async function applyMigration() {
     console.log("✅ Migration completed successfully!\n");
   } catch (error) {
     console.error("❌ Error applying migration:", error.message);
-    
+
     if (error.message.includes("password authentication failed")) {
       console.error("\n💡 The database password is incorrect.");
       console.error("   Please check SUPABASE_DB_PASSWORD in your .env.local file.\n");
@@ -131,7 +131,7 @@ async function applyMigration() {
       console.error("   1. Go to: https://supabase.com/dashboard/project/kxcixjiafdohbpwijfmd/sql/new");
       console.error("   2. Copy and paste the SQL from the migration file\n");
     }
-    
+
     await client.end().catch(() => {});
     process.exit(1);
   }

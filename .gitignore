@@ -31,6 +31,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# claude settings (contains API keys)
+.claude/settings.local.json
+
+# environment setup guides with actual credentials
+VERCEL_ENV_COMPLETE.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
