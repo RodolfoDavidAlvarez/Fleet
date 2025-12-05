@@ -272,3 +272,4 @@ For database queries, use Supabase SQL Editor to:
 - Check approval status: `SELECT email, role, approval_status FROM users;`
 - Approve user manually: `UPDATE users SET approval_status = 'approved' WHERE email = 'user@example.com';`
 
+

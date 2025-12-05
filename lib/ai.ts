@@ -21,6 +21,7 @@ export type AnalysisResult = {
   summary: string;
   confidence: number;
   serviceType: string;
+  incidentType: string;
 };
 
 const CATEGORY_OPTIONS = [
@@ -34,6 +35,55 @@ const CATEGORY_OPTIONS = [
   { key: "other", label: "Other / Misc", cues: [], serviceType: "General inspection" },
 ];
 
+// Predefined incident types for historical analytics
+export const INCIDENT_TYPES = [
+  "Tire punctures",
+  "Tire wear",
+  "Flat tire",
+  "Oil leaks",
+  "Coolant leaks",
+  "Brake fluid leaks",
+  "Engine problems",
+  "Engine overheating",
+  "Engine stalling",
+  "Battery issues",
+  "Electrical problems",
+  "Warning lights",
+  "Check engine light",
+  "Brake problems",
+  "Brake noise",
+  "Body damage",
+  "Dents",
+  "Scratches",
+  "Windshield cracks",
+  "Windshield chips",
+  "Mirror damage",
+  "Door issues",
+  "Window problems",
+  "Headlight issues",
+  "Taillight issues",
+  "Transmission problems",
+  "Suspension issues",
+  "Alignment problems",
+  "Exhaust issues",
+  "AC/Heating problems",
+  "Other",
+] as const;
+
+export type IncidentType = typeof INCIDENT_TYPES[number];
+
+// Map categories to likely incident types
+const CATEGORY_TO_INCIDENT_TYPES: Record<string, IncidentType[]> = {
+  engine: ["Engine problems", "Engine overheating", "Engine stalling", "Transmission problems"],
+  electrical: ["Battery issues", "Electrical problems", "Warning lights", "Check engine light"],
+  tires_brakes: ["Tire punctures", "Tire wear", "Flat tire", "Brake problems", "Brake noise"],
+  fluids: ["Oil leaks", "Coolant leaks", "Brake fluid leaks"],
+  warning_lights: ["Warning lights", "Check engine light"],
+  body_glass: ["Body damage", "Dents", "Scratches", "Windshield cracks", "Windshield chips", "Mirror damage", "Door issues", "Window problems"],
+  safety: ["Other"],
+  other: ["Other"],
+};
+
 function fallbackClassify(input: AnalysisInput): AnalysisResult {
   const normalized = input.description.toLowerCase();
   let match = CATEGORY_OPTIONS.find((c) => c.cues.some((cue) => normalized.includes(cue))) || CATEGORY_OPTIONS.find((c) => c.key === "other")!;
@@ -45,12 +95,25 @@ function fallbackClassify(input: AnalysisInput): AnalysisResult {
       ? `Clasificación rápida: ${match.label}. Se recomienda revisión prioritaria si la urgencia es alta.`
       : `Quick triage: ${match.label}. If urgency is high, prioritize scheduling.`;
 
+  // Determine incident type from category
+  const possibleIncidentTypes = CATEGORY_TO_INCIDENT_TYPES[match.key] || ["Other"];
+  let incidentType: IncidentType = possibleIncidentTypes[0];
+  
+  // Try to match description to specific incident types
+  for (const type of INCIDENT_TYPES) {
+    if (normalized.includes(type.toLowerCase().slice(0, 5))) {
+      incidentType = type;
+      break;
+    }
+  }
+
   return {
     category: match.label,
     tags: [match.key, match.serviceType],
     summary,
     confidence,
     serviceType: match.serviceType,
+    incidentType,
   };
 }
 
@@ -117,6 +180,7 @@ export async function analyzeRepairRequest(input: AnalysisInput): Promise<Analys
 
   try {
     const categoriesList = CATEGORY_OPTIONS.map((c) => `${c.key}: ${c.label}`).join("\n");
+    const incidentTypesList = INCIDENT_TYPES.join(", ");
     const languageHint = input.preferredLanguage === "es" ? "Responde el resumen en español." : "Respond in English.";
     
     // Build content array with text and images
@@ -148,6 +212,9 @@ Urgency: ${input.urgency || "unspecified"}
 Available Categories (you MUST pick exactly one):
 ${categoriesList}
 
+Available Incident Types (you MUST pick exactly one from this list):
+${incidentTypesList}
+
 ${languageHint}
 
 Return a JSON object with these exact keys:
@@ -157,6 +224,7 @@ Return a JSON object with these exact keys:
 - summary: Brief 1-2 sentence summary describing what you SEE in the images (if provided) or the issue described, in ${input.preferredLanguage === "es" ? "Spanish" : "English"}
 - confidence: Number between 0 and 1 indicating confidence (higher if visual evidence is clear)
 - serviceType: The service type from the selected category
+- incidentType: ONE incident type from the list above that best matches what you see (e.g., "Tire punctures", "Oil leaks", "Engine problems", etc.). Must be EXACTLY as listed.
 
 ${hasImages ? "Focus on visual analysis - what can you see in the photos?" : "Analyze based on text description."}`,
       },
@@ -250,12 +318,23 @@ ${hasImages ? "Focus on visual analysis - what can you see in the photos?" : "An
       tags = found ? [found.key, found.serviceType] : [];
     }
 
+    // Validate and set incident type
+    let incidentType: IncidentType = "Other";
+    if (parsed.incidentType && INCIDENT_TYPES.includes(parsed.incidentType as IncidentType)) {
+      incidentType = parsed.incidentType as IncidentType;
+    } else if (found) {
+      // Fallback: use first incident type from category mapping
+      const possibleTypes = CATEGORY_TO_INCIDENT_TYPES[found.key] || ["Other"];
+      incidentType = possibleTypes[0];
+    }
+
     const result = {
       category: parsed.categoryLabel || found?.label || "General inspection",
       tags: tags,
       summary: parsed.summary || fallbackClassify(input).summary,
       confidence: confidence,
       serviceType: parsed.serviceType || found?.serviceType || "General inspection",
+      incidentType,
     };
 
     // Log successful analysis (in development)

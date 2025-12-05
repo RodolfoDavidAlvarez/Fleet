@@ -60,3 +60,4 @@ Password: mechanic123
 
 See `ADMIN_ONBOARDING_GUIDE.md` for detailed information.
 
+

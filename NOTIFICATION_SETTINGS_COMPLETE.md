@@ -61,3 +61,4 @@ Only **actual notifications being sent** in the codebase are shown:
 - **Format**: `Name / Email / Phone` all in one cell
 
 ##Human: check the notifications on the page. ensure they match those that are being sent and also add the category for example driver, admin, system, etc also ensure that when we load the page. All of the settings can be loaded. So if there's settings already set. They show there and also if there's templates that are already saved. They show there. And also make sure that at least the Admin notifications. When the admin ones are set, they do use the people that have been assigned to that right. So if I'm adding roadtofo or And send onboarding email on that specific Email and That's what is  being set. So let me make sure that that works. and if there's still any notification assignments in the DB, let's make sure we are able to load them and see them.
+

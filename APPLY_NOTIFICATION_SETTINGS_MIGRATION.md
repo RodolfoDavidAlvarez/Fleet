@@ -121,3 +121,4 @@ Then run the migration again.
 
 That's OK! It means the tables are already there. The migration uses `IF NOT EXISTS` to be safe.
 
+
