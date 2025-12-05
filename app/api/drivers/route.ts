@@ -6,6 +6,8 @@ const driverSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   phone: z.string().min(6).optional(),
+  role: z.enum(["driver", "mechanic"]).optional(),
+  approval_status: z.enum(["pending_approval", "approved"]).optional(),
 });
 
 export async function GET() {
@@ -30,7 +32,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
     }
 
-    const driver = await driverDB.create(parsed.data);
+    const driver = await driverDB.create({
+      name: parsed.data.name,
+      email: parsed.data.email,
+      phone: parsed.data.phone,
+      role: parsed.data.role || "driver",
+      approval_status: parsed.data.approval_status || "approved",
+    });
     return NextResponse.json({ driver }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: "Failed to create driver" }, { status: 500 });

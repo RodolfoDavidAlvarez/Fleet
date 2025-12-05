@@ -263,7 +263,7 @@ export const driverDB = {
     }));
   },
 
-  create: async (user: Pick<User, "name" | "email"> & { phone?: string }): Promise<User> => {
+  create: async (user: Pick<User, "name" | "email"> & { phone?: string; role?: User["role"]; approval_status?: User["approval_status"] }): Promise<User> => {
     const supabase = createServerClient();
     const { data, error } = await supabase
       .from("users")
@@ -271,8 +271,8 @@ export const driverDB = {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        role: "driver",
-        approval_status: "pending_approval",
+        role: user.role || "driver",
+        approval_status: user.approval_status || "pending_approval",
       })
       .select()
       .single();
@@ -287,6 +287,7 @@ export const driverDB = {
       name: data.name,
       role: data.role,
       phone: data.phone,
+      approval_status: data.approval_status,
       createdAt: data.created_at,
     };
   },

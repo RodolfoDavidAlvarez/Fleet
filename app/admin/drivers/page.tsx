@@ -54,6 +54,18 @@ export default function DriversPage() {
   const [vehicleSearch, setVehicleSearch] = useState("");
   const vehicleDropdownRef = useRef<HTMLDivElement>(null);
   const { data: allVehicles = [] } = useVehicles();
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [memberFormData, setMemberFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "driver" as "driver" | "mechanic",
+    vehicleId: "",
+  });
+  const [creatingMember, setCreatingMember] = useState(false);
+  const [isMemberVehicleDropdownOpen, setIsMemberVehicleDropdownOpen] = useState(false);
+  const [memberVehicleSearch, setMemberVehicleSearch] = useState("");
+  const memberVehicleDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -257,16 +269,19 @@ export default function DriversPage() {
       if (vehicleDropdownRef.current && !vehicleDropdownRef.current.contains(event.target as Node)) {
         setIsVehicleDropdownOpen(false);
       }
+      if (memberVehicleDropdownRef.current && !memberVehicleDropdownRef.current.contains(event.target as Node)) {
+        setIsMemberVehicleDropdownOpen(false);
+      }
     };
 
-    if (isVehicleDropdownOpen) {
+    if (isVehicleDropdownOpen || isMemberVehicleDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isVehicleDropdownOpen]);
+  }, [isVehicleDropdownOpen, isMemberVehicleDropdownOpen]);
 
   const assignVehicle = async () => {
     if (!selectedDriver || !selectedVehicleId) return;
@@ -350,6 +365,30 @@ export default function DriversPage() {
     });
   }, [allVehicles, vehicleSearch]);
 
+  const filteredMemberVehicles = useMemo(() => {
+    if (!memberVehicleSearch.trim()) {
+      return allVehicles.filter((v) => !v.driverId); // Only show unassigned vehicles
+    }
+    const searchLower = memberVehicleSearch.toLowerCase();
+    return allVehicles.filter((vehicle) => {
+      if (vehicle.driverId) return false; // Exclude already assigned vehicles
+      const make = (vehicle.make || "").toLowerCase();
+      const model = (vehicle.model || "").toLowerCase();
+      const vin = (vehicle.vin || "").toLowerCase();
+      const licensePlate = (vehicle.licensePlate || "").toLowerCase();
+      const vehicleNumber = (vehicle.vehicleNumber || "").toLowerCase();
+
+      return (
+        make.includes(searchLower) ||
+        model.includes(searchLower) ||
+        vin.includes(searchLower) ||
+        licensePlate.includes(searchLower) ||
+        vehicleNumber.includes(searchLower) ||
+        `${make} ${model}`.includes(searchLower)
+      );
+    });
+  }, [allVehicles, memberVehicleSearch]);
+
   if (!user) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
@@ -396,7 +435,10 @@ export default function DriversPage() {
                   <Download className="h-4 w-4" />
                   Export CSV
                 </button>
-                <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
+                <button
+                  onClick={() => setShowAddMemberModal(true)}
+                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"
+                >
                   <Plus className="h-5 w-5 mr-2" />
                   Add Member
                 </button>
@@ -608,6 +650,340 @@ export default function DriversPage() {
           </div>
         </main>
       </div>
+
+      {/* Add Member Modal */}
+      <AnimatePresence>
+        {showAddMemberModal && (
+          <motion.div className="fixed inset-0 z-50 overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" onClick={() => setShowAddMemberModal(false)} />
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+              <motion.div
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              >
+                {/* Header */}
+                <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white flex items-center justify-between sticky top-0 z-10 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center">
+                      <UserPlus className="h-5 w-5 text-primary-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">Add New Member</h2>
+                      <p className="text-xs text-gray-500">Fill in the member details below</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowAddMemberModal(false);
+                      setMemberFormData({ name: "", email: "", phone: "", role: "driver", vehicleId: "" });
+                      setMemberVehicleSearch("");
+                      setIsMemberVehicleDropdownOpen(false);
+                    }}
+                    className="btn btn-ghost btn-icon"
+                    aria-label="Close"
+                    disabled={creatingMember}
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Form */}
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (creatingMember) return;
+
+                    try {
+                      setCreatingMember(true);
+
+                      // Create the member
+                      const res = await fetch("/api/drivers", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          name: memberFormData.name.trim(),
+                          email: memberFormData.email.trim().toLowerCase(),
+                          phone: memberFormData.phone.trim() || undefined,
+                          role: memberFormData.role,
+                          approval_status: "approved", // Auto-approve when added by admin
+                        }),
+                      });
+
+                      if (!res.ok) {
+                        const errorData = await res.json().catch(() => ({ error: "Failed to create member" }));
+                        const errorMessage = errorData.error || errorData.details || "Failed to create member";
+                        throw new Error(errorMessage);
+                      }
+
+                      const data = await res.json();
+                      if (!data.driver) {
+                        throw new Error("Invalid response from server");
+                      }
+
+                      const newMemberId = data.driver.id;
+
+                      // Assign vehicle if selected
+                      if (memberFormData.vehicleId) {
+                        try {
+                          const vehicleRes = await fetch(`/api/vehicles/${memberFormData.vehicleId}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ driverId: newMemberId }),
+                          });
+
+                          if (!vehicleRes.ok) {
+                            console.warn("Member created but vehicle assignment failed");
+                            // Don't fail the whole operation if vehicle assignment fails
+                          }
+                        } catch (vehicleErr) {
+                          console.error("Error assigning vehicle:", vehicleErr);
+                          // Continue anyway - member was created successfully
+                        }
+                      }
+
+                      // Reload drivers list and vehicles
+                      const driversRes = await fetch("/api/drivers");
+                      if (driversRes.ok) {
+                        const driversData = await driversRes.json();
+                        setDrivers(driversData.drivers || []);
+                      }
+
+                      setShowAddMemberModal(false);
+                      setMemberFormData({ name: "", email: "", phone: "", role: "driver", vehicleId: "" });
+                      setMemberVehicleSearch("");
+                      setIsMemberVehicleDropdownOpen(false);
+                      showToast("Member added successfully!", "success");
+                    } catch (err) {
+                      console.error("Error creating member:", err);
+                      const errorMessage = err instanceof Error ? err.message : "Failed to add member. Please try again.";
+                      showToast(errorMessage, "error");
+                    } finally {
+                      setCreatingMember(false);
+                    }
+                  }}
+                  className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50"
+                >
+                  {/* Basic Information */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-primary-100 flex items-center justify-center">
+                        <Users className="h-4 w-4 text-primary-600" />
+                      </div>
+                      Basic Information
+                    </h3>
+                    <div className="space-y-4">
+                      <label className="space-y-1.5 block">
+                        <span className="text-sm font-semibold text-gray-700">Full Name *</span>
+                        <input
+                          type="text"
+                          required
+                          className="input-field w-full"
+                          value={memberFormData.name}
+                          onChange={(e) => setMemberFormData({ ...memberFormData, name: e.target.value })}
+                          placeholder="e.g., John Doe"
+                          disabled={creatingMember}
+                        />
+                      </label>
+                      <label className="space-y-1.5 block">
+                        <span className="text-sm font-semibold text-gray-700">Email Address *</span>
+                        <input
+                          type="email"
+                          required
+                          className="input-field w-full"
+                          value={memberFormData.email}
+                          onChange={(e) => setMemberFormData({ ...memberFormData, email: e.target.value })}
+                          placeholder="e.g., john@example.com"
+                          disabled={creatingMember}
+                        />
+                      </label>
+                      <label className="space-y-1.5 block">
+                        <span className="text-sm font-semibold text-gray-700">Phone Number</span>
+                        <input
+                          type="tel"
+                          className="input-field w-full"
+                          value={memberFormData.phone}
+                          onChange={(e) => setMemberFormData({ ...memberFormData, phone: e.target.value })}
+                          placeholder="e.g., +1 (555) 123-4567"
+                          disabled={creatingMember}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Optional - Phone number for contact purposes</p>
+                      </label>
+                      <label className="space-y-1.5 block">
+                        <span className="text-sm font-semibold text-gray-700">Role *</span>
+                        <select
+                          required
+                          className="input-field w-full"
+                          value={memberFormData.role}
+                          onChange={(e) => setMemberFormData({ ...memberFormData, role: e.target.value as "driver" | "mechanic" })}
+                          disabled={creatingMember}
+                        >
+                          <option value="driver">Driver</option>
+                          <option value="mechanic">Mechanic</option>
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Vehicle Assignment */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <Car className="h-4 w-4 text-blue-600" />
+                      </div>
+                      Vehicle Assignment
+                    </h3>
+                    <label className="space-y-1.5 block">
+                      <span className="text-sm font-semibold text-gray-700">Assign Vehicle (Optional)</span>
+                      <div ref={memberVehicleDropdownRef} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => !creatingMember && setIsMemberVehicleDropdownOpen(!isMemberVehicleDropdownOpen)}
+                          disabled={creatingMember}
+                          className={`
+                            w-full px-3 py-2.5 text-left bg-white border-2 border-gray-300 rounded-lg
+                            focus:ring-2 focus:ring-primary-500 focus:border-primary-500
+                            transition-all duration-200
+                            flex items-center justify-between
+                            ${creatingMember ? "opacity-50 cursor-not-allowed bg-gray-50" : "hover:border-gray-400 cursor-pointer"}
+                            ${isMemberVehicleDropdownOpen ? "border-primary-500 ring-2 ring-primary-200" : ""}
+                          `}
+                        >
+                          <span className={memberFormData.vehicleId ? "text-gray-900 font-medium" : "text-gray-500"}>
+                            {memberFormData.vehicleId
+                              ? filteredMemberVehicles.find((v) => v.id === memberFormData.vehicleId)?.make +
+                                " " +
+                                filteredMemberVehicles.find((v) => v.id === memberFormData.vehicleId)?.model +
+                                " (" +
+                                filteredMemberVehicles.find((v) => v.id === memberFormData.vehicleId)?.licensePlate +
+                                ")"
+                              : "Select a vehicle (optional)"}
+                          </span>
+                          <ChevronDown
+                            className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isMemberVehicleDropdownOpen ? "transform rotate-180" : ""}`}
+                          />
+                        </button>
+
+                        <AnimatePresence>
+                          {isMemberVehicleDropdownOpen && (
+                            <>
+                              <div className="fixed inset-0 z-10" onClick={() => setIsMemberVehicleDropdownOpen(false)} />
+                              <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.2 }}
+                                className="absolute z-20 w-full mt-2 bg-white border-2 border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
+                              >
+                                <div className="p-2 border-b border-gray-200 sticky top-0 bg-white">
+                                  <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <input
+                                      type="text"
+                                      placeholder="Search vehicles..."
+                                      value={memberVehicleSearch}
+                                      onChange={(e) => setMemberVehicleSearch(e.target.value)}
+                                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  </div>
+                                </div>
+                                {filteredMemberVehicles.length === 0 ? (
+                                  <div className="p-3 text-sm text-gray-500 text-center">
+                                    {memberVehicleSearch ? "No vehicles found" : "No unassigned vehicles available"}
+                                  </div>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setMemberFormData({ ...memberFormData, vehicleId: "" });
+                                        setIsMemberVehicleDropdownOpen(false);
+                                        setMemberVehicleSearch("");
+                                      }}
+                                      className={`
+                                        w-full px-3 py-2.5 text-left flex items-center justify-between
+                                        transition-colors duration-150
+                                        ${!memberFormData.vehicleId ? "bg-primary-50 text-primary-900" : "hover:bg-gray-50 text-gray-900"}
+                                      `}
+                                    >
+                                      <span className="text-sm font-medium">No vehicle</span>
+                                      {!memberFormData.vehicleId && <Check className="h-4 w-4 text-primary-600 flex-shrink-0 ml-2" />}
+                                    </button>
+                                    {filteredMemberVehicles.map((vehicle) => (
+                                      <button
+                                        key={vehicle.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setMemberFormData({ ...memberFormData, vehicleId: vehicle.id });
+                                          setIsMemberVehicleDropdownOpen(false);
+                                          setMemberVehicleSearch("");
+                                        }}
+                                        className={`
+                                          w-full px-3 py-2.5 text-left flex items-center justify-between
+                                          transition-colors duration-150
+                                          ${memberFormData.vehicleId === vehicle.id ? "bg-primary-50 text-primary-900" : "hover:bg-gray-50 text-gray-900"}
+                                        `}
+                                      >
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-sm font-medium truncate">
+                                            {vehicle.make} {vehicle.model}
+                                          </div>
+                                          <div className="text-xs text-gray-500 truncate">
+                                            {vehicle.licensePlate} • {vehicle.vin}
+                                          </div>
+                                        </div>
+                                        {memberFormData.vehicleId === vehicle.id && <Check className="h-4 w-4 text-primary-600 flex-shrink-0 ml-2" />}
+                                      </button>
+                                    ))}
+                                  </>
+                                )}
+                              </motion.div>
+                            </>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Only unassigned vehicles are shown. You can assign a vehicle after creation if needed.</p>
+                    </label>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddMemberModal(false);
+                        setMemberFormData({ name: "", email: "", phone: "", role: "driver", vehicleId: "" });
+                        setMemberVehicleSearch("");
+                        setIsMemberVehicleDropdownOpen(false);
+                      }}
+                      className="btn btn-secondary flex-1"
+                      disabled={creatingMember}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary flex-1 flex items-center gap-2 justify-center" disabled={creatingMember}>
+                      {creatingMember ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4" />
+                          Add Member
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Driver Details Side Panel */}
       <AnimatePresence>
