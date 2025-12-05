@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
         v.id,
         {
           id: v.id,
-          label: [v.license_plate, v.vehicle_number, v.make, v.model].filter(Boolean).join(" • "),
+          label: [v.license_plate, v.vehicle_number, v.make, v.model].filter(Boolean).join(" โ�ข "),
           licensePlate: v.license_plate,
           make: v.make,
           model: v.model,
@@ -191,6 +191,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to create service record" }, { status: 500 });
     }
 
+    // Update vehicle mileage if provided and vehicle is linked
+    if (payload.mileage && vehicleId) {
+      try {
+        // Get current vehicle mileage
+        const { data: currentVehicle } = await supabase
+          .from("vehicles")
+          .select("mileage")
+          .eq("id", vehicleId)
+          .single();
+
+        const previousMileage = currentVehicle?.mileage || null;
+        const newMileage = payload.mileage;
+
+        // Only update if new mileage is higher than current (or if current is null/0)
+        if (!previousMileage || newMileage > previousMileage) {
+          // Update vehicle mileage
+          await supabase
+            .from("vehicles")
+            .update({ mileage: newMileage })
+            .eq("id", vehicleId);
+
+          // Create mileage history record
+          await supabase
+            .from("vehicle_mileage_history")
+            .insert({
+              vehicle_id: vehicleId,
+              mileage: newMileage,
+              previous_mileage: previousMileage,
+              updated_by_service_record_id: data.id,
+              notes: `Updated via service record: ${payload.serviceType || "Service"}`,
+            });
+        }
+      } catch (mileageError) {
+        console.error("Failed to update vehicle mileage", mileageError);
+        // Don't fail the request if mileage update fails
+      }
+    }
+
     // Send notification SMS to driver if requested and repair request is linked
     if (payload.notifyDriver && payload.repairRequestId) {
       try {
@@ -204,19 +242,19 @@ export async function POST(request: NextRequest) {
           const statusMessages: Record<string, { en: string; es: string }> = {
             completed_ready_for_pickup: {
               en: "is completed and ready for pickup",
-              es: "está completada y lista para recoger",
+              es: "estรก completada y lista para recoger",
             },
             completed: {
               en: "is completed",
-              es: "está completada",
+              es: "estรก completada",
             },
             on_hold: {
               en: "is on hold",
-              es: "está en espera",
+              es: "estรก en espera",
             },
             waiting_for_parts: {
               en: "is waiting for parts",
-              es: "está esperando repuestos",
+              es: "estรก esperando repuestos",
             },
           };
 
@@ -225,7 +263,7 @@ export async function POST(request: NextRequest) {
           const language = repairRequest.preferred_language || "en";
           const message =
             language === "es"
-              ? `${repairRequest.driver_name}, su solicitud de reparación ${messages.es}.`
+              ? `${repairRequest.driver_name}, su solicitud de reparaciรณn ${messages.es}.`
               : `${repairRequest.driver_name}, your repair request ${messages.en}.`;
 
           await sendSMS(repairRequest.driver_phone, message);

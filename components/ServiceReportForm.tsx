@@ -79,9 +79,7 @@ export default function ServiceReportForm({
         if (!res.ok) throw new Error("Failed to load users");
         const data = await res.json();
         // Filter to only approved users
-        const approvedUsers = (data.users || []).filter(
-          (user: User & { approval_status?: string }) => user.approval_status === "approved"
-        );
+        const approvedUsers = (data.users || []).filter((user: User & { approval_status?: string }) => user.approval_status === "approved");
         setAdminsAndMechanics(approvedUsers);
       } catch (err) {
         console.error("Error loading admins and mechanics:", err);
@@ -315,19 +313,21 @@ export default function ServiceReportForm({
                       <div className="input-field w-full flex items-center justify-center py-2.5">
                         <span className="text-sm text-gray-500">Loading users...</span>
                       </div>
-                    ) : adminsAndMechanics.length === 0 ? (
+                    ) : adminsAndMechanics.filter((user) => user.role === "mechanic").length === 0 ? (
                       <div className="input-field w-full flex flex-col items-start py-2.5 px-3 border-2 border-yellow-300 bg-yellow-50 rounded-lg">
-                        <span className="text-sm text-yellow-800 font-medium">No admins or mechanics available</span>
-                        <span className="text-xs text-yellow-600 mt-1">Add users in Admin Settings → Users → Invite User</span>
+                        <span className="text-sm text-yellow-800 font-medium">No mechanics available</span>
+                        <span className="text-xs text-yellow-600 mt-1">Add mechanics in Admin Settings → Users → Invite User</span>
                       </div>
                     ) : (
                       <Select
                         value={form.mechanicName}
                         onChange={(value) => setForm({ ...form, mechanicName: value })}
-                        options={adminsAndMechanics.map((user) => ({
-                          value: user.name,
-                          label: `${user.name} (${user.role.charAt(0).toUpperCase() + user.role.slice(1)})`,
-                        }))}
+                        options={adminsAndMechanics
+                          .filter((user) => user.role === "mechanic")
+                          .map((user) => ({
+                            value: user.name,
+                            label: `${user.name} (${user.role.charAt(0).toUpperCase() + user.role.slice(1)})`,
+                          }))}
                         placeholder="Who performed the work"
                       />
                     )}

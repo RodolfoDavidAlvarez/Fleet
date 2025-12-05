@@ -336,6 +336,13 @@ export const vehicleDB = {
       .eq("vehicle_id", id)
       .order("date", { ascending: false });
 
+    // Fetch mileage history
+    const { data: mileageHistory } = await supabase
+      .from("vehicle_mileage_history")
+      .select("*")
+      .eq("vehicle_id", id)
+      .order("created_at", { ascending: false });
+
     // Fetch repair requests (try matching by exact ID first, then fallback to identifiers)
     // Note: Repair requests from Airtable might only have text identifiers
     const { data: repairRequests } = await supabase
@@ -358,6 +365,16 @@ export const vehicleDB = {
         status: record.status,
         mileage: record.mileage,
         nextServiceDue: record.next_service_due,
+        createdAt: record.created_at
+    }));
+
+    vehicle.mileageHistory = (mileageHistory || []).map((record: any) => ({
+        id: record.id,
+        vehicleId: record.vehicle_id,
+        mileage: record.mileage,
+        previousMileage: record.previous_mileage,
+        updatedByServiceRecordId: record.updated_by_service_record_id,
+        notes: record.notes,
         createdAt: record.created_at
     }));
 

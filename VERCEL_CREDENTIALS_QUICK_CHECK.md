@@ -9,6 +9,7 @@
 ## ⚡ Quick Action: Verify Environment Variables
 
 ### Step 1: Open Vercel Dashboard
+
 👉 **Go to:** https://vercel.com/dashboard
 👉 **Select project:** `fleet-management-system-c7t0cfntn`
 👉 **Navigate to:** Settings → Environment Variables
@@ -72,6 +73,7 @@ Copy and paste this checklist in Vercel:
 ## ✅ After Setting Variables
 
 1. **Redeploy the application:**
+
    - Go to **Deployments** tab in Vercel
    - Find the latest deployment
    - Click **⋯** (three dots) → **Redeploy**
@@ -79,6 +81,7 @@ Copy and paste this checklist in Vercel:
    - Click **Redeploy**
 
 2. **Verify deployment:**
+
    - Wait for build to complete (usually 2-5 minutes)
    - Check deployment status shows "Ready" ✅
    - Visit: https://fleet-management-system-c7t0cfntn.vercel.app
@@ -95,15 +98,19 @@ Copy and paste this checklist in Vercel:
 After deployment, test these to verify credentials:
 
 ### Test Database Connection
+
 ```
 https://fleet-management-system-c7t0cfntn.vercel.app/api/auth/heartbeat
 ```
+
 **Expected:** `{"status":"ok","timestamp":"..."}`
 
 ### Test Application Load
+
 ```
 https://fleet-management-system-c7t0cfntn.vercel.app
 ```
+
 **Expected:** Login page or dashboard (if logged in)
 
 ---
@@ -117,21 +124,25 @@ See `VERCEL_PRODUCTION_DEPLOYMENT_CHECKLIST.md` for complete details.
 ## 🆘 Troubleshooting
 
 ### Issue: "Supabase environment variables are missing"
+
 - ✅ Check `NEXT_PUBLIC_SUPABASE_URL` is set
 - ✅ Check `NEXT_PUBLIC_SUPABASE_ANON_KEY` is set
 - ✅ Verify they're set for **Production** environment
 
 ### Issue: "SUPABASE_SERVICE_ROLE_KEY is missing"
+
 - ✅ Get the key from Supabase Dashboard → Settings → API
 - ✅ Add it to Vercel as `SUPABASE_SERVICE_ROLE_KEY`
 - ✅ Set for **Production** environment
 
 ### Issue: Emails not sending
+
 - ✅ Verify `RESEND_API_KEY` is correct
 - ✅ Check `ENABLE_EMAIL=true` is set
 - ✅ Verify `RESEND_FROM_EMAIL` is a verified domain in Resend
 
 ### Issue: Build fails
+
 - ✅ Check build logs in Vercel dashboard
 - ✅ Ensure all required environment variables are set
 - ✅ Verify no syntax errors in code

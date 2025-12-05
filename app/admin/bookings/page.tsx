@@ -1,224 +1,240 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Sidebar from '@/components/Sidebar'
-import Header from '@/components/Header'
-import { Calendar, Clock, User, Phone, Mail, Wrench, Plus, CheckCircle, XCircle, AlertCircle, Grid3x3, List, ChevronLeft, ChevronRight, X, Loader2, Search, Settings, Download } from 'lucide-react'
-import { Booking } from '@/types'
-import { getStatusColor, formatDate, formatDateTime } from '@/lib/utils'
-import { exportBookings } from '@/lib/export-utils'
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Sidebar from "@/components/Sidebar";
+import Header from "@/components/Header";
+import {
+  Calendar,
+  Clock,
+  User,
+  Phone,
+  Mail,
+  Wrench,
+  Plus,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Grid3x3,
+  List,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Loader2,
+  Search,
+  Settings,
+  Download,
+} from "lucide-react";
+import { Booking } from "@/types";
+import { getStatusColor, formatDate, formatDateTime } from "@/lib/utils";
+import { exportBookings } from "@/lib/export-utils";
 
 export default function BookingsPage() {
-  const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [bookings, setBookings] = useState<Booking[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
-  const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [showNewBookingModal, setShowNewBookingModal] = useState(false)
-  const [repairRequests, setRepairRequests] = useState<any[]>([])
-  const [loadingRepairs, setLoadingRepairs] = useState(false)
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [showNewBookingModal, setShowNewBookingModal] = useState(false);
+  const [repairRequests, setRepairRequests] = useState<any[]>([]);
+  const [loadingRepairs, setLoadingRepairs] = useState(false);
 
   useEffect(() => {
-    const userData = localStorage.getItem('user')
+    const userData = localStorage.getItem("user");
     if (!userData) {
-      router.push('/login')
-      return
+      router.push("/login");
+      return;
     }
-    const parsedUser = JSON.parse(userData)
-    if (parsedUser.role !== 'admin') {
-      router.push('/login')
-      return
+    const parsedUser = JSON.parse(userData);
+    if (parsedUser.role !== "admin") {
+      router.push("/login");
+      return;
     }
-    setUser(parsedUser)
+    setUser(parsedUser);
 
     const loadBookings = async () => {
       try {
-        setLoading(true)
-        const res = await fetch('/api/bookings')
-        if (!res.ok) throw new Error('Failed to load bookings')
-        const data = await res.json()
-        setBookings(data.bookings || [])
-        setError(null)
+        setLoading(true);
+        const res = await fetch("/api/bookings");
+        if (!res.ok) throw new Error("Failed to load bookings");
+        const data = await res.json();
+        setBookings(data.bookings || []);
+        setError(null);
       } catch (err) {
-        console.error('Error fetching bookings:', err)
-        setError('Failed to load bookings. Please try again.')
+        console.error("Error fetching bookings:", err);
+        setError("Failed to load bookings. Please try again.");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    loadBookings()
+    loadBookings();
 
     // Load repair requests for association
     const loadRepairRequests = async () => {
       try {
-        setLoadingRepairs(true)
-        const res = await fetch('/api/repair-requests?status=submitted,waiting_booking,triaged')
+        setLoadingRepairs(true);
+        const res = await fetch("/api/repair-requests?status=submitted,waiting_booking,triaged");
         if (res.ok) {
-          const data = await res.json()
-          setRepairRequests(data.requests || [])
+          const data = await res.json();
+          setRepairRequests(data.requests || []);
         }
       } catch (err) {
-        console.error('Error fetching repair requests:', err)
+        console.error("Error fetching repair requests:", err);
       } finally {
-        setLoadingRepairs(false)
+        setLoadingRepairs(false);
       }
-    }
-    loadRepairRequests()
-  }, [router])
+    };
+    loadRepairRequests();
+  }, [router]);
 
   // Load view preference from localStorage
   useEffect(() => {
-    const savedView = localStorage.getItem('bookings-view-mode')
-    if (savedView === 'list' || savedView === 'calendar') {
-      setViewMode(savedView)
+    const savedView = localStorage.getItem("bookings-view-mode");
+    if (savedView === "list" || savedView === "calendar") {
+      setViewMode(savedView);
     }
-  }, [])
+  }, []);
 
   // Save view preference to localStorage
-  const handleViewModeChange = (mode: 'list' | 'calendar') => {
-    setViewMode(mode)
-    localStorage.setItem('bookings-view-mode', mode)
-  }
+  const handleViewModeChange = (mode: "list" | "calendar") => {
+    setViewMode(mode);
+    localStorage.setItem("bookings-view-mode", mode);
+  };
 
   if (!user) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
 
   // Get effective status: repair request status if available, otherwise booking status
   const getEffectiveStatus = (booking: any): string => {
     // If repair request exists and is completed, show completed
-    if (booking.repairRequest?.status === 'completed') {
-      return 'completed'
+    if (booking.repairRequest?.status === "completed") {
+      return "completed";
     }
     // If repair request exists, use its status
     if (booking.repairRequest?.status) {
-      return booking.repairRequest.status
+      return booking.repairRequest.status;
     }
     // Otherwise use booking status
-    return booking.status || 'pending'
-  }
+    return booking.status || "pending";
+  };
 
   // Get status display info
   const getStatusInfo = (booking: any) => {
-    const status = getEffectiveStatus(booking)
-    const isFromRepairRequest = !!booking.repairRequest
-    
-    let icon, colorClass, label
-    
+    const status = getEffectiveStatus(booking);
+    const isFromRepairRequest = !!booking.repairRequest;
+
+    let icon, colorClass, label;
+
     switch (status) {
-      case 'completed':
-        icon = <CheckCircle className="h-4 w-4" />
-        colorClass = 'bg-green-100 text-green-700 border-green-200'
-        label = 'Completed'
-        break
-      case 'cancelled':
-        icon = <XCircle className="h-4 w-4" />
-        colorClass = 'bg-gray-100 text-gray-700 border-gray-200'
-        label = 'Cancelled'
-        break
-      case 'in_progress':
-        icon = <AlertCircle className="h-4 w-4" />
-        colorClass = 'bg-blue-100 text-blue-700 border-blue-200'
-        label = 'In Progress'
-        break
-      case 'scheduled':
-        icon = <Calendar className="h-4 w-4" />
-        colorClass = 'bg-purple-100 text-purple-700 border-purple-200'
-        label = 'Scheduled'
-        break
-      case 'waiting_booking':
-        icon = <Clock className="h-4 w-4" />
-        colorClass = 'bg-orange-100 text-orange-700 border-orange-200'
-        label = 'Waiting for Booking'
-        break
-      case 'triaged':
-        icon = <AlertCircle className="h-4 w-4" />
-        colorClass = 'bg-indigo-100 text-indigo-700 border-indigo-200'
-        label = 'Triaged'
-        break
-      case 'submitted':
-        icon = <Clock className="h-4 w-4" />
-        colorClass = 'bg-yellow-100 text-yellow-700 border-yellow-200'
-        label = 'Submitted'
-        break
-      case 'confirmed':
-        icon = <CheckCircle className="h-4 w-4" />
-        colorClass = 'bg-purple-100 text-purple-700 border-purple-200'
-        label = 'Confirmed'
-        break
-      case 'pending':
-        icon = <Clock className="h-4 w-4" />
-        colorClass = 'bg-yellow-100 text-yellow-700 border-yellow-200'
-        label = 'Pending'
-        break
+      case "completed":
+        icon = <CheckCircle className="h-4 w-4" />;
+        colorClass = "bg-green-100 text-green-700 border-green-200";
+        label = "Completed";
+        break;
+      case "cancelled":
+        icon = <XCircle className="h-4 w-4" />;
+        colorClass = "bg-gray-100 text-gray-700 border-gray-200";
+        label = "Cancelled";
+        break;
+      case "in_progress":
+        icon = <AlertCircle className="h-4 w-4" />;
+        colorClass = "bg-blue-100 text-blue-700 border-blue-200";
+        label = "In Progress";
+        break;
+      case "scheduled":
+        icon = <Calendar className="h-4 w-4" />;
+        colorClass = "bg-purple-100 text-purple-700 border-purple-200";
+        label = "Scheduled";
+        break;
+      case "waiting_booking":
+        icon = <Clock className="h-4 w-4" />;
+        colorClass = "bg-orange-100 text-orange-700 border-orange-200";
+        label = "Waiting for Booking";
+        break;
+      case "triaged":
+        icon = <AlertCircle className="h-4 w-4" />;
+        colorClass = "bg-indigo-100 text-indigo-700 border-indigo-200";
+        label = "Triaged";
+        break;
+      case "submitted":
+        icon = <Clock className="h-4 w-4" />;
+        colorClass = "bg-yellow-100 text-yellow-700 border-yellow-200";
+        label = "Submitted";
+        break;
+      case "confirmed":
+        icon = <CheckCircle className="h-4 w-4" />;
+        colorClass = "bg-purple-100 text-purple-700 border-purple-200";
+        label = "Confirmed";
+        break;
+      case "pending":
+        icon = <Clock className="h-4 w-4" />;
+        colorClass = "bg-yellow-100 text-yellow-700 border-yellow-200";
+        label = "Pending";
+        break;
       default:
-        icon = <Clock className="h-4 w-4" />
-        colorClass = 'bg-gray-100 text-gray-700 border-gray-200'
-        label = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+        icon = <Clock className="h-4 w-4" />;
+        colorClass = "bg-gray-100 text-gray-700 border-gray-200";
+        label = status.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase());
     }
-    
-    return { icon, colorClass, label, isFromRepairRequest }
-  }
+
+    return { icon, colorClass, label, isFromRepairRequest };
+  };
 
   // Calendar helper functions
   const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear()
-    const month = date.getMonth()
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
-    const daysInMonth = lastDay.getDate()
-    const startingDayOfWeek = firstDay.getDay()
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
 
-    const days: (number | null)[] = []
+    const days: (number | null)[] = [];
     for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null)
+      days.push(null);
     }
     for (let day = 1; day <= daysInMonth; day++) {
-      days.push(day)
+      days.push(day);
     }
-    return days
-  }
+    return days;
+  };
 
   const formatDateString = (year: number, month: number, day: number) => {
-    const date = new Date(year, month, day)
-    return date.toISOString().split('T')[0]
-  }
+    const date = new Date(year, month, day);
+    return date.toISOString().split("T")[0];
+  };
 
   const getBookingsForDate = (dateString: string) => {
-    return bookings.filter(booking => {
-      if (!booking.scheduledDate) return false
-      const bookingDate = new Date(booking.scheduledDate).toISOString().split('T')[0]
-      return bookingDate === dateString
-    })
-  }
+    return bookings.filter((booking) => {
+      if (!booking.scheduledDate) return false;
+      const bookingDate = new Date(booking.scheduledDate).toISOString().split("T")[0];
+      return bookingDate === dateString;
+    });
+  };
 
   const handlePrevMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))
-  }
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  };
 
   const handleNextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
-  }
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  };
 
   const isToday = (day: number) => {
-    const today = new Date()
-    return (
-      day === today.getDate() &&
-      currentMonth.getMonth() === today.getMonth() &&
-      currentMonth.getFullYear() === today.getFullYear()
-    )
-  }
+    const today = new Date();
+    return day === today.getDate() && currentMonth.getMonth() === today.getMonth() && currentMonth.getFullYear() === today.getFullYear();
+  };
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  const days = getDaysInMonth(currentMonth)
+  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const days = getDaysInMonth(currentMonth);
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role={user?.role || 'admin'} />
+      <Sidebar role={user?.role || "admin"} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} userEmail={user.email} />
         <main className="flex-1 overflow-y-auto p-6">
@@ -232,22 +248,18 @@ export default function BookingsPage() {
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-gray-200">
                   <button
-                    onClick={() => handleViewModeChange('list')}
+                    onClick={() => handleViewModeChange("list")}
                     className={`p-2 rounded-md transition-all ${
-                      viewMode === 'list'
-                        ? 'bg-white text-primary-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
+                      viewMode === "list" ? "bg-white text-primary-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
                     }`}
                     aria-label="List view"
                   >
                     <List className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => handleViewModeChange('calendar')}
+                    onClick={() => handleViewModeChange("calendar")}
                     className={`p-2 rounded-md transition-all ${
-                      viewMode === 'calendar'
-                        ? 'bg-white text-primary-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
+                      viewMode === "calendar" ? "bg-white text-primary-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
                     }`}
                     aria-label="Calendar view"
                   >
@@ -255,22 +267,22 @@ export default function BookingsPage() {
                   </button>
                 </div>
                 <button
-                  onClick={() => router.push('/admin/settings?tab=calendar')}
+                  onClick={() => router.push("/admin/settings?tab=calendar")}
                   className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center justify-center"
                   aria-label="Booking settings"
                   title="Booking Settings"
                 >
                   <Settings className="h-5 w-5 text-gray-600" />
                 </button>
-                <button 
-                  onClick={() => exportBookings(bookings)} 
+                <button
+                  onClick={() => exportBookings(bookings)}
                   className="btn btn-secondary flex items-center gap-2"
                   disabled={bookings.length === 0}
                 >
                   <Download className="h-4 w-4" />
                   Export CSV
                 </button>
-                <button 
+                <button
                   onClick={() => setShowNewBookingModal(true)}
                   className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"
                 >
@@ -280,35 +292,22 @@ export default function BookingsPage() {
               </div>
             </div>
 
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-                {error}
-              </div>
-            )}
+            {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">{error}</div>}
 
             {loading ? (
               <div className="p-8 text-center text-gray-600">Loading bookings...</div>
-            ) : viewMode === 'calendar' ? (
+            ) : viewMode === "calendar" ? (
               <div className="space-y-6">
                 {/* Calendar Header */}
                 <div className="card-surface rounded-xl p-6">
                   <div className="flex items-center justify-between mb-6">
-                    <button
-                      onClick={handlePrevMonth}
-                      className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                      aria-label="Previous month"
-                    >
+                    <button onClick={handlePrevMonth} className="p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Previous month">
                       <ChevronLeft className="h-5 w-5" />
                     </button>
                     <h2 className="text-xl font-bold text-gray-900">
-                      {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
                     </h2>
-                    <button
-                      onClick={handleNextMonth}
-                      className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                      aria-label="Next month"
-                    >
+                    <button onClick={handleNextMonth} className="p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Next month">
                       <ChevronRight className="h-5 w-5" />
                     </button>
                   </div>
@@ -318,9 +317,7 @@ export default function BookingsPage() {
                     {weekDays.map((day) => (
                       <div
                         key={day}
-                        className={`text-center text-xs font-semibold py-2 ${
-                          day === 'Sun' || day === 'Sat' ? 'text-gray-400' : 'text-gray-700'
-                        }`}
+                        className={`text-center text-xs font-semibold py-2 ${day === "Sun" || day === "Sat" ? "text-gray-400" : "text-gray-700"}`}
                       >
                         {day}
                       </div>
@@ -331,53 +328,39 @@ export default function BookingsPage() {
                   <div className="grid grid-cols-7 gap-1">
                     {days.map((day, index) => {
                       if (day === null) {
-                        return <div key={`empty-${index}`} className="aspect-square" />
+                        return <div key={`empty-${index}`} className="aspect-square" />;
                       }
 
-                      const dateString = formatDateString(
-                        currentMonth.getFullYear(),
-                        currentMonth.getMonth(),
-                        day
-                      )
-                      const dayBookings = getBookingsForDate(dateString)
-                      const today = isToday(day)
+                      const dateString = formatDateString(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                      const dayBookings = getBookingsForDate(dateString);
+                      const today = isToday(day);
 
                       return (
                         <div
                           key={day}
                           className={`aspect-square rounded-lg border-2 p-1 min-h-[100px] ${
-                            today
-                              ? 'border-primary-400 bg-primary-50'
-                              : 'border-gray-200 bg-white hover:border-gray-300'
+                            today ? "border-primary-400 bg-primary-50" : "border-gray-200 bg-white hover:border-gray-300"
                           }`}
                         >
-                          <div className={`text-sm font-medium mb-1 ${today ? 'text-primary-700' : 'text-gray-700'}`}>
-                            {day}
-                          </div>
+                          <div className={`text-sm font-medium mb-1 ${today ? "text-primary-700" : "text-gray-700"}`}>{day}</div>
                           <div className="space-y-1 overflow-y-auto max-h-[70px]">
                             {dayBookings.slice(0, 3).map((booking) => (
                               <div
                                 key={booking.id}
-                                className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition-opacity truncate ${
-                                  (() => {
-                                    const statusInfo = getStatusInfo(booking)
-                                    return statusInfo.colorClass.replace('border-', '')
-                                  })()
-                                }`}
+                                className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition-opacity truncate ${(() => {
+                                  const statusInfo = getStatusInfo(booking);
+                                  return statusInfo.colorClass.replace("border-", "");
+                                })()}`}
                                 title={`${booking.customerName} - ${booking.serviceType} at ${booking.scheduledTime} - ${getStatusInfo(booking).label}`}
                               >
                                 <div className="font-semibold truncate">{booking.scheduledTime}</div>
                                 <div className="truncate">{booking.customerName}</div>
                               </div>
                             ))}
-                            {dayBookings.length > 3 && (
-                              <div className="text-xs text-gray-500 font-medium px-1">
-                                +{dayBookings.length - 3} more
-                              </div>
-                            )}
+                            {dayBookings.length > 3 && <div className="text-xs text-gray-500 font-medium px-1">+{dayBookings.length - 3} more</div>}
                           </div>
                         </div>
-                      )
+                      );
                     })}
                   </div>
                 </div>
@@ -402,102 +385,98 @@ export default function BookingsPage() {
                 ) : (
                   <div className="grid grid-cols-1 gap-4">
                     {bookings.map((booking) => {
-                      const statusInfo = getStatusInfo(booking)
+                      const statusInfo = getStatusInfo(booking);
                       return (
-                      <div
-                        key={booking.id}
-                        className="card-surface rounded-xl p-6 hover:shadow-lg transition-shadow"
-                      >
-                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                          <div className="flex-1 space-y-4">
-                            {/* Header */}
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <h3 className="text-lg font-semibold text-gray-900">{booking.customerName}</h3>
-                                <p className="text-sm text-gray-500">{booking.serviceType}</p>
-                              </div>
-                              <div className="flex flex-col items-end gap-1">
-                                <span className={`px-3 py-1 text-xs font-medium rounded-full flex items-center gap-1 border ${statusInfo.colorClass}`}>
-                                  {statusInfo.icon}
-                                  {statusInfo.label}
-                                </span>
-                                {statusInfo.isFromRepairRequest && booking.repairRequest?.urgency && (
-                                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                                    booking.repairRequest.urgency === 'critical' ? 'bg-red-100 text-red-700' :
-                                    booking.repairRequest.urgency === 'high' ? 'bg-orange-100 text-orange-700' :
-                                    booking.repairRequest.urgency === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                    'bg-gray-100 text-gray-700'
-                                  }`}>
-                                    {booking.repairRequest.urgency.toUpperCase()}
+                        <div key={booking.id} className="card-surface rounded-xl p-6 hover:shadow-lg transition-shadow">
+                          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                            <div className="flex-1 space-y-4">
+                              {/* Header */}
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <h3 className="text-lg font-semibold text-gray-900">{booking.customerName}</h3>
+                                  <p className="text-sm text-gray-500">{booking.serviceType}</p>
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                  <span
+                                    className={`px-3 py-1 text-xs font-medium rounded-full flex items-center gap-1 border ${statusInfo.colorClass}`}
+                                  >
+                                    {statusInfo.icon}
+                                    {statusInfo.label}
                                   </span>
+                                  {statusInfo.isFromRepairRequest && booking.repairRequest?.urgency && (
+                                    <span
+                                      className={`text-[10px] px-2 py-0.5 rounded-full ${
+                                        booking.repairRequest.urgency === "critical"
+                                          ? "bg-red-100 text-red-700"
+                                          : booking.repairRequest.urgency === "high"
+                                            ? "bg-orange-100 text-orange-700"
+                                            : booking.repairRequest.urgency === "medium"
+                                              ? "bg-yellow-100 text-yellow-700"
+                                              : "bg-gray-100 text-gray-700"
+                                      }`}
+                                    >
+                                      {booking.repairRequest.urgency.toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Contact Info */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  {booking.customerEmail}
+                                </div>
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <Phone className="h-4 w-4 mr-2" />
+                                  {booking.customerPhone}
+                                </div>
+                              </div>
+
+                              {/* Schedule */}
+                              <div className="flex flex-wrap items-center gap-4 text-sm">
+                                <div className="flex items-center text-gray-700">
+                                  <Calendar className="h-4 w-4 mr-2" />
+                                  <span className="font-medium">{formatDate(booking.scheduledDate)}</span>
+                                </div>
+                                <div className="flex items-center text-gray-700">
+                                  <Clock className="h-4 w-4 mr-2" />
+                                  <span className="font-medium">{booking.scheduledTime}</span>
+                                </div>
+                              </div>
+
+                              {/* Vehicle Info */}
+                              {booking.vehicleInfo && (
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <Wrench className="h-4 w-4 mr-2" />
+                                  {booking.vehicleInfo}
+                                </div>
+                              )}
+
+                              {/* Notes */}
+                              {booking.notes && (
+                                <div className="p-3 bg-gray-50 rounded-lg">
+                                  <p className="text-sm text-gray-700">{booking.notes}</p>
+                                </div>
+                              )}
+
+                              {/* SMS & Compliance */}
+                              <div className="flex flex-wrap gap-2 text-xs">
+                                {booking.smsConsent && <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">SMS Consent</span>}
+                                {booking.complianceAccepted && (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">Compliance Accepted</span>
                                 )}
                               </div>
                             </div>
+                          </div>
 
-                            {/* Contact Info */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              <div className="flex items-center text-sm text-gray-600">
-                                <Mail className="h-4 w-4 mr-2" />
-                                {booking.customerEmail}
-                              </div>
-                              <div className="flex items-center text-sm text-gray-600">
-                                <Phone className="h-4 w-4 mr-2" />
-                                {booking.customerPhone}
-                              </div>
-                            </div>
-
-                            {/* Schedule */}
-                            <div className="flex flex-wrap items-center gap-4 text-sm">
-                              <div className="flex items-center text-gray-700">
-                                <Calendar className="h-4 w-4 mr-2" />
-                                <span className="font-medium">{formatDate(booking.scheduledDate)}</span>
-                              </div>
-                              <div className="flex items-center text-gray-700">
-                                <Clock className="h-4 w-4 mr-2" />
-                                <span className="font-medium">{booking.scheduledTime}</span>
-                              </div>
-                            </div>
-
-                            {/* Vehicle Info */}
-                            {booking.vehicleInfo && (
-                              <div className="flex items-center text-sm text-gray-600">
-                                <Wrench className="h-4 w-4 mr-2" />
-                                {booking.vehicleInfo}
-                              </div>
-                            )}
-
-                            {/* Notes */}
-                            {booking.notes && (
-                              <div className="p-3 bg-gray-50 rounded-lg">
-                                <p className="text-sm text-gray-700">{booking.notes}</p>
-                              </div>
-                            )}
-
-                            {/* SMS & Compliance */}
-                            <div className="flex flex-wrap gap-2 text-xs">
-                              {booking.smsConsent && (
-                                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">
-                                  SMS Consent
-                                </span>
-                              )}
-                              {booking.complianceAccepted && (
-                                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
-                                  Compliance Accepted
-                                </span>
-                              )}
-                            </div>
+                          {/* Footer */}
+                          <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between text-xs text-gray-500">
+                            <span>Created {formatDateTime(booking.createdAt)}</span>
+                            {booking.updatedAt && booking.updatedAt !== booking.createdAt && <span>Updated {formatDateTime(booking.updatedAt)}</span>}
                           </div>
                         </div>
-
-                        {/* Footer */}
-                        <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between text-xs text-gray-500">
-                          <span>Created {formatDateTime(booking.createdAt)}</span>
-                          {booking.updatedAt && booking.updatedAt !== booking.createdAt && (
-                            <span>Updated {formatDateTime(booking.updatedAt)}</span>
-                          )}
-                        </div>
-                      </div>
-                      )
+                      );
                     })}
                   </div>
                 )}
@@ -513,300 +492,284 @@ export default function BookingsPage() {
           repairRequests={repairRequests}
           onClose={() => setShowNewBookingModal(false)}
           onSuccess={() => {
-            setShowNewBookingModal(false)
+            setShowNewBookingModal(false);
             // Reload bookings
             const loadBookings = async () => {
               try {
-                const res = await fetch('/api/bookings')
+                const res = await fetch("/api/bookings");
                 if (res.ok) {
-                  const data = await res.json()
-                  setBookings(data.bookings || [])
+                  const data = await res.json();
+                  setBookings(data.bookings || []);
                 }
               } catch (err) {
-                console.error('Error fetching bookings:', err)
+                console.error("Error fetching bookings:", err);
               }
-            }
-            loadBookings()
+            };
+            loadBookings();
           }}
         />
       )}
     </div>
-  )
+  );
 }
 
 // New Booking Modal Component
-function NewBookingModal({ 
-  repairRequests, 
-  onClose, 
-  onSuccess 
-}: { 
-  repairRequests: any[]
-  onClose: () => void
-  onSuccess: () => void
-}) {
+function NewBookingModal({ repairRequests, onClose, onSuccess }: { repairRequests: any[]; onClose: () => void; onSuccess: () => void }) {
   const [formData, setFormData] = useState({
-    customerName: '',
-    customerEmail: '',
-    customerPhone: '',
-    serviceType: '',
-    scheduledDate: '',
-    scheduledTime: '',
-    vehicleInfo: '',
-    notes: '',
+    customerName: "",
+    customerEmail: "",
+    customerPhone: "",
+    serviceType: "",
+    scheduledDate: "",
+    scheduledTime: "",
+    vehicleInfo: "",
+    notes: "",
     smsConsent: true,
     complianceAccepted: true,
-    repairRequestId: '',
-  })
-  const [selectedRepairRequest, setSelectedRepairRequest] = useState<any>(null)
-  const [repairSearch, setRepairSearch] = useState('')
-  const [showRepairSelector, setShowRepairSelector] = useState(false)
-  const [calendarMonth, setCalendarMonth] = useState(new Date())
-  const [availability, setAvailability] = useState<any>(null)
-  const [loadingAvailability, setLoadingAvailability] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+    repairRequestId: "",
+  });
+  const [selectedRepairRequest, setSelectedRepairRequest] = useState<any>(null);
+  const [repairSearch, setRepairSearch] = useState("");
+  const [showRepairSelector, setShowRepairSelector] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [availability, setAvailability] = useState<any>(null);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [calendarSettings, setCalendarSettings] = useState({
-    startTime: '06:00',
-    endTime: '14:00',
+    startTime: "06:00",
+    endTime: "14:00",
     slotDuration: 30,
     slotBufferTime: 0,
     workingDays: [1, 2, 3, 4, 5],
-  })
+  });
 
   // Load calendar settings
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const res = await fetch('/api/calendar/settings')
-        const data = await res.json()
+        const res = await fetch("/api/calendar/settings");
+        const data = await res.json();
         if (data.settings) {
           setCalendarSettings({
-            startTime: data.settings.startTime || '06:00',
-            endTime: data.settings.endTime || '14:00',
+            startTime: data.settings.startTime || "06:00",
+            endTime: data.settings.endTime || "14:00",
             slotDuration: data.settings.slotDuration || 30,
             slotBufferTime: data.settings.slotBufferTime ?? 0,
             workingDays: data.settings.workingDays || [1, 2, 3, 4, 5],
-          })
+          });
         }
       } catch (err) {
-        console.error('Error loading calendar settings:', err)
+        console.error("Error loading calendar settings:", err);
       }
-    }
-    loadSettings()
-  }, [])
+    };
+    loadSettings();
+  }, []);
 
   // Check availability when date is selected
   useEffect(() => {
     if (formData.scheduledDate) {
-      checkAvailability(formData.scheduledDate)
+      checkAvailability(formData.scheduledDate);
     }
-  }, [formData.scheduledDate, calendarSettings])
+  }, [formData.scheduledDate, calendarSettings]);
 
   const checkAvailability = async (date: string) => {
-    setLoadingAvailability(true)
+    setLoadingAvailability(true);
     try {
-      const res = await fetch(`/api/calendar/availability?date=${date}`)
-      const data = await res.json()
+      const res = await fetch(`/api/calendar/availability?date=${date}`);
+      const data = await res.json();
       if (res.ok) {
-        setAvailability(data)
+        setAvailability(data);
       }
     } catch (err) {
-      console.error('Error checking availability:', err)
+      console.error("Error checking availability:", err);
     } finally {
-      setLoadingAvailability(false)
+      setLoadingAvailability(false);
     }
-  }
+  };
 
   const getTimeSlots = (): string[] => {
     if (!availability?.availableSlots) {
-      const slots: string[] = []
-      const [startHour, startMin] = calendarSettings.startTime.split(':').map(Number)
-      const [endHour, endMin] = calendarSettings.endTime.split(':').map(Number)
-      const startMinutes = startHour * 60 + startMin
-      const endMinutes = endHour * 60 + endMin
-      const totalSlotTime = calendarSettings.slotDuration + calendarSettings.slotBufferTime
+      const slots: string[] = [];
+      const [startHour, startMin] = calendarSettings.startTime.split(":").map(Number);
+      const [endHour, endMin] = calendarSettings.endTime.split(":").map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      const totalSlotTime = calendarSettings.slotDuration + calendarSettings.slotBufferTime;
 
       for (let minutes = startMinutes; minutes < endMinutes; minutes += totalSlotTime) {
-        if (minutes + calendarSettings.slotDuration > endMinutes) break
-        const hour = Math.floor(minutes / 60)
-        const min = minutes % 60
-        slots.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`)
+        if (minutes + calendarSettings.slotDuration > endMinutes) break;
+        const hour = Math.floor(minutes / 60);
+        const min = minutes % 60;
+        slots.push(`${hour.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`);
       }
-      return slots
+      return slots;
     }
-    return availability.availableSlots || []
-  }
+    return availability.availableSlots || [];
+  };
 
   // Calendar helper functions
   const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear()
-    const month = date.getMonth()
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
-    const daysInMonth = lastDay.getDate()
-    const startingDayOfWeek = firstDay.getDay()
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
 
-    const days: (number | null)[] = []
+    const days: (number | null)[] = [];
     for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null)
+      days.push(null);
     }
     for (let day = 1; day <= daysInMonth; day++) {
-      days.push(day)
+      days.push(day);
     }
-    return days
-  }
+    return days;
+  };
 
   const formatDateString = (year: number, month: number, day: number) => {
-    const date = new Date(year, month, day)
-    return date.toISOString().split('T')[0]
-  }
+    const date = new Date(year, month, day);
+    return date.toISOString().split("T")[0];
+  };
 
   const isDateAvailable = (day: number) => {
-    const date = formatDateString(calendarMonth.getFullYear(), calendarMonth.getMonth(), day)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const checkDate = new Date(date)
-    const dayOfWeek = checkDate.getDay()
-    return checkDate >= today && calendarSettings.workingDays.includes(dayOfWeek)
-  }
+    const date = formatDateString(calendarMonth.getFullYear(), calendarMonth.getMonth(), day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(date);
+    const dayOfWeek = checkDate.getDay();
+    return checkDate >= today && calendarSettings.workingDays.includes(dayOfWeek);
+  };
 
   const isDateSelected = (day: number) => {
-    if (!formData.scheduledDate) return false
-    const date = formatDateString(calendarMonth.getFullYear(), calendarMonth.getMonth(), day)
-    return date === formData.scheduledDate
-  }
+    if (!formData.scheduledDate) return false;
+    const date = formatDateString(calendarMonth.getFullYear(), calendarMonth.getMonth(), day);
+    return date === formData.scheduledDate;
+  };
 
   const isToday = (day: number) => {
-    const today = new Date()
-    return (
-      day === today.getDate() &&
-      calendarMonth.getMonth() === today.getMonth() &&
-      calendarMonth.getFullYear() === today.getFullYear()
-    )
-  }
+    const today = new Date();
+    return day === today.getDate() && calendarMonth.getMonth() === today.getMonth() && calendarMonth.getFullYear() === today.getFullYear();
+  };
 
   const handleDateClick = (day: number) => {
-    if (!day || !isDateAvailable(day)) return
-    const date = formatDateString(calendarMonth.getFullYear(), calendarMonth.getMonth(), day)
-    setFormData({ ...formData, scheduledDate: date, scheduledTime: '' })
-  }
+    if (!day || !isDateAvailable(day)) return;
+    const date = formatDateString(calendarMonth.getFullYear(), calendarMonth.getMonth(), day);
+    setFormData({ ...formData, scheduledDate: date, scheduledTime: "" });
+  };
 
   const handleRepairRequestSelect = (repair: any) => {
-    setSelectedRepairRequest(repair)
+    setSelectedRepairRequest(repair);
     setFormData({
       ...formData,
       repairRequestId: repair.id,
-      customerName: repair.driverName || '',
-      customerEmail: repair.driverEmail || '',
-      customerPhone: repair.driverPhone || '',
-      serviceType: repair.aiCategory || 'Repair Service',
-      vehicleInfo: repair.vehicleIdentifier || '',
-    })
-    setShowRepairSelector(false)
-    setRepairSearch('')
-  }
+      customerName: repair.driverName || "",
+      customerEmail: repair.driverEmail || "",
+      customerPhone: repair.driverPhone || "",
+      serviceType: repair.aiCategory || "Repair Service",
+      vehicleInfo: repair.vehicleIdentifier || "",
+    });
+    setShowRepairSelector(false);
+    setRepairSearch("");
+  };
 
   const filteredRepairRequests = repairRequests.filter((req) => {
-    if (!repairSearch.trim()) return true
-    const search = repairSearch.toLowerCase()
+    if (!repairSearch.trim()) return true;
+    const search = repairSearch.toLowerCase();
     return (
       req.driverName?.toLowerCase().includes(search) ||
       req.vehicleIdentifier?.toLowerCase().includes(search) ||
       req.description?.toLowerCase().includes(search) ||
       req.aiCategory?.toLowerCase().includes(search)
-    )
-  })
+    );
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
+    e.preventDefault();
+    setError(null);
 
     if (!formData.customerName || !formData.customerPhone || !formData.serviceType || !formData.scheduledDate || !formData.scheduledTime) {
-      setError('Please fill in all required fields')
-      return
+      setError("Please fill in all required fields");
+      return;
     }
 
-    setSubmitting(true)
+    setSubmitting(true);
     try {
-      const res = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          status: 'confirmed',
+          status: "confirmed",
         }),
-      })
+      });
 
-      const data = await res.json()
+      const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to create booking')
+        throw new Error(data.error || "Failed to create booking");
       }
 
       // Update repair request if associated
       if (formData.repairRequestId) {
         await fetch(`/api/repair-requests/${formData.repairRequestId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             bookingId: data.booking.id,
             scheduledDate: formData.scheduledDate,
             scheduledTime: formData.scheduledTime,
-            status: 'scheduled',
+            status: "scheduled",
           }),
-        })
+        });
       }
 
       // Send confirmation
       await fetch(`/api/bookings/${data.booking.id}/confirm`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scheduledDate: formData.scheduledDate,
           scheduledTime: formData.scheduledTime,
         }),
-      })
+      });
 
-      onSuccess()
+      onSuccess();
     } catch (err) {
-      console.error('Error creating booking:', err)
-      setError(err instanceof Error ? err.message : 'Failed to create booking')
+      console.error("Error creating booking:", err);
+      setError(err instanceof Error ? err.message : "Failed to create booking");
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  const days = getDaysInMonth(calendarMonth)
-  const timeSlots = getTimeSlots()
+  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const days = getDaysInMonth(calendarMonth);
+  const timeSlots = getTimeSlots();
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <div className="fixed inset-0 z-[100] overflow-hidden">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto">
           {/* Header */}
-          <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white flex items-center justify-between sticky top-0 z-10">
+          <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white flex items-center justify-between relative z-20 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
                 <Calendar className="h-5 w-5 text-primary-600" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <h2 className="text-xl font-bold text-gray-900">New Booking</h2>
-                <p className="text-xs text-gray-500">Create a booking on behalf of a driver</p>
+                <p className="text-xs text-gray-500 truncate">Create a booking on behalf of a driver</p>
               </div>
             </div>
-            <button onClick={onClose} className="btn btn-ghost btn-icon" aria-label="Close">
+            <button onClick={onClose} className="btn btn-ghost btn-icon flex-shrink-0" aria-label="Close">
               <X className="h-5 w-5" />
             </button>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {error}
-              </div>
-            )}
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50 relative z-10">
+            {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{error}</div>}
 
             {/* Repair Request Association */}
             <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -825,8 +788,8 @@ function NewBookingModal({
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedRepairRequest(null)
-                        setFormData({ ...formData, repairRequestId: '' })
+                        setSelectedRepairRequest(null);
+                        setFormData({ ...formData, repairRequestId: "" });
                       }}
                       className="text-red-600 hover:text-red-700"
                     >
@@ -845,8 +808,8 @@ function NewBookingModal({
                       placeholder="Search repair requests by driver, vehicle, or issue..."
                       value={repairSearch}
                       onChange={(e) => {
-                        setRepairSearch(e.target.value)
-                        setShowRepairSelector(true)
+                        setRepairSearch(e.target.value);
+                        setShowRepairSelector(true);
                       }}
                       onFocus={() => setShowRepairSelector(true)}
                       className="input input-with-icon-left"
@@ -854,23 +817,20 @@ function NewBookingModal({
                   </div>
                   {showRepairSelector && filteredRepairRequests.length > 0 && (
                     <>
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setShowRepairSelector(false)}
-                      />
-                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {filteredRepairRequests.map((req) => (
-                        <button
-                          key={req.id}
-                          type="button"
-                          onClick={() => handleRepairRequestSelect(req)}
-                          className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
-                        >
-                          <p className="font-medium text-gray-900">{req.driverName}</p>
-                          <p className="text-sm text-gray-600">{req.vehicleIdentifier}</p>
-                          <p className="text-xs text-gray-500">{req.aiCategory}</p>
-                        </button>
-                      ))}
+                      <div className="fixed inset-0 z-[90]" onClick={() => setShowRepairSelector(false)} />
+                      <div className="absolute z-[110] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                        {filteredRepairRequests.map((req) => (
+                          <button
+                            key={req.id}
+                            type="button"
+                            onClick={() => handleRepairRequestSelect(req)}
+                            className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                          >
+                            <p className="font-medium text-gray-900">{req.driverName}</p>
+                            <p className="text-sm text-gray-600">{req.vehicleIdentifier}</p>
+                            <p className="text-xs text-gray-500">{req.aiCategory}</p>
+                          </button>
+                        ))}
                       </div>
                     </>
                   )}
@@ -954,7 +914,7 @@ function NewBookingModal({
                 <Calendar className="h-4 w-4 text-primary-600" />
                 Select Date & Time
               </h3>
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Calendar */}
                 <div>
@@ -967,7 +927,7 @@ function NewBookingModal({
                       <ChevronLeft className="h-5 w-5" />
                     </button>
                     <h4 className="text-lg font-semibold text-gray-900">
-                      {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      {calendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
                     </h4>
                     <button
                       type="button"
@@ -989,11 +949,11 @@ function NewBookingModal({
                   <div className="grid grid-cols-7 gap-1">
                     {days.map((day, index) => {
                       if (day === null) {
-                        return <div key={`empty-${index}`} className="aspect-square" />
+                        return <div key={`empty-${index}`} className="aspect-square" />;
                       }
-                      const available = isDateAvailable(day)
-                      const selected = isDateSelected(day)
-                      const today = isToday(day)
+                      const available = isDateAvailable(day);
+                      const selected = isDateSelected(day);
+                      const today = isToday(day);
                       return (
                         <button
                           key={day}
@@ -1002,15 +962,15 @@ function NewBookingModal({
                           disabled={!available}
                           className={`aspect-square rounded-lg text-sm font-medium transition-colors ${
                             selected
-                              ? 'bg-primary-600 text-white'
+                              ? "bg-primary-600 text-white"
                               : available
-                              ? 'bg-primary-50 text-primary-800 hover:bg-primary-100'
-                              : 'text-gray-300 cursor-not-allowed'
-                          } ${today && !selected ? 'ring-2 ring-primary-300' : ''}`}
+                                ? "bg-primary-50 text-primary-800 hover:bg-primary-100"
+                                : "text-gray-300 cursor-not-allowed"
+                          } ${today && !selected ? "ring-2 ring-primary-300" : ""}`}
                         >
                           {day}
                         </button>
-                      )
+                      );
                     })}
                   </div>
                 </div>
@@ -1031,24 +991,18 @@ function NewBookingModal({
                             type="button"
                             onClick={() => setFormData({ ...formData, scheduledTime: time })}
                             className={`p-2 rounded-lg text-sm font-medium transition-colors ${
-                              formData.scheduledTime === time
-                                ? 'bg-primary-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              formData.scheduledTime === time ? "bg-primary-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                           >
                             {time}
                           </button>
                         ))
                       ) : (
-                        <div className="col-span-3 text-center py-4 text-gray-500 text-sm">
-                          No available slots for this date
-                        </div>
+                        <div className="col-span-3 text-center py-4 text-gray-500 text-sm">No available slots for this date</div>
                       )}
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-gray-500 text-sm">
-                      Select a date to see available times
-                    </div>
+                    <div className="text-center py-8 text-gray-500 text-sm">Select a date to see available times</div>
                   )}
                 </div>
               </div>
@@ -1066,36 +1020,29 @@ function NewBookingModal({
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn btn-secondary flex-1"
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary flex-1 flex items-center gap-2 justify-center"
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="h-4 w-4" />
-                    Create Booking
-                  </>
-                )}
-              </button>
+            <div className="sticky bottom-0 bg-gray-50 pt-4 pb-2 -mx-6 px-6 border-t border-gray-200 mt-6">
+              <div className="flex gap-3">
+                <button type="button" onClick={onClose} className="btn btn-secondary flex-1" disabled={submitting}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary flex-1 flex items-center gap-2 justify-center" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4" />
+                      Create Booking
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
         </div>
       </div>
     </div>
-  )
+  );
 }

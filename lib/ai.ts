@@ -26,11 +26,31 @@ export type AnalysisResult = {
 
 const CATEGORY_OPTIONS = [
   { key: "engine", label: "Engine / Powertrain", cues: ["engine", "stall", "power", "smoke", "misfire"], serviceType: "Engine diagnostic" },
-  { key: "electrical", label: "Electrical / Battery", cues: ["battery", "electrical", "light", "sensor", "dash", "radio"], serviceType: "Electrical diagnostic" },
-  { key: "tires_brakes", label: "Tires / Brakes", cues: ["tire", "brake", "wheel", "abs", "traction", "alignment"], serviceType: "Brake or tire service" },
+  {
+    key: "electrical",
+    label: "Electrical / Battery",
+    cues: ["battery", "electrical", "light", "sensor", "dash", "radio"],
+    serviceType: "Electrical diagnostic",
+  },
+  {
+    key: "tires_brakes",
+    label: "Tires / Brakes",
+    cues: ["tire", "brake", "wheel", "abs", "traction", "alignment"],
+    serviceType: "Brake or tire service",
+  },
   { key: "fluids", label: "Fluids / Leaks", cues: ["leak", "oil", "coolant", "fluid", "drip", "spill"], serviceType: "Leak inspection" },
-  { key: "warning_lights", label: "Warning lights", cues: ["check engine", "warning", "indicator", "light"], serviceType: "Dashboard warning diagnosis" },
-  { key: "body_glass", label: "Body / Glass", cues: ["mirror", "door", "window", "glass", "windshield", "dent"], serviceType: "Body or glass repair" },
+  {
+    key: "warning_lights",
+    label: "Warning lights",
+    cues: ["check engine", "warning", "indicator", "light"],
+    serviceType: "Dashboard warning diagnosis",
+  },
+  {
+    key: "body_glass",
+    label: "Body / Glass",
+    cues: ["mirror", "door", "window", "glass", "windshield", "dent"],
+    serviceType: "Body or glass repair",
+  },
   { key: "safety", label: "Safety equipment", cues: ["seatbelt", "airbag", "safety"], serviceType: "Safety system check" },
   { key: "other", label: "Other / Misc", cues: [], serviceType: "General inspection" },
 ];
@@ -70,7 +90,7 @@ export const INCIDENT_TYPES = [
   "Other",
 ] as const;
 
-export type IncidentType = typeof INCIDENT_TYPES[number];
+export type IncidentType = (typeof INCIDENT_TYPES)[number];
 
 // Map categories to likely incident types
 const CATEGORY_TO_INCIDENT_TYPES: Record<string, IncidentType[]> = {
@@ -98,7 +118,7 @@ function fallbackClassify(input: AnalysisInput): AnalysisResult {
   // Determine incident type from category
   const possibleIncidentTypes = CATEGORY_TO_INCIDENT_TYPES[match.key] || ["Other"];
   let incidentType: IncidentType = possibleIncidentTypes[0];
-  
+
   // Try to match description to specific incident types
   for (const type of INCIDENT_TYPES) {
     if (normalized.includes(type.toLowerCase().slice(0, 5))) {
@@ -135,21 +155,21 @@ async function fetchImageAsBase64(imageUrl: string): Promise<string | null> {
       }
       url = `${baseUrl}${imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`}`;
     }
-    
+
     const response = await fetch(url, {
       // Add timeout to prevent hanging
       signal: AbortSignal.timeout(10000), // 10 second timeout
     });
-    
+
     if (!response.ok) {
       console.warn(`Failed to fetch image from ${url}: ${response.statusText}`);
       return null;
     }
-    
+
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const base64 = buffer.toString("base64");
-    
+
     // Determine content type from response or URL
     let contentType = response.headers.get("content-type");
     if (!contentType) {
@@ -158,7 +178,7 @@ async function fetchImageAsBase64(imageUrl: string): Promise<string | null> {
       else if (url.includes(".jpg") || url.includes(".jpeg")) contentType = "image/jpeg";
       else contentType = "image/jpeg"; // default
     }
-    
+
     return `data:${contentType};base64,${base64}`;
   } catch (error) {
     console.error(`Error fetching image ${imageUrl}:`, error);
@@ -182,18 +202,19 @@ export async function analyzeRepairRequest(input: AnalysisInput): Promise<Analys
     const categoriesList = CATEGORY_OPTIONS.map((c) => `${c.key}: ${c.label}`).join("\n");
     const incidentTypesList = INCIDENT_TYPES.join(", ");
     const languageHint = input.preferredLanguage === "es" ? "Responde el resumen en español." : "Respond in English.";
-    
+
     // Build content array with text and images
     // IMPORTANT: This is a VISION-FIRST analysis system - images are the primary input
     const hasImages = input.photoUrls && input.photoUrls.length > 0;
-    
+
     const content: ContentBlockParam[] = [
       {
         type: "text",
         text: `You are a fleet repair triage agent specializing in VISUAL ANALYSIS of vehicle repair requests.
 
-${hasImages ? 
-`PRIMARY TASK: Analyze the provided PHOTOS/IMAGES visually to identify the vehicle problem. The images are the most important source of information.
+${
+  hasImages
+    ? `PRIMARY TASK: Analyze the provided PHOTOS/IMAGES visually to identify the vehicle problem. The images are the most important source of information.
 
 VISUAL ANALYSIS INSTRUCTIONS:
 - Carefully examine each photo for visible damage, issues, or problems
@@ -202,9 +223,10 @@ VISUAL ANALYSIS INSTRUCTIONS:
 - Use visual evidence from the photos as the PRIMARY basis for categorization
 - The text description is supplementary - trust what you see in the images when available
 
-` : 
-`NOTE: No images provided. Analyze based on text description only.
-`}
+`
+    : `NOTE: No images provided. Analyze based on text description only.
+`
+}
 Issue Description: ${input.description}
 Vehicle: ${input.vehicleIdentifier || "unspecified"}
 Urgency: ${input.urgency || "unspecified"}
@@ -236,27 +258,27 @@ ${hasImages ? "Focus on visual analysis - what can you see in the photos?" : "An
       const imagesToProcess = input.photoUrls.slice(0, 3); // Claude supports multiple images, limit for efficiency
       const imagePromises = imagesToProcess.map((url) => fetchImageAsBase64(url));
       const imageData = await Promise.all(imagePromises);
-      
+
       let imagesAdded = 0;
       // Insert images at the beginning so they're analyzed first (vision-first approach)
       const imageContent: ContentBlockParam[] = [];
-      
+
       for (const base64Image of imageData) {
         if (base64Image) {
           // Extract media type from data URL
-          const allowedMediaTypes = ['image/webp', 'image/png', 'image/jpeg', 'image/gif'] as const;
+          const allowedMediaTypes = ["image/webp", "image/png", "image/jpeg", "image/gif"] as const;
           const detectedMediaType = base64Image.match(/data:([^;]+);/)?.[1] || "image/jpeg";
           const mediaType = allowedMediaTypes.includes(detectedMediaType as any)
             ? (detectedMediaType as (typeof allowedMediaTypes)[number])
-            : 'image/jpeg';
+            : "image/jpeg";
           const base64Data = base64Image.split(",")[1];
-          
+
           // Validate base64 data exists
           if (!base64Data || base64Data.length === 0) {
             console.warn("Skipping image with empty base64 data");
             continue;
           }
-          
+
           imageContent.push({
             type: "image",
             source: {
@@ -268,7 +290,7 @@ ${hasImages ? "Focus on visual analysis - what can you see in the photos?" : "An
           imagesAdded++;
         }
       }
-      
+
       // Insert images BEFORE text prompt for vision-first analysis
       if (imageContent.length > 0) {
         content.unshift(...imageContent);
@@ -291,11 +313,11 @@ ${hasImages ? "Focus on visual analysis - what can you see in the photos?" : "An
     });
 
     const raw = message.content[0]?.type === "text" ? message.content[0].text : "{}";
-    
+
     // Extract JSON from response (Claude may include markdown code blocks)
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     const jsonString = jsonMatch ? jsonMatch[0] : raw;
-    
+
     let parsed;
     try {
       parsed = JSON.parse(jsonString);
@@ -303,9 +325,8 @@ ${hasImages ? "Focus on visual analysis - what can you see in the photos?" : "An
       console.error("Failed to parse Claude response as JSON:", jsonString.substring(0, 200));
       throw new Error("Invalid JSON response from Claude API");
     }
-    
-    const found = CATEGORY_OPTIONS.find((c) => c.key === parsed.categoryKey) || 
-                  CATEGORY_OPTIONS.find((c) => c.label === parsed.categoryLabel);
+
+    const found = CATEGORY_OPTIONS.find((c) => c.key === parsed.categoryKey) || CATEGORY_OPTIONS.find((c) => c.label === parsed.categoryLabel);
 
     // Validate and sanitize confidence score
     let confidence = parsed.confidence ? Number(parsed.confidence) : 0.7;
