@@ -43,3 +43,4 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 - The app will use `http://localhost:3000` as fallback if not set
 - After setting environment variables, trigger a new deployment
 
+

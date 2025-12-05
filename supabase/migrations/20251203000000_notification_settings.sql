@@ -40,3 +40,4 @@ CREATE TRIGGER update_notification_message_templates_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+

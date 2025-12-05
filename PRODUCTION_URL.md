@@ -28,3 +28,4 @@ This URL is used in:
 - Make sure to set `NEXT_PUBLIC_APP_URL` in Vercel environment variables before deploying
 - The URL is automatically used by `lib/email.ts` for all email links
 
+

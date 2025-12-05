@@ -61,3 +61,4 @@ fs.writeFileSync('/tmp/notification_migration.sql', migrationSQL);
 console.log('💾 SQL also saved to: /tmp/notification_migration.sql');
 console.log('');
 
+

@@ -119,6 +119,7 @@ function rowToRepairRequest(row: any): RepairRequest {
     aiTags: row.ai_tags || [],
     aiSummary: row.ai_summary,
     aiConfidence: row.ai_confidence ? parseFloat(row.ai_confidence) : undefined,
+    incidentType: row.incident_type,
     photoUrls: row.photo_urls || [],
     thumbUrls: row.thumb_urls || [],
     bookingId: row.booking_id,

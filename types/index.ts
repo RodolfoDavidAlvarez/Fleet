@@ -199,6 +199,7 @@ export interface RepairRequest {
   aiTags?: string[]
   aiSummary?: string
   aiConfidence?: number
+  incidentType?: string
   photoUrls: string[]
   thumbUrls: string[]
   bookingId?: string
