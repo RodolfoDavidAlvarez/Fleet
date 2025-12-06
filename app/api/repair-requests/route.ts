@@ -27,6 +27,7 @@ const createSchema = z.object({
   makeModel: z.string().optional(),
   incidentDate: z.string().optional(),
   isImmediate: z.coerce.boolean().optional(),
+  smsConsent: z.coerce.boolean().optional().default(false),
 });
 
 export async function GET(request: NextRequest) {
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
       makeModel: formData.get("makeModel")?.toString(),
       incidentDate: formData.get("incidentDate")?.toString(),
       isImmediate: formData.get("isImmediate") === "true",
+      smsConsent: formData.get("smsConsent") === "true",
     };
 
     const parsed = createSchema.safeParse(payload);
@@ -118,7 +120,8 @@ export async function POST(request: NextRequest) {
 
     const asyncNotifications: Promise<unknown>[] = [];
 
-    if (record.driverPhone) {
+    // Only send SMS to driver if they consented
+    if (record.driverPhone && parsed.data.smsConsent) {
       asyncNotifications.push(
         sendRepairSubmissionNotice(record.driverPhone, {
           requestId: record.id,

@@ -39,19 +39,35 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }
     }
 
+    // Get base URL - prioritize production URL, warn if falling back to localhost
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
       process.env.NEXTAUTH_URL ||
       process.env.BOOKING_BASE_URL ||
       process.env.NEXT_PUBLIC_SITE_URL ||
-      request.headers.get("origin") ||
-      "http://localhost:3000";
-    
+      request.headers.get("origin");
+
+    // In production, we must have a proper base URL
+    if (!baseUrl || baseUrl.includes("localhost")) {
+      const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+      if (isProduction) {
+        console.error("CRITICAL: No production base URL configured. Set NEXT_PUBLIC_APP_URL environment variable.");
+        return NextResponse.json({
+          error: "Booking link cannot be generated. Please contact support.",
+          details: "Server configuration error: missing base URL"
+        }, { status: 500 });
+      }
+      // In development, use localhost as fallback
+      console.warn("Using localhost for booking link - this is only acceptable in development");
+    }
+
+    const finalBaseUrl = baseUrl || "http://localhost:3000";
+
     // Use custom phone if provided, otherwise use existing phone
     const phoneToUse = (parsed.data as any).customPhone || existing.driverPhone;
-    
-    // Use the specialized booking link page
-    const bookingLink = `${baseUrl}/booking-link/${existing.id}?name=${encodeURIComponent(existing.driverName)}&phone=${encodeURIComponent(phoneToUse || '')}`;
+
+    // Use the specialized booking link page - use finalBaseUrl
+    const bookingLink = `${finalBaseUrl}/booking-link/${existing.id}?name=${encodeURIComponent(existing.driverName)}&phone=${encodeURIComponent(phoneToUse || '')}`;
 
     const suggestedSlot =
       parsed.data.suggestedDate && parsed.data.suggestedTime
@@ -79,8 +95,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     let smsError = null;
     let emailError = null;
 
-    // Try to send SMS if phone number provided
+    // Try to send SMS if phone number provided AND user consented to SMS
+    // Note: For booking links, we check the existing record's smsConsent (if tracked)
+    // Since admin is explicitly sending this link, we allow it but log if no consent
     if (phoneToUse) {
+      // Check if smsConsent exists on the repair request
+      const hasSmsConsent = (existing as any).smsConsent !== false;
+      if (!hasSmsConsent) {
+        console.warn(`Sending booking link SMS to ${existing.id} - smsConsent not explicitly granted`);
+      }
+
       try {
         smsSuccess = await sendRepairBookingLink(phoneToUse, {
           requestId: existing.id,

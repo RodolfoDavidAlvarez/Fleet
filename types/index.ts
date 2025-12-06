@@ -193,6 +193,7 @@ export interface RepairRequest {
   driverPhone?: string;
   driverEmail?: string;
   preferredLanguage?: "en" | "es";
+  smsConsent?: boolean;
   vehicleId?: string;
   vehicleIdentifier?: string;
   odometer?: number;

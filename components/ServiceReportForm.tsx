@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { formatDate } from "@/lib/utils";
 import Select from "@/components/ui/Select";
 import DatePicker from "@/components/ui/DatePicker";
+import { useToast } from "@/components/ui/toast";
 
 interface ServiceReportFormProps {
   repairRequest?: RepairRequest;
@@ -47,6 +48,7 @@ export default function ServiceReportForm({
   onSubmit,
   isSubmitting = false,
 }: ServiceReportFormProps) {
+  const { showToast } = useToast();
   const [selectedRepairRequest, setSelectedRepairRequest] = useState<RepairRequest | undefined>(initialRepairRequest);
   const [repairSearch, setRepairSearch] = useState("");
   const [showRepairSelector, setShowRepairSelector] = useState(false);
@@ -126,11 +128,11 @@ export default function ServiceReportForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.mechanicName.trim()) {
-      alert("Please select who performed the work.");
+      showToast("Please select who performed the work.", "error");
       return;
     }
     if (!form.description.trim()) {
-      alert("Please provide a description of the work performed.");
+      showToast("Please provide a description of the work performed.", "error");
       return;
     }
     await onSubmit(form);

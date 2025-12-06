@@ -1,18 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { sendAccountApprovedEmail } from "@/lib/email";
+import { requireAdmin } from "@/lib/auth";
 
 // Get all users (admin only)
 export async function GET(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const authResult = await requireAdmin();
+    if (authResult.error) {
+      return authResult.error;
+    }
+
     let supabase;
     try {
       supabase = createServerClient();
     } catch (clientError: any) {
       console.error("Error creating Supabase client:", clientError);
       return NextResponse.json(
-        { 
-          error: clientError.message || "Failed to initialize database connection. Check SUPABASE_SERVICE_ROLE_KEY environment variable." 
+        {
+          error: clientError.message || "Failed to initialize database connection. Check SUPABASE_SERVICE_ROLE_KEY environment variable."
         },
         { status: 500 }
       );
@@ -89,6 +96,12 @@ export async function GET(request: NextRequest) {
 // Update user role or approval status
 export async function PATCH(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const authResult = await requireAdmin();
+    if (authResult.error) {
+      return authResult.error;
+    }
+
     const { userId, role, approvalStatus, approval_status, notifyOnRepair } = await request.json();
 
     if (!userId) {
@@ -180,11 +193,22 @@ export async function PATCH(request: NextRequest) {
 // Delete user (admin only)
 export async function DELETE(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const authResult = await requireAdmin();
+    if (authResult.error) {
+      return authResult.error;
+    }
+
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
     if (!userId) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    }
+
+    // Prevent admin from deleting themselves
+    if (userId === authResult.user.id) {
+      return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 });
     }
 
     let supabase;

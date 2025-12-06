@@ -56,8 +56,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       status: newStatus,
     });
 
-    // Send SMS notification when status changes to completed
-    if (newStatus === 'completed' && previousStatus !== 'completed' && existing.driverPhone) {
+    // Send SMS notification when status changes to completed - only if user consented
+    const hasSmsConsent = (existing as any).smsConsent === true;
+    if (newStatus === 'completed' && previousStatus !== 'completed' && existing.driverPhone && hasSmsConsent) {
       try {
         await sendRepairCompletion(existing.driverPhone, {
           requestId: existing.id,
@@ -68,6 +69,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         console.error("Failed to send completion SMS", smsError);
         // Don't fail the request just because SMS failed
       }
+    } else if (newStatus === 'completed' && previousStatus !== 'completed' && existing.driverPhone && !hasSmsConsent) {
+      console.log(`Skipping completion SMS for ${existing.id} - no SMS consent`);
     }
 
     // Send email notification if email provided

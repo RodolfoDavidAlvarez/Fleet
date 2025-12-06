@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
+import { requireAdmin } from '@/lib/auth'
 
 // Get all notifications
 export async function GET(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const authResult = await requireAdmin();
+    if (authResult.error) {
+      return authResult.error;
+    }
+
     const supabase = createServerClient()
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
@@ -44,20 +51,29 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      // Get recipients for each notification
-      const notificationsWithRecipients = await Promise.all(
+      // Get recipients for each notification - use allSettled to prevent single failure from crashing all
+      const notificationResults = await Promise.allSettled(
         (notifications || []).map(async (notification) => {
-          const { data: recipients } = await supabase
-            .from('notification_recipients')
-            .select('*')
-            .eq('notification_id', notification.id)
+          try {
+            const { data: recipients } = await supabase
+              .from('notification_recipients')
+              .select('*')
+              .eq('notification_id', notification.id)
 
-          return {
-            ...notification,
-            recipients: recipients || [],
+            return {
+              ...notification,
+              recipients: recipients || [],
+            }
+          } catch (err) {
+            console.error(`Error fetching recipients for notification ${notification.id}:`, err);
+            return { ...notification, recipients: [] };
           }
         })
       )
+
+      const notificationsWithRecipients = notificationResults
+        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+        .map(r => r.value);
 
       return NextResponse.json({ notifications: notificationsWithRecipients })
     }
@@ -89,20 +105,29 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get recipients for each notification
-    const notificationsWithRecipients = await Promise.all(
+    // Get recipients for each notification - use allSettled to prevent single failure from crashing all
+    const notificationResults = await Promise.allSettled(
       (notifications || []).map(async (notification) => {
-        const { data: recipients } = await supabase
-          .from('notification_recipients')
-          .select('*')
-          .eq('notification_id', notification.id)
+        try {
+          const { data: recipients } = await supabase
+            .from('notification_recipients')
+            .select('*')
+            .eq('notification_id', notification.id)
 
-        return {
-          ...notification,
-          recipients: recipients || [],
+          return {
+            ...notification,
+            recipients: recipients || [],
+          }
+        } catch (err) {
+          console.error(`Error fetching recipients for notification ${notification.id}:`, err);
+          return { ...notification, recipients: [] };
         }
       })
     )
+
+    const notificationsWithRecipients = notificationResults
+      .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+      .map(r => r.value)
 
     return NextResponse.json({ notifications: notificationsWithRecipients })
   } catch (error) {
@@ -117,6 +142,12 @@ export async function GET(request: NextRequest) {
 // Create a new notification
 export async function POST(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const authResult = await requireAdmin();
+    if (authResult.error) {
+      return authResult.error;
+    }
+
     const { title, message, type, recipientIds, recipientRoles, channel, templateId } = await request.json()
 
     if (!title || !message) {
@@ -305,6 +336,12 @@ export async function PATCH(request: NextRequest) {
 // Delete notification
 export async function DELETE(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const authResult = await requireAdmin();
+    if (authResult.error) {
+      return authResult.error;
+    }
+
     const { searchParams } = new URL(request.url)
     const notificationId = searchParams.get('id')
 

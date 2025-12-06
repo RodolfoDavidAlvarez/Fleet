@@ -20,6 +20,8 @@ const dictionary = {
     description: "Describe the problem in detail",
     date: "Date",
     photos: "Take a photo of the problem",
+    smsConsent: "I agree to receive SMS updates about my repair request",
+    smsConsentRequired: "Please agree to SMS updates to submit",
     submit: "Submit",
     submitting: "Submitting...",
     successTitle: "Request received",
@@ -42,6 +44,8 @@ const dictionary = {
     description: "Describa el problema con lujo de detalles",
     date: "Fecha",
     photos: "Tome foto de el problema",
+    smsConsent: "Acepto recibir actualizaciones por SMS sobre mi solicitud",
+    smsConsentRequired: "Por favor acepte las actualizaciones por SMS",
     submit: "Enviar",
     submitting: "Enviando...",
     successTitle: "Solicitud recibida",
@@ -70,6 +74,7 @@ export default function RepairRequestPage() {
     isImmediate: "false",
     description: "",
     date: new Date().toISOString().split("T")[0],
+    smsConsent: false,
   });
   const [photos, setPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -85,6 +90,13 @@ export default function RepairRequestPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Require SMS consent if phone is provided
+    if (form.driverPhone && !form.smsConsent) {
+      setError(t.smsConsentRequired);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -104,6 +116,7 @@ export default function RepairRequestPage() {
       fd.append("description", form.description);
       fd.append("incidentDate", form.date);
       fd.append("preferredLanguage", language);
+      fd.append("smsConsent", form.smsConsent ? "true" : "false");
       photos.forEach((file) => fd.append("photos", file));
 
       const res = await fetch("/api/repair-requests", {
@@ -351,6 +364,17 @@ export default function RepairRequestPage() {
                   ))}
                 </div>
               )}
+            </label>
+
+            {/* SMS Consent */}
+            <label className="flex items-start gap-3 cursor-pointer p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <input
+                type="checkbox"
+                checked={form.smsConsent}
+                onChange={(e) => setForm({ ...form, smsConsent: e.target.checked })}
+                className="mt-1 h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+              />
+              <span className="text-sm text-gray-700">{t.smsConsent}</span>
             </label>
 
             <button type="submit" disabled={submitting} className="btn btn-primary w-full btn-lg">
