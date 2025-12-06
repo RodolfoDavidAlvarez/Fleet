@@ -35,6 +35,7 @@ function rowToVehicle(row: any): Vehicle {
     title: row.title,
     photoUrls: row.photo_urls || [],
     airtableId: row.airtable_id,
+    vehicleType: row.vehicle_type,
     createdAt: row.created_at,
   };
 }
@@ -47,6 +48,8 @@ function vehicleToRow(vehicle: Partial<Vehicle>): any {
     year: vehicle.year,
     vin: vehicle.vin,
     license_plate: vehicle.licensePlate,
+    vehicle_number: vehicle.vehicleNumber,
+    vehicle_type: vehicle.vehicleType,
     status: vehicle.status,
     last_service_date: vehicle.lastServiceDate,
     next_service_due: vehicle.nextServiceDue,

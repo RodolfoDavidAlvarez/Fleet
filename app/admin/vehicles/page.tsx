@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { Car, Plus, User as UserIcon, Wrench, Calendar, Gauge, X, Loader2, Save, Grid3x3, List, Search, UserPlus, FileText, Download } from 'lucide-react'
+import { Car, Plus, User as UserIcon, Wrench, Calendar, Gauge, X, Loader2, Save, Grid3x3, List, Search, UserPlus, FileText, Download, Truck, Box, Container } from 'lucide-react'
 import { Vehicle } from '@/types'
 import { getStatusColor, formatDate } from '@/lib/utils'
 import { useVehicles, useCreateVehicle, useDrivers } from '@/hooks/use-vehicles'
@@ -31,6 +31,7 @@ export default function VehiclesPage() {
     mileage: 0,
     status: 'active' as 'active' | 'in_service' | 'retired',
     vehicleNumber: '',
+    vehicleType: 'Vehicle' as 'Vehicle' | 'Equipment' | 'Trailer',
     driverId: '' as string | undefined,
   })
   const activeCount = vehicles.filter((v) => v.status === 'active').length
@@ -147,6 +148,7 @@ export default function VehiclesPage() {
         mileage: 0,
         status: 'active',
         vehicleNumber: '',
+        vehicleType: 'Vehicle',
         driverId: '',
       })
       showToast('Vehicle added successfully!', 'success')
@@ -403,82 +405,165 @@ export default function VehiclesPage() {
                     )}
                   </motion.div>
                 ) : (
-                  <motion.div 
-                    layout
-                    className="space-y-3"
-                  >
-                    <AnimatePresence>
-                      {paginatedVehicles.map((vehicle, i) => (
-                        <motion.div
-                          key={vehicle.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.2, delay: i * 0.03 }}
-                          className="card-surface rounded-xl p-4 hover:shadow-lg transition-all duration-300 border border-gray-200/60 group cursor-pointer"
-                          onClick={() => router.push(`/admin/vehicles/${vehicle.id}`)}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="bg-gradient-to-br from-primary-500 to-primary-600 p-3 rounded-lg shadow-sm flex-shrink-0">
-                              <Car className="h-5 w-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-                              <div className="md:col-span-2">
-                                <h3 className="text-base font-bold text-gray-900 mb-1 group-hover:text-primary-700 transition-colors">
-                                  {vehicle.make && vehicle.model
-                                    ? `${vehicle.make} ${vehicle.model}`
-                                    : vehicle.vehicleNumber || vehicle.vin}
-                                </h3>
-                                <div className="flex items-center gap-3 text-sm text-gray-600">
-                                  {vehicle.year && <span>{vehicle.year}</span>}
-                                  {vehicle.licensePlate && (
-                                    <span className="font-mono font-semibold">{vehicle.licensePlate}</span>
+                  <div className="card-surface rounded-xl border border-gray-200 overflow-hidden">
+                    {/* Table Header */}
+                    <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 hidden md:block">
+                      <div className="grid grid-cols-12 gap-4 items-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        <div className="col-span-1">Type</div>
+                        <div className="col-span-1">Co. ID</div>
+                        <div className="col-span-2">Vehicle</div>
+                        <div className="col-span-2">VIN</div>
+                        <div className="col-span-1">Plate</div>
+                        <div className="col-span-2">Driver</div>
+                        <div className="col-span-1">Mileage</div>
+                        <div className="col-span-1">Status</div>
+                        <div className="col-span-1"></div>
+                      </div>
+                    </div>
+                    {/* Table Body */}
+                    <div className="divide-y divide-gray-100">
+                      <AnimatePresence>
+                        {paginatedVehicles.map((vehicle, i) => {
+                          const VehicleTypeIcon = vehicle.vehicleType === 'Trailer' ? Container :
+                                                  vehicle.vehicleType === 'Equipment' ? Box : Truck;
+                          const typeColor = vehicle.vehicleType === 'Trailer' ? 'text-orange-600 bg-orange-50' :
+                                           vehicle.vehicleType === 'Equipment' ? 'text-purple-600 bg-purple-50' : 'text-blue-600 bg-blue-50';
+                          return (
+                            <motion.div
+                              key={vehicle.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.2, delay: i * 0.02 }}
+                              className="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer group"
+                              onClick={() => router.push(`/admin/vehicles/${vehicle.id}`)}
+                            >
+                              {/* Desktop View */}
+                              <div className="hidden md:grid grid-cols-12 gap-4 items-center">
+                                {/* Type */}
+                                <div className="col-span-1">
+                                  <div className={`p-2 rounded-lg w-fit ${typeColor}`} title={vehicle.vehicleType || 'Vehicle'}>
+                                    <VehicleTypeIcon className="h-4 w-4" />
+                                  </div>
+                                </div>
+                                {/* Company ID */}
+                                <div className="col-span-1">
+                                  <span className="font-mono font-bold text-gray-900 text-sm">
+                                    {vehicle.vehicleNumber || '-'}
+                                  </span>
+                                </div>
+                                {/* Vehicle Name */}
+                                <div className="col-span-2">
+                                  <h3 className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors truncate">
+                                    {vehicle.make && vehicle.model
+                                      ? `${vehicle.make} ${vehicle.model}`
+                                      : vehicle.vehicleNumber || 'Unknown'}
+                                  </h3>
+                                  {vehicle.year && (
+                                    <p className="text-xs text-gray-500">{vehicle.year}</p>
                                   )}
                                 </div>
+                                {/* VIN */}
+                                <div className="col-span-2">
+                                  <span className="font-mono text-xs text-gray-600 truncate block" title={vehicle.vin}>
+                                    {vehicle.vin && !vehicle.vin.startsWith('AIRTABLE-')
+                                      ? vehicle.vin
+                                      : <span className="text-gray-400">-</span>}
+                                  </span>
+                                </div>
+                                {/* License Plate */}
+                                <div className="col-span-1">
+                                  <span className="font-mono font-semibold text-sm text-gray-900">
+                                    {vehicle.licensePlate || '-'}
+                                  </span>
+                                </div>
+                                {/* Driver */}
+                                <div className="col-span-2">
+                                  {vehicle.driverName ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <UserIcon className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                                      <span className="text-sm text-gray-700 truncate" title={vehicle.driverName}>
+                                        {vehicle.driverName}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">No driver</span>
+                                  )}
+                                </div>
+                                {/* Mileage */}
+                                <div className="col-span-1">
+                                  <span className="text-sm text-gray-700">
+                                    {vehicle.mileage ? vehicle.mileage.toLocaleString() : '-'}
+                                  </span>
+                                </div>
+                                {/* Status */}
+                                <div className="col-span-1">
+                                  <span className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(vehicle.status)}`}>
+                                    {vehicle.status?.replace('_', ' ')}
+                                  </span>
+                                </div>
+                                {/* Action */}
+                                <div className="col-span-1 text-right">
+                                  <button
+                                    className="text-primary-600 hover:text-primary-700 text-sm font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      router.push(`/admin/vehicles/${vehicle.id}`)
+                                    }}
+                                  >
+                                    View
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2 text-sm">
-                                {vehicle.mileage !== undefined && (
-                                  <div className="flex items-center gap-1.5">
-                                    <Gauge className="h-4 w-4 text-gray-400" />
-                                    <span className="text-gray-700">{vehicle.mileage.toLocaleString()} mi</span>
+
+                              {/* Mobile View */}
+                              <div className="md:hidden flex items-center gap-3">
+                                <div className={`p-2.5 rounded-lg flex-shrink-0 ${typeColor}`}>
+                                  <VehicleTypeIcon className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    {vehicle.vehicleNumber && (
+                                      <span className="font-mono font-bold text-primary-600 text-sm">{vehicle.vehicleNumber}</span>
+                                    )}
+                                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(vehicle.status)}`}>
+                                      {vehicle.status?.replace('_', ' ')}
+                                    </span>
                                   </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 text-sm">
-                                {vehicle.driverName && (
-                                  <div className="flex items-center gap-1.5">
-                                    <UserIcon className="h-4 w-4 text-gray-400" />
-                                    <span className="text-gray-700 truncate max-w-[150px]" title={vehicle.driverName}>{vehicle.driverName}</span>
+                                  <h3 className="text-sm font-semibold text-gray-900 truncate">
+                                    {vehicle.make && vehicle.model
+                                      ? `${vehicle.make} ${vehicle.model}${vehicle.year ? ` (${vehicle.year})` : ''}`
+                                      : vehicle.vehicleNumber || 'Unknown'}
+                                  </h3>
+                                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                                    {vehicle.licensePlate && (
+                                      <span className="font-mono">{vehicle.licensePlate}</span>
+                                    )}
+                                    {vehicle.driverName && (
+                                      <span className="flex items-center gap-1">
+                                        <UserIcon className="h-3 w-3" />
+                                        {vehicle.driverName}
+                                      </span>
+                                    )}
                                   </div>
-                                )}
+                                </div>
+                                <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
                               </div>
-                              <div className="flex items-center justify-between gap-3">
-                                <span className={`px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(vehicle.status)}`}>
-                                  {vehicle.status?.replace('_', ' ')}
-                                </span>
-                                <button 
-                                  className="text-primary-600 hover:text-primary-700 text-sm font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    router.push(`/admin/vehicles/${vehicle.id}`)
-                                  }}
-                                >
-                                  View
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
+                            </motion.div>
+                          );
+                        })}
+                      </AnimatePresence>
+                    </div>
                     {filteredVehicles.length === 0 && (
                       <div className="p-6 text-center text-gray-500">
                         {searchTerm ? `No vehicles found matching "${searchTerm}".` : 'No vehicles found.'}
                       </div>
                     )}
-                  </motion.div>
+                  </div>
                 )}
                 
                 {/* Pagination */}
@@ -585,14 +670,27 @@ export default function VehiclesPage() {
                         />
                       </label>
                       <label className="space-y-1.5 block">
-                        <span className="text-sm font-semibold text-gray-700">Vehicle Number</span>
+                        <span className="text-sm font-semibold text-gray-700">Company ID / Vehicle Number</span>
                         <input
                           type="text"
                           className="input-field w-full"
                           value={formData.vehicleNumber}
                           onChange={(e) => setFormData({ ...formData, vehicleNumber: e.target.value })}
-                          placeholder="e.g., 223"
+                          placeholder="e.g., 1582"
                         />
+                      </label>
+                      <label className="space-y-1.5 block">
+                        <span className="text-sm font-semibold text-gray-700">Type *</span>
+                        <select
+                          required
+                          className="input-field w-full"
+                          value={formData.vehicleType}
+                          onChange={(e) => setFormData({ ...formData, vehicleType: e.target.value as any })}
+                        >
+                          <option value="Vehicle">Vehicle (Truck, Car, Van)</option>
+                          <option value="Equipment">Equipment (Loader, Mower, Gator)</option>
+                          <option value="Trailer">Trailer (Flatbed, Cargo)</option>
+                        </select>
                       </label>
                     </div>
                   </div>
