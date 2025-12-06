@@ -465,9 +465,7 @@ export function NotificationsSection() {
                               </button>
                               <button
                                 onClick={() => {
-                                  const en = template?.en || notification.templateEn;
-                                  const es = template?.es || notification.templateEs;
-                                  saveTemplate(notification.id, en, es);
+                                  saveTemplate(notification.id);
                                 }}
                                 className="btn btn-primary btn-sm"
                                 disabled={saving}

@@ -56,12 +56,12 @@ export async function POST(request: NextRequest) {
         if (type === "email" || type === "both") {
           if (recipient.email) {
             try {
-              const emailSuccess = await sendEmail({
-                to: recipient.email,
-                subject: subject || "Announcement from FleetPro",
-                text: messageEn,
-                html: `<p>${messageEn.replace(/\n/g, "<br>")}</p>`,
-              });
+              const emailSuccess = await sendEmail(
+                recipient.email,
+                subject || "Announcement from FleetPro",
+                `<p>${messageEn.replace(/\n/g, "<br>")}</p>`,
+                messageEn
+              );
               if (emailSuccess) {
                 sentCount++;
               } else {
@@ -111,12 +111,12 @@ export async function POST(request: NextRequest) {
             // It's an email
             if (type === "email" || type === "both") {
               try {
-                const emailSuccess = await sendEmail({
-                  to: cleanRecipient,
-                  subject: subject || "Announcement from FleetPro",
-                  text: messageEn,
-                  html: `<p>${messageEn.replace(/\n/g, "<br>")}</p>`,
-                });
+                const emailSuccess = await sendEmail(
+                  cleanRecipient,
+                  subject || "Announcement from FleetPro",
+                  `<p>${messageEn.replace(/\n/g, "<br>")}</p>`,
+                  messageEn
+                );
                 if (emailSuccess) {
                   sentCount++;
                 } else {

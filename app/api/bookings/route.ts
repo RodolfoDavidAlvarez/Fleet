@@ -3,6 +3,7 @@ import { z } from "zod";
 import { bookingDB, repairRequestDB } from "@/lib/db";
 import { sendBookingConfirmation } from "@/lib/twilio";
 import { sendBookingConfirmationEmail, notifyAdminNewBooking } from "@/lib/email";
+import { createClient } from "@/lib/supabase/server";
 
 const bookingSchema = z.object({
   customerName: z.string().min(1, "customerName is required"),
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     // Notify admins based on notification assignments ONLY
     try {
-      const supabase = createServerClient();
+      const supabase = await createClient();
       const { data: assignments } = await supabase
         .from("notification_assignments")
         .select("notification_type, admin_user_ids")
@@ -155,7 +156,7 @@ export async function POST(request: NextRequest) {
           .in("id", assignments.admin_user_ids);
 
         if (assignedAdmins && assignedAdmins.length > 0) {
-          assignedAdmins.forEach((admin) => {
+          assignedAdmins.forEach((admin: { id: string; email: string }) => {
             if (admin.email) {
               asyncNotifications.push(
                 notifyAdminNewBooking(admin.email, {

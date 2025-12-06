@@ -20,22 +20,10 @@ export const queryClient = new QueryClient({
       refetchInterval: false,
       // No background updates by default
       refetchIntervalInBackground: false,
-      // Suppress error logging in production
-      onError: (error) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('React Query error:', error)
-        }
-      },
     },
     mutations: {
       // No retries for mutations to prevent duplicate actions
       retry: 0,
-      // Suppress error logging in production
-      onError: (error) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('React Query mutation error:', error)
-        }
-      },
     },
   },
 })

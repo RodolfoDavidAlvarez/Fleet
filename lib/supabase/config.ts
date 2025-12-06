@@ -4,9 +4,16 @@ export function getSupabaseEnv() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
+    const error = new Error(
       'Supabase environment variables are missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.'
     )
+    // Log to console in development
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.error('Supabase config error:', error.message)
+      console.error('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'Set' : 'Missing')
+      console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Set' : 'Missing')
+    }
+    throw error
   }
 
   return { supabaseUrl, supabaseAnonKey }

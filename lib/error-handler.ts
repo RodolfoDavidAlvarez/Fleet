@@ -19,7 +19,9 @@ export function logError(error: Error | string, context?: string) {
     // Clean up old errors to prevent memory leak
     if (errorLog.size > MAX_ERROR_LOG_SIZE) {
       const firstKey = errorLog.values().next().value;
-      errorLog.delete(firstKey);
+      if (firstKey) {
+        errorLog.delete(firstKey);
+      }
     }
   }
 }

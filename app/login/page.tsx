@@ -37,8 +37,13 @@ export default function LoginPage() {
   const [attemptCount, setAttemptCount] = useState(0)
 
   useEffect(() => {
-    if (searchParams.get('registered')) {
-      showToast('Account created successfully. Please log in.', 'success')
+    try {
+      if (searchParams.get('registered')) {
+        showToast('Account created successfully. Please log in.', 'success')
+      }
+    } catch (err) {
+      // Silently handle toast errors to prevent blank screen
+      console.error('Toast error:', err)
     }
   }, [searchParams, showToast])
 
