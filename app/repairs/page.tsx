@@ -4,7 +4,22 @@ import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
-import { BadgeCheck, Camera, CheckCircle, ClipboardList, Loader2, Send, Wrench, Search, X, Copy, Edit, FileText, AlertCircle, ExternalLink } from "lucide-react";
+import {
+  BadgeCheck,
+  Camera,
+  CheckCircle,
+  ClipboardList,
+  Loader2,
+  Send,
+  Wrench,
+  Search,
+  X,
+  Copy,
+  Edit,
+  FileText,
+  AlertCircle,
+  ExternalLink,
+} from "lucide-react";
 import { RepairReport, RepairRequest } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { useRepairs, useUpdateRepair, useSubmitRepairReport } from "@/hooks/use-repairs";
@@ -62,11 +77,14 @@ export default function RepairsPage() {
     setUser(parsedUser);
   }, [router]);
 
-  const copyLink = useCallback((link?: string) => {
-    if (!link) return;
-    navigator.clipboard.writeText(link);
-    showToast("Link copied to clipboard", "success", 3000);
-  }, [showToast]);
+  const copyLink = useCallback(
+    (link?: string) => {
+      if (!link) return;
+      navigator.clipboard.writeText(link);
+      showToast("Link copied to clipboard", "success", 3000);
+    },
+    [showToast]
+  );
 
   const getRepairFormLink = useCallback(() => {
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
@@ -85,39 +103,37 @@ export default function RepairsPage() {
 
   const checkDuplicatePhone = useCallback(async (phone: string, excludeId: string) => {
     try {
-      const res = await fetch('/api/repair-requests');
+      const res = await fetch("/api/repair-requests");
       if (res.ok) {
         const data = await res.json();
-        const duplicates = (data.requests || []).filter(
-          (req: any) => 
-            req.driverPhone === phone && 
-            req.id !== excludeId && 
-            req.bookingLinkSentAt
-        );
+        const duplicates = (data.requests || []).filter((req: any) => req.driverPhone === phone && req.id !== excludeId && req.bookingLinkSentAt);
         setDuplicatePhoneCheck(duplicates);
         return duplicates.length > 0;
       }
     } catch (err) {
       // Only log in development
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Error checking duplicate phone:', err);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error checking duplicate phone:", err);
       }
     }
     return false;
   }, []);
 
-  const handleSendLinkClick = useCallback(async (request: RepairRequest) => {
-    if (!request.driverPhone) {
-      showToast("No phone number available for this repair request.", "error");
-      return;
-    }
+  const handleSendLinkClick = useCallback(
+    async (request: RepairRequest) => {
+      if (!request.driverPhone) {
+        showToast("No phone number available for this repair request.", "error");
+        return;
+      }
 
-    // Check for duplicate phone numbers
-    const hasDuplicates = await checkDuplicatePhone(request.driverPhone, request.id);
-    
-    // Show confirmation modal
-    setShowSendLinkConfirm(request);
-  }, [checkDuplicatePhone, showToast]);
+      // Check for duplicate phone numbers
+      const hasDuplicates = await checkDuplicatePhone(request.driverPhone, request.id);
+
+      // Show confirmation modal
+      setShowSendLinkConfirm(request);
+    },
+    [checkDuplicatePhone, showToast]
+  );
 
   const sendBookingLink = async (request: RepairRequest, confirmed: boolean = false, customPhone?: string) => {
     if (!confirmed) {
@@ -128,10 +144,10 @@ export default function RepairsPage() {
     try {
       setSendingId(request.id);
       setShowSendLinkConfirm(null);
-      
+
       // Use custom phone if provided, otherwise use request phone
       const phoneToUse = customPhone || request.driverPhone;
-      
+
       if (!phoneToUse) {
         throw new Error("Phone number is required");
       }
@@ -166,7 +182,7 @@ export default function RepairsPage() {
           });
         } catch (updateErr) {
           // Only log in development
-          if (process.env.NODE_ENV === 'development') {
+          if (process.env.NODE_ENV === "development") {
             console.error("Error updating phone number:", updateErr);
           }
           // Don't fail the whole operation if phone update fails
@@ -205,7 +221,7 @@ export default function RepairsPage() {
       setDuplicatePhoneCheck([]);
     } catch (err) {
       // Only log in development
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV === "development") {
         console.error(err);
       }
       const errorMessage = err instanceof Error ? err.message : "Failed to send booking link";
@@ -276,7 +292,7 @@ export default function RepairsPage() {
       }, 1000);
     } catch (error) {
       // Only log in development
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV === "development") {
         console.error("Failed to submit service report:", error);
       }
       showToast(error instanceof Error ? error.message : "Failed to submit service report", "error");
@@ -369,9 +385,9 @@ export default function RepairsPage() {
                   <FileText className="h-4 w-4" />
                   New Repair Request
                 </button>
-                <button 
-                  onClick={handleRefreshClick} 
-                  className="btn btn-secondary flex items-center gap-2" 
+                <button
+                  onClick={handleRefreshClick}
+                  className="btn btn-secondary flex items-center gap-2"
                   disabled={isRefetching || isLoading}
                   title="Refresh repair requests"
                   aria-label="Refresh repair requests list"
@@ -384,7 +400,11 @@ export default function RepairsPage() {
 
             {/* Filters and Search */}
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-1 overflow-x-auto w-full md:w-auto p-1 no-scrollbar" role="tablist" aria-label="Filter repair requests by status">
+              <div
+                className="flex items-center gap-1 overflow-x-auto w-full md:w-auto p-1 no-scrollbar"
+                role="tablist"
+                aria-label="Filter repair requests by status"
+              >
                 {["all", "submitted", "waiting_booking", "scheduled", "in_progress", "completed"].map((status) => (
                   <button
                     key={status}
@@ -445,10 +465,10 @@ export default function RepairsPage() {
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -8 }}
-                            transition={{ 
-                              duration: 0.3, 
+                            transition={{
+                              duration: 0.3,
                               delay: Math.min(i * 0.03, 0.3),
-                              ease: [0.16, 1, 0.3, 1]
+                              ease: [0.16, 1, 0.3, 1],
                             }}
                             whileHover={{ scale: 1.01, transition: { duration: 0.2 } }}
                             onClick={() => handleRowClick(req)}
@@ -457,7 +477,7 @@ export default function RepairsPage() {
                             tabIndex={0}
                             aria-label={`View repair request from ${req.driverName}`}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
+                              if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault();
                                 handleRowClick(req);
                               }
@@ -530,15 +550,15 @@ export default function RepairsPage() {
       {/* Side Panel */}
       <AnimatePresence>
         {selected && (
-          <motion.div 
-            className="fixed inset-0 z-50 overflow-hidden" 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
+          <motion.div
+            className="fixed inset-0 z-50 overflow-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <motion.div 
-              className="absolute inset-0 bg-black/30 backdrop-blur-sm" 
+            <motion.div
+              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
               onClick={() => setSelected(null)}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -550,11 +570,11 @@ export default function RepairsPage() {
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ 
-                type: "spring", 
-                stiffness: 400, 
+              transition={{
+                type: "spring",
+                stiffness: 400,
                 damping: 35,
-                mass: 0.8
+                mass: 0.8,
               }}
             >
               <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white flex items-center justify-between sticky top-0 z-10 shadow-sm">
@@ -670,18 +690,12 @@ export default function RepairsPage() {
                                 <div className="flex-1 bg-gray-200 rounded-full h-2.5 overflow-hidden">
                                   <div
                                     className={`h-full rounded-full transition-all ${
-                                      selected.aiConfidence >= 0.8
-                                        ? "bg-green-500"
-                                        : selected.aiConfidence >= 0.6
-                                          ? "bg-yellow-500"
-                                          : "bg-orange-500"
+                                      selected.aiConfidence >= 0.8 ? "bg-green-500" : selected.aiConfidence >= 0.6 ? "bg-yellow-500" : "bg-orange-500"
                                     }`}
                                     style={{ width: `${selected.aiConfidence * 100}%` }}
                                   />
                                 </div>
-                                <span className="text-sm font-bold text-gray-900 min-w-[3rem]">
-                                  {(selected.aiConfidence * 100).toFixed(0)}%
-                                </span>
+                                <span className="text-sm font-bold text-gray-900 min-w-[3rem]">{(selected.aiConfidence * 100).toFixed(0)}%</span>
                               </div>
                             </div>
                           )}
@@ -798,7 +812,7 @@ export default function RepairsPage() {
                               <span className="text-xs text-gray-500">{new Date(selected.bookingLinkSentAt).toLocaleString()}</span>
                             )}
                           </div>
-                          
+
                           {/* Booking Link Display with Actions */}
                           <div className="pt-2 border-t border-blue-200">
                             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Booking Link</p>
@@ -818,7 +832,7 @@ export default function RepairsPage() {
                                   <Copy className="h-4 w-4 text-gray-600" />
                                 </button>
                                 <button
-                                  onClick={() => window.open(selected.bookingLink, '_blank')}
+                                  onClick={() => window.open(selected.bookingLink, "_blank")}
                                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                                   title="Open in new tab"
                                 >
@@ -853,9 +867,7 @@ export default function RepairsPage() {
                           onClick={() => handleSendLinkClick(selected)}
                           disabled={sendingId === selected.id}
                           className={`btn flex-1 flex items-center gap-2 transition-all ${
-                            sendingId === selected.id
-                              ? "btn-primary opacity-75 cursor-not-allowed"
-                              : "btn-primary"
+                            sendingId === selected.id ? "btn-primary opacity-75 cursor-not-allowed" : "btn-primary"
                           }`}
                         >
                           {sendingId === selected.id ? (
@@ -1035,24 +1047,27 @@ function SendLinkConfirmationModal({
   isSending: boolean;
   onPhoneChange?: (phone: string) => void;
 }) {
-  const [phoneNumber, setPhoneNumber] = useState(request.driverPhone || '');
+  const [phoneNumber, setPhoneNumber] = useState(request.driverPhone || "");
   const hasDuplicates = duplicateRequests.length > 0;
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handlePhoneChange = useCallback((value: string) => {
-    setPhoneNumber(value);
-    
-    // Debounce duplicate check - use ref to avoid re-renders
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    
-    debounceTimerRef.current = setTimeout(() => {
-      if (onPhoneChange && value.trim()) {
-        onPhoneChange(value);
+  const handlePhoneChange = useCallback(
+    (value: string) => {
+      setPhoneNumber(value);
+
+      // Debounce duplicate check - use ref to avoid re-renders
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
-    }, 300); // Reduced from 500ms to 300ms
-  }, [onPhoneChange]);
+
+      debounceTimerRef.current = setTimeout(() => {
+        if (onPhoneChange && value.trim()) {
+          onPhoneChange(value);
+        }
+      }, 300); // Reduced from 500ms to 300ms
+    },
+    [onPhoneChange]
+  );
 
   useEffect(() => {
     return () => {
@@ -1074,15 +1089,8 @@ function SendLinkConfirmationModal({
         <div className="bg-white rounded-xl shadow-lg w-full max-w-sm border border-gray-200">
           {/* Header */}
           <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {isResend ? "Resend Link" : "Send Booking Link"}
-            </h3>
-            <button
-              onClick={onCancel}
-              disabled={isSending}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="Close"
-            >
+            <h3 className="text-lg font-semibold text-gray-900">{isResend ? "Resend Link" : "Send Booking Link"}</h3>
+            <button onClick={onCancel} disabled={isSending} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -1091,9 +1099,7 @@ function SendLinkConfirmationModal({
           <div className="p-5 space-y-4">
             {/* Phone Number Input */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone Number
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
               <input
                 type="tel"
                 value={phoneNumber}
@@ -1102,9 +1108,7 @@ function SendLinkConfirmationModal({
                 className="input-field w-full"
                 placeholder="Enter phone number"
               />
-              {request.driverName && (
-                <p className="text-xs text-gray-500 mt-1">Driver: {request.driverName}</p>
-              )}
+              {request.driverName && <p className="text-xs text-gray-500 mt-1">Driver: {request.driverName}</p>}
             </div>
 
             {/* Simple Warnings */}
@@ -1112,7 +1116,9 @@ function SendLinkConfirmationModal({
               <div className="flex items-start gap-2 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium">Note: {duplicateRequests.length} other {duplicateRequests.length === 1 ? "link" : "links"} sent to this number</p>
+                  <p className="font-medium">
+                    Note: {duplicateRequests.length} other {duplicateRequests.length === 1 ? "link" : "links"} sent to this number
+                  </p>
                 </div>
               </div>
             )}
@@ -1127,11 +1133,7 @@ function SendLinkConfirmationModal({
 
           {/* Actions */}
           <div className="px-5 py-4 border-t border-gray-200 bg-gray-50 flex gap-3">
-            <button
-              onClick={onCancel}
-              disabled={isSending}
-              className="btn btn-secondary flex-1"
-            >
+            <button onClick={onCancel} disabled={isSending} className="btn btn-secondary flex-1">
               Cancel
             </button>
             <button

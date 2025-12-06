@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
               }
             } catch (emailError: any) {
               failedCount++;
-              errors.push(`Email to ${recipient.email}: ${emailError?.message || 'Unknown error'}`);
+              errors.push(`Email to ${recipient.email}: ${emailError?.message || "Unknown error"}`);
               console.error(`Failed to send email to ${recipient.email}:`, emailError);
             }
           }
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
               }
             } catch (smsError: any) {
               failedCount++;
-              errors.push(`SMS to ${recipient.phone}: ${smsError?.message || 'Unknown error'}`);
+              errors.push(`SMS to ${recipient.phone}: ${smsError?.message || "Unknown error"}`);
               console.error(`Failed to send SMS to ${recipient.phone}:`, smsError?.message || smsError);
             }
           }
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
                 }
               } catch (emailError: any) {
                 failedCount++;
-                errors.push(`Email to ${cleanRecipient}: ${emailError?.message || 'Unknown error'}`);
+                errors.push(`Email to ${cleanRecipient}: ${emailError?.message || "Unknown error"}`);
                 console.error(`Failed to send email to ${cleanRecipient}:`, emailError);
               }
             }
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
                 }
               } catch (smsError: any) {
                 failedCount++;
-                errors.push(`SMS to ${cleanRecipient}: ${smsError?.message || 'Unknown error'}`);
+                errors.push(`SMS to ${cleanRecipient}: ${smsError?.message || "Unknown error"}`);
                 console.error(`Failed to send SMS to ${cleanRecipient}:`, smsError?.message || smsError);
               }
             }
@@ -154,35 +154,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for Twilio/Email configuration issues
-    const smsEnabled = process.env.ENABLE_SMS === 'true';
-    const emailEnabled = process.env.ENABLE_EMAIL !== 'false';
+    const smsEnabled = process.env.ENABLE_SMS === "true";
+    const emailEnabled = process.env.ENABLE_EMAIL !== "false";
     const twilioConfigured = !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN);
     const emailConfigured = !!process.env.RESEND_API_KEY;
 
     const warnings: string[] = [];
-    if ((type === 'sms' || type === 'both') && !smsEnabled) {
-      warnings.push('SMS is disabled. Set ENABLE_SMS=true to enable SMS notifications.');
+    if ((type === "sms" || type === "both") && !smsEnabled) {
+      warnings.push("SMS is disabled. Set ENABLE_SMS=true to enable SMS notifications.");
     }
-    if ((type === 'sms' || type === 'both') && smsEnabled && !twilioConfigured) {
-      warnings.push('SMS enabled but Twilio credentials are missing. Please configure TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.');
+    if ((type === "sms" || type === "both") && smsEnabled && !twilioConfigured) {
+      warnings.push("SMS enabled but Twilio credentials are missing. Please configure TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.");
     }
-    if ((type === 'email' || type === 'both') && !emailConfigured) {
-      warnings.push('Email credentials missing. Please configure RESEND_API_KEY.');
+    if ((type === "email" || type === "both") && !emailConfigured) {
+      warnings.push("Email credentials missing. Please configure RESEND_API_KEY.");
     }
 
-    return NextResponse.json({
-      success: true,
-      sentCount,
-      failedCount,
-      errors: errors.length > 0 ? errors : undefined,
-      warnings: warnings.length > 0 ? warnings : undefined,
-      configuration: {
-        smsEnabled,
-        twilioConfigured,
-        emailEnabled,
-        emailConfigured
-      }
-    }, { status: 200 });
+    return NextResponse.json(
+      {
+        success: true,
+        sentCount,
+        failedCount,
+        errors: errors.length > 0 ? errors : undefined,
+        warnings: warnings.length > 0 ? warnings : undefined,
+        configuration: {
+          smsEnabled,
+          twilioConfigured,
+          emailEnabled,
+          emailConfigured,
+        },
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Error in POST /api/admin/send-announcement:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

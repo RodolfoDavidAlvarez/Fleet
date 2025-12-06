@@ -69,7 +69,7 @@ export default function RepairRequestPage() {
     vehicleType: "",
     isImmediate: "false",
     description: "",
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split("T")[0],
   });
   const [photos, setPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -127,15 +127,15 @@ export default function RepairRequestPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-2xl w-full bg-white rounded-xl shadow-lg p-8 space-y-6 text-center">
-           {/* Agave Logo */}
-           <div className="flex justify-center mb-6">
+          {/* Agave Logo */}
+          <div className="flex justify-center mb-6">
             <img src="/images/AEC-Horizontal-Official-Logo-2020.png" alt="Agave" className="h-16 object-contain" />
           </div>
 
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="h-8 w-8 text-green-600" />
           </div>
-          
+
           <h2 className="text-2xl font-bold text-gray-900 mb-2">{t.successTitle}</h2>
           <p className="text-gray-600 mb-6">{t.successBody}</p>
 
@@ -152,11 +152,10 @@ export default function RepairRequestPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
-        
         {/* Header with Logo */}
         <div className="bg-white p-6 border-b border-gray-100 flex flex-col items-center">
           <img src="/images/AEC-Horizontal-Official-Logo-2020.png" alt="Agave" className="h-20 object-contain mb-4" />
-          
+
           <div className="text-center w-full">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome</h1>
             <p className="text-gray-500">Bienvenido</p>
@@ -165,23 +164,23 @@ export default function RepairRequestPage() {
 
         {/* Language Selector */}
         <div className="px-8 py-4 bg-gray-50 border-b border-gray-100">
-           <label className="block text-sm font-medium text-gray-700 mb-1">Language / Idioma</label>
-           <div className="flex gap-2">
-             <button 
-               type="button"
-               onClick={() => setLanguage('en')}
-               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${language === 'en' ? 'bg-primary-600 text-white shadow-sm' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}`}
-             >
-               English
-             </button>
-             <button 
-               type="button"
-               onClick={() => setLanguage('es')}
-               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${language === 'es' ? 'bg-primary-600 text-white shadow-sm' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}`}
-             >
-               Español
-             </button>
-           </div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Language / Idioma</label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setLanguage("en")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${language === "en" ? "bg-primary-600 text-white shadow-sm" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}
+            >
+              English
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage("es")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${language === "es" ? "bg-primary-600 text-white shadow-sm" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}
+            >
+              Español
+            </button>
+          </div>
         </div>
 
         <div className="p-8">
@@ -234,7 +233,7 @@ export default function RepairRequestPage() {
                   name="vehicleIdentifier"
                   value={form.vehicleIdentifier}
                   onChange={(e) => setForm({ ...form, vehicleIdentifier: e.target.value })}
-                  placeholder={language === 'es' ? 'Entra number "0" si no aplica' : 'Enter number "0" if not applicable'}
+                  placeholder={language === "es" ? 'Entra number "0" si no aplica' : 'Enter number "0" if not applicable'}
                 />
               </label>
             </div>
@@ -249,12 +248,10 @@ export default function RepairRequestPage() {
                 name="odometer"
                 value={form.odometer}
                 onChange={(e) => setForm({ ...form, odometer: e.target.value })}
-                placeholder={language === 'es' ? 'Ej: 42,500' : 'e.g. 42,500'}
+                placeholder={language === "es" ? "Ej: 42,500" : "e.g. 42,500"}
               />
               <span className="text-xs text-gray-500">
-                {language === 'es'
-                  ? 'Opcional: ingrese solo si se trata de un vehículo.'
-                  : 'Optional: include if this request is for a vehicle.'}
+                {language === "es" ? "Opcional: ingrese solo si se trata de un vehículo." : "Optional: include if this request is for a vehicle."}
               </span>
             </label>
 
@@ -270,7 +267,11 @@ export default function RepairRequestPage() {
                   required
                 >
                   <option value="">{t.selectOne}</option>
-                  {vehicleTypeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  {vehicleTypeOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="space-y-2">
@@ -283,7 +284,11 @@ export default function RepairRequestPage() {
                   required
                 >
                   <option value="">{t.selectOne}</option>
-                  {divisionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  {divisionOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
@@ -302,16 +307,10 @@ export default function RepairRequestPage() {
                   <option value="true">YES</option>
                 </select>
               </label>
-              
+
               <label className="space-y-2">
-                 <span className="text-sm font-semibold text-gray-700">{t.date}</span>
-                 <input
-                   type="date"
-                   className="input"
-                   name="date"
-                   value={form.date}
-                   onChange={(e) => setForm({ ...form, date: e.target.value })}
-                 />
+                <span className="text-sm font-semibold text-gray-700">{t.date}</span>
+                <input type="date" className="input" name="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
               </label>
             </div>
 
@@ -332,12 +331,12 @@ export default function RepairRequestPage() {
             <label className="space-y-2 block">
               <span className="text-sm font-semibold text-gray-700 block">{t.photos}</span>
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer relative">
-                <input 
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                  type="file" 
-                  multiple 
-                  accept="image/*" 
-                  onChange={handleFileChange} 
+                <input
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileChange}
                 />
                 <div className="flex flex-col items-center">
                   <Upload className="h-8 w-8 text-gray-400 mb-2" />
@@ -354,11 +353,7 @@ export default function RepairRequestPage() {
               )}
             </label>
 
-            <button 
-              type="submit" 
-              disabled={submitting} 
-              className="btn btn-primary w-full btn-lg"
-            >
+            <button type="submit" disabled={submitting} className="btn btn-primary w-full btn-lg">
               {submitting ? t.submitting : t.submit}
             </button>
           </form>

@@ -46,8 +46,11 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 #### 2. Application URL
 
 ```bash
-NEXT_PUBLIC_APP_URL=https://fleet-management-system-c7t0cfntn.vercel.app
+NEXTAUTH_URL=https://agavefleet.com
+NEXT_PUBLIC_APP_URL=https://agavefleet.com
 ```
+
+**Note:** Official production domain is `agavefleet.com`. The Vercel domain `fleet-management-system-red.vercel.app` should redirect to the official domain.
 
 #### 3. Email Configuration (Resend)
 
@@ -104,7 +107,7 @@ JWT_SECRET=your_jwt_secret_key_here
 1. **Go to Vercel Dashboard**
 
    - Visit: https://vercel.com/dashboard
-   - Select your project: `fleet-management-system-c7t0cfntn`
+   - Select your project: `agave-fleet` (or `fleet-management-system`)
 
 2. **Navigate to Environment Variables**
 
@@ -151,7 +154,7 @@ Before considering deployment complete, verify:
 
 ### Test Supabase Connection
 
-1. Visit: `https://fleet-management-system-c7t0cfntn.vercel.app/api/auth/heartbeat`
+1. Visit: `https://agavefleet.com/api/auth/heartbeat`
 2. Should return: `{"status":"ok","timestamp":"..."}`
 
 ### Test Email Configuration
@@ -196,8 +199,9 @@ Before considering deployment complete, verify:
 
 ## 📞 Quick Reference
 
+- **Production URL:** https://agavefleet.com
 - **Vercel Dashboard:** https://vercel.com/dashboard
-- **Project URL:** https://fleet-management-system-c7t0cfntn.vercel.app
+- **Vercel Domain:** https://fleet-management-system-red.vercel.app (redirects to agavefleet.com)
 - **Supabase Dashboard:** https://kxcixjiafdohbpwijfmd.supabase.co
 - **GitHub Repo:** https://github.com/RodolfoDavidAlvarez/Fleet
 
@@ -207,7 +211,7 @@ Before considering deployment complete, verify:
 
 1. **Test Production URL**
 
-   - Visit: https://fleet-management-system-c7t0cfntn.vercel.app
+   - Visit: https://agavefleet.com
    - Verify site loads correctly
 
 2. **Test Authentication**

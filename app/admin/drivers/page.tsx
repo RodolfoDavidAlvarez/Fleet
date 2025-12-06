@@ -945,7 +945,9 @@ export default function DriversPage() {
                           )}
                         </AnimatePresence>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">Only unassigned vehicles are shown. You can assign a vehicle after creation if needed.</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Only unassigned vehicles are shown. You can assign a vehicle after creation if needed.
+                      </p>
                     </label>
                   </div>
 

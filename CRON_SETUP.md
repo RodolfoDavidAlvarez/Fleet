@@ -67,7 +67,7 @@ Use services like:
 
 Configure them to call:
 ```
-GET https://your-domain.com/api/bookings/reminders
+GET https://agavefleet.com/api/bookings/reminders
 Authorization: Bearer YOUR_CRON_SECRET
 ```
 
@@ -77,7 +77,7 @@ Add to your server's crontab:
 
 ```bash
 # Run daily at 9 AM
-0 9 * * * curl -X GET "https://your-domain.com/api/bookings/reminders" -H "Authorization: Bearer YOUR_CRON_SECRET"
+0 9 * * * curl -X GET "https://agavefleet.com/api/bookings/reminders" -H "Authorization: Bearer YOUR_CRON_SECRET"
 ```
 
 ## Environment Variables
@@ -89,7 +89,8 @@ Add to your `.env.local` or production environment:
 CRON_SECRET=your-secret-key-here
 
 # App URL (for external cron services)
-NEXT_PUBLIC_APP_URL=https://your-domain.com
+NEXTAUTH_URL=https://agavefleet.com
+NEXT_PUBLIC_APP_URL=https://agavefleet.com
 ```
 
 ## Testing
@@ -97,7 +98,7 @@ NEXT_PUBLIC_APP_URL=https://your-domain.com
 ### Manual Test (Single Booking)
 
 ```bash
-curl -X POST https://your-domain.com/api/bookings/reminders \
+curl -X POST https://agavefleet.com/api/bookings/reminders \
   -H "Content-Type: application/json" \
   -d '{"bookingId": "your-booking-id"}'
 ```
@@ -105,7 +106,7 @@ curl -X POST https://your-domain.com/api/bookings/reminders \
 ### Test All Tomorrow's Bookings
 
 ```bash
-curl -X GET https://your-domain.com/api/bookings/reminders \
+curl -X GET https://agavefleet.com/api/bookings/reminders \
   -H "Authorization: Bearer YOUR_CRON_SECRET"
 ```
 

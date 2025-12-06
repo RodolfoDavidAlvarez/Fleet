@@ -98,6 +98,38 @@ Or run the updated `supabase/migration_admin_system.sql` file which includes the
 
 ## 🔧 Environment Variables
 
+### Production Environment Variables
+
+Set these in Vercel Dashboard → Settings → Environment Variables:
+
+```env
+# Production URLs
+NEXTAUTH_URL=https://agavefleet.com
+NEXT_PUBLIC_APP_URL=https://agavefleet.com
+
+# Email Configuration
+RESEND_API_KEY=your_resend_api_key
+RESEND_FROM_EMAIL=your-email@domain.com
+ENABLE_EMAIL=true
+
+# SMS Configuration (Optional)
+TWILIO_ACCOUNT_SID=your_account_sid
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_PHONE_NUMBER=+1234567890
+ENABLE_SMS=true
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://kxcixjiafdohbpwijfmd.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Security
+JWT_SECRET=your_jwt_secret
+CRON_SECRET=your_cron_secret
+```
+
+## 🔧 Previous Environment Variables Section
+
 Add these optional variables for full functionality:
 
 ```env

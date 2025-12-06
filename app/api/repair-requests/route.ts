@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
 
     // Notify admins based on notification assignments ONLY
     const supabase = createServerClient();
-    
+
     try {
       // Get notification assignments for SMS and Email repair alerts
       const { data: assignments } = await supabase
@@ -152,19 +152,13 @@ export async function POST(request: NextRequest) {
         .in("notification_type", ["sms_admin_new_repair", "email_admin_new_repair"]);
 
       if (assignments && assignments.length > 0) {
-        const smsAssignment = assignments.find(a => a.notification_type === "sms_admin_new_repair");
-        const emailAssignment = assignments.find(a => a.notification_type === "email_admin_new_repair");
+        const smsAssignment = assignments.find((a) => a.notification_type === "sms_admin_new_repair");
+        const emailAssignment = assignments.find((a) => a.notification_type === "email_admin_new_repair");
 
-        const allAssignedUserIds = [
-          ...(smsAssignment?.admin_user_ids || []),
-          ...(emailAssignment?.admin_user_ids || [])
-        ];
+        const allAssignedUserIds = [...(smsAssignment?.admin_user_ids || []), ...(emailAssignment?.admin_user_ids || [])];
 
         if (allAssignedUserIds.length > 0) {
-          const { data: assignedAdmins } = await supabase
-            .from("users")
-            .select("id, email, phone")
-            .in("id", allAssignedUserIds);
+          const { data: assignedAdmins } = await supabase.from("users").select("id, email, phone").in("id", allAssignedUserIds);
 
           if (assignedAdmins && assignedAdmins.length > 0) {
             assignedAdmins.forEach((admin) => {
