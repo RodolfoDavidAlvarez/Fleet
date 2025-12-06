@@ -3,6 +3,7 @@ import { bookingDB, repairRequestDB } from "@/lib/db";
 import { sendStatusUpdate } from "@/lib/twilio";
 import { sendStatusUpdateEmail } from "@/lib/email";
 import { z } from "zod";
+import { RepairRequestStatus } from "@/types";
 
 const bookingUpdateSchema = z.object({
   customerName: z.string().optional(),
@@ -68,19 +69,32 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       }
     }
 
+    // Sync booking status changes to linked repair request
     const linkedRequestId = parsed.data.repairRequestId || booking.repairRequestId;
-    if (linkedRequestId) {
-      await repairRequestDB.update(linkedRequestId, {
-        bookingId: booking.id,
-        status:
-          parsed.data.status === "completed"
-            ? "completed"
-            : parsed.data.status === "cancelled"
-            ? "cancelled"
-            : "scheduled",
-        scheduledDate: booking.scheduledDate,
-        scheduledTime: booking.scheduledTime,
-      });
+    if (linkedRequestId && parsed.data.status) {
+      // Map booking status to repair request status
+      const repairRequestStatusMap: Record<string, RepairRequestStatus> = {
+        pending: "scheduled",
+        confirmed: "scheduled",
+        in_progress: "in_progress",
+        completed: "completed",
+        cancelled: "cancelled",
+      };
+
+      const repairRequestStatus = repairRequestStatusMap[parsed.data.status];
+      if (repairRequestStatus) {
+        try {
+          await repairRequestDB.update(linkedRequestId, {
+            bookingId: booking.id,
+            status: repairRequestStatus,
+            scheduledDate: booking.scheduledDate,
+            scheduledTime: booking.scheduledTime,
+          });
+        } catch (updateError) {
+          console.error("Failed to sync repair request status:", updateError);
+          // Don't fail the booking update if repair request sync fails
+        }
+      }
     }
 
     return NextResponse.json({ booking });

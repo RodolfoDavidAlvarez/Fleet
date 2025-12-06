@@ -3,6 +3,27 @@ import { z } from "zod";
 import { repairReportDB, repairRequestDB } from "@/lib/db";
 import { sendRepairCompletion } from "@/lib/twilio";
 
+// Define valid status transitions for repair requests
+// This ensures the workflow is followed correctly
+const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
+  submitted: ["triaged", "waiting_booking", "scheduled", "in_progress", "cancelled"],
+  triaged: ["waiting_booking", "scheduled", "in_progress", "cancelled"],
+  waiting_booking: ["scheduled", "triaged", "in_progress", "cancelled"],
+  scheduled: ["in_progress", "completed", "waiting_booking", "cancelled"], // Allow direct completion for same-day repairs
+  in_progress: ["completed", "scheduled", "cancelled"],
+  completed: ["in_progress"], // Allow reopening if needed
+  cancelled: ["submitted", "triaged"], // Allow reopening cancelled requests
+};
+
+function isValidStatusTransition(currentStatus: string, newStatus: string): boolean {
+  // Same status is always valid (no-op)
+  if (currentStatus === newStatus) return true;
+
+  // Check if the transition is allowed
+  const validNextStatuses = VALID_STATUS_TRANSITIONS[currentStatus];
+  return validNextStatuses?.includes(newStatus) ?? false;
+}
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const record = await repairRequestDB.getById(params.id);
@@ -43,9 +64,24 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         return NextResponse.json({ error: "Repair request not found" }, { status: 404 });
     }
 
+    // Determine the target status
+    const targetStatus = parsed.data.status || (parsed.data.bookingId ? "scheduled" : undefined);
+
+    // Validate status transition if a new status is being set
+    if (targetStatus && targetStatus !== existingRecord.status) {
+      if (!isValidStatusTransition(existingRecord.status, targetStatus)) {
+        return NextResponse.json({
+          error: `Invalid status transition: cannot change from "${existingRecord.status}" to "${targetStatus}"`,
+          currentStatus: existingRecord.status,
+          requestedStatus: targetStatus,
+          validTransitions: VALID_STATUS_TRANSITIONS[existingRecord.status] || []
+        }, { status: 400 });
+      }
+    }
+
     const updates = {
       ...parsed.data,
-      status: parsed.data.status || (parsed.data.bookingId ? "scheduled" : undefined),
+      status: targetStatus,
     };
 
     const record = await repairRequestDB.update(params.id, updates);

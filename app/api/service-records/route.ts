@@ -24,6 +24,8 @@ export async function GET(request: NextRequest) {
     const supabase = createServerClient();
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
+    const repairRequestId = searchParams.get("repairRequestId");
+    const vehicleId = searchParams.get("vehicleId");
     const limitParam = searchParams.get("limit");
     const limit = limitParam ? parseInt(limitParam, 10) : 200;
 
@@ -36,6 +38,16 @@ export async function GET(request: NextRequest) {
 
     if (status && status !== "all") {
       query = query.eq("status", status);
+    }
+
+    // Filter by repair request ID if provided
+    if (repairRequestId) {
+      query = query.eq("repair_request_id", repairRequestId);
+    }
+
+    // Filter by vehicle ID if provided
+    if (vehicleId) {
+      query = query.eq("vehicle_id", vehicleId);
     }
 
     const { data: records, error } = await query;
@@ -217,6 +229,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Update repair request status when service record is created/completed
+    if (payload.repairRequestId) {
+      try {
+        // Map service record status to repair request status
+        const repairRequestStatus = status === "completed" ? "completed" :
+                                    status === "in_progress" ? "in_progress" :
+                                    undefined;
+
+        if (repairRequestStatus) {
+          await supabase
+            .from("repair_requests")
+            .update({
+              status: repairRequestStatus,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", payload.repairRequestId);
+        }
+      } catch (updateError) {
+        console.error("Failed to update repair request status", updateError);
+        // Don't fail the request if status update fails
+      }
+    }
+
     // Send notification SMS to driver if requested and repair request is linked
     if (payload.notifyDriver && payload.repairRequestId) {
       try {
@@ -230,19 +265,19 @@ export async function POST(request: NextRequest) {
           const statusMessages: Record<string, { en: string; es: string }> = {
             completed_ready_for_pickup: {
               en: "is completed and ready for pickup",
-              es: "estรก completada y lista para recoger",
+              es: "está completada y lista para recoger",
             },
             completed: {
               en: "is completed",
-              es: "estรก completada",
+              es: "está completada",
             },
             on_hold: {
               en: "is on hold",
-              es: "estรก en espera",
+              es: "está en espera",
             },
             waiting_for_parts: {
               en: "is waiting for parts",
-              es: "estรก esperando repuestos",
+              es: "está esperando repuestos",
             },
           };
 
@@ -251,7 +286,7 @@ export async function POST(request: NextRequest) {
           const language = repairRequest.preferred_language || "en";
           const message =
             language === "es"
-              ? `${repairRequest.driver_name}, su solicitud de reparaciรณn ${messages.es}.`
+              ? `${repairRequest.driver_name}, su solicitud de reparación ${messages.es}.`
               : `${repairRequest.driver_name}, your repair request ${messages.en}.`;
 
           await sendSMS(repairRequest.driver_phone, message);
