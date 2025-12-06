@@ -407,17 +407,17 @@ export default function VehiclesPage() {
                 ) : (
                   <div className="card-surface rounded-xl border border-gray-200 overflow-hidden">
                     {/* Table Header */}
-                    <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 hidden md:block">
-                      <div className="grid grid-cols-12 gap-4 items-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        <div className="col-span-1">Type</div>
-                        <div className="col-span-1">Co. ID</div>
-                        <div className="col-span-2">Vehicle</div>
-                        <div className="col-span-2">VIN</div>
-                        <div className="col-span-1">Plate</div>
-                        <div className="col-span-2">Driver</div>
-                        <div className="col-span-1">Mileage</div>
-                        <div className="col-span-1">Status</div>
-                        <div className="col-span-1"></div>
+                    <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 hidden lg:block">
+                      <div className="flex items-center gap-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        <div className="w-12">Type</div>
+                        <div className="w-16">Co. ID</div>
+                        <div className="w-32 flex-shrink-0">Vehicle</div>
+                        <div className="w-36 flex-shrink-0">VIN</div>
+                        <div className="w-20">Plate</div>
+                        <div className="w-28 flex-shrink-0">Dept</div>
+                        <div className="flex-1 min-w-[100px]">Driver</div>
+                        <div className="w-20">Status</div>
+                        <div className="w-16"></div>
                       </div>
                     </div>
                     {/* Table Body */}
@@ -438,21 +438,21 @@ export default function VehiclesPage() {
                               onClick={() => router.push(`/admin/vehicles/${vehicle.id}`)}
                             >
                               {/* Desktop View */}
-                              <div className="hidden md:grid grid-cols-12 gap-4 items-center">
+                              <div className="hidden lg:flex items-center gap-3">
                                 {/* Type */}
-                                <div className="col-span-1">
+                                <div className="w-12">
                                   <div className={`p-2 rounded-lg w-fit ${typeColor}`} title={vehicle.vehicleType || 'Vehicle'}>
                                     <VehicleTypeIcon className="h-4 w-4" />
                                   </div>
                                 </div>
                                 {/* Company ID */}
-                                <div className="col-span-1">
+                                <div className="w-16">
                                   <span className="font-mono font-bold text-gray-900 text-sm">
                                     {vehicle.vehicleNumber || '-'}
                                   </span>
                                 </div>
                                 {/* Vehicle Name */}
-                                <div className="col-span-2">
+                                <div className="w-32 flex-shrink-0">
                                   <h3 className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors truncate">
                                     {vehicle.make && vehicle.model
                                       ? `${vehicle.make} ${vehicle.model}`
@@ -463,21 +463,31 @@ export default function VehiclesPage() {
                                   )}
                                 </div>
                                 {/* VIN */}
-                                <div className="col-span-2">
+                                <div className="w-36 flex-shrink-0">
                                   <span className="font-mono text-xs text-gray-600 truncate block" title={vehicle.vin}>
-                                    {vehicle.vin && !vehicle.vin.startsWith('AIRTABLE-')
+                                    {vehicle.vin && !vehicle.vin.startsWith('AIRTABLE-') && !vehicle.vin.startsWith('FLEET-')
                                       ? vehicle.vin
                                       : <span className="text-gray-400">-</span>}
                                   </span>
                                 </div>
                                 {/* License Plate */}
-                                <div className="col-span-1">
+                                <div className="w-20">
                                   <span className="font-mono font-semibold text-sm text-gray-900">
                                     {vehicle.licensePlate || '-'}
                                   </span>
                                 </div>
+                                {/* Department */}
+                                <div className="w-28 flex-shrink-0">
+                                  {vehicle.department ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 truncate max-w-full">
+                                      {vehicle.department}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400 text-xs">-</span>
+                                  )}
+                                </div>
                                 {/* Driver */}
-                                <div className="col-span-2">
+                                <div className="flex-1 min-w-[100px]">
                                   {vehicle.driverName ? (
                                     <div className="flex items-center gap-1.5">
                                       <UserIcon className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
@@ -486,23 +496,17 @@ export default function VehiclesPage() {
                                       </span>
                                     </div>
                                   ) : (
-                                    <span className="text-xs text-gray-400">No driver</span>
+                                    <span className="text-xs text-gray-400">-</span>
                                   )}
                                 </div>
-                                {/* Mileage */}
-                                <div className="col-span-1">
-                                  <span className="text-sm text-gray-700">
-                                    {vehicle.mileage ? vehicle.mileage.toLocaleString() : '-'}
-                                  </span>
-                                </div>
                                 {/* Status */}
-                                <div className="col-span-1">
+                                <div className="w-20">
                                   <span className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(vehicle.status)}`}>
                                     {vehicle.status?.replace('_', ' ')}
                                   </span>
                                 </div>
                                 {/* Action */}
-                                <div className="col-span-1 text-right">
+                                <div className="w-16 text-right">
                                   <button
                                     className="text-primary-600 hover:text-primary-700 text-sm font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
                                     onClick={(e) => {
@@ -518,8 +522,8 @@ export default function VehiclesPage() {
                                 </div>
                               </div>
 
-                              {/* Mobile View */}
-                              <div className="md:hidden flex items-center gap-3">
+                              {/* Mobile/Tablet View */}
+                              <div className="lg:hidden flex items-center gap-3">
                                 <div className={`p-2.5 rounded-lg flex-shrink-0 ${typeColor}`}>
                                   <VehicleTypeIcon className="h-5 w-5" />
                                 </div>
@@ -537,7 +541,10 @@ export default function VehiclesPage() {
                                       ? `${vehicle.make} ${vehicle.model}${vehicle.year ? ` (${vehicle.year})` : ''}`
                                       : vehicle.vehicleNumber || 'Unknown'}
                                   </h3>
-                                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-1 flex-wrap">
+                                    {vehicle.department && (
+                                      <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">{vehicle.department}</span>
+                                    )}
                                     {vehicle.licensePlate && (
                                       <span className="font-mono">{vehicle.licensePlate}</span>
                                     )}
