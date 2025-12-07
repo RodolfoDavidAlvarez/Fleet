@@ -125,6 +125,7 @@ export async function POST(request: NextRequest) {
       asyncNotifications.push(
         sendRepairSubmissionNotice(record.driverPhone, {
           requestId: record.id,
+          requestNumber: record.requestNumber,
           summary: ai.summary,
           language: record.preferredLanguage,
         })
@@ -137,6 +138,7 @@ export async function POST(request: NextRequest) {
         sendRepairSubmissionEmail(record.driverEmail, {
           driverName: record.driverName,
           requestId: record.id,
+          requestNumber: record.requestNumber,
           summary: ai.summary,
           urgency: record.urgency,
           language: record.preferredLanguage,

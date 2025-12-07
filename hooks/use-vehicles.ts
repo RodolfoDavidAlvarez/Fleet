@@ -105,28 +105,22 @@ export function useUpdateVehicle() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ id, updates, photoFile }: { 
+    mutationFn: async ({ id, updates }: { 
       id: string, 
-      updates: Partial<Vehicle>,
-      photoFile?: File 
+      updates: Partial<Vehicle>
     }) => {
-      const formData = new FormData()
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          formData.append(key, value.toString())
-        }
-      })
-      
-      if (photoFile) {
-        formData.append('photo', photoFile)
-      }
-
       const response = await fetch(`/api/vehicles/${id}`, {
-        method: 'PUT',
-        body: formData,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
       })
 
-      if (!response.ok) throw new Error('Failed to update vehicle')
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update vehicle')
+      }
       return response.json()
     },
     onMutate: async ({ id, updates }) => {
@@ -153,6 +147,11 @@ export function useUpdateVehicle() {
           vehicle.id === data.vehicle.id ? data.vehicle : vehicle
         )
       )
+      // Also invalidate the individual vehicle query if it exists
+      queryClient.invalidateQueries({ queryKey: [...queryKeys.vehicles, data.vehicle.id] })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.vehicles })
     },
   })
 }

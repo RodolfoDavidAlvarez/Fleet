@@ -127,14 +127,18 @@ export async function sendRepairSubmissionNotice(
   phone: string,
   details: {
     requestId: string;
+    requestNumber?: number;
     summary: string;
     language?: "en" | "es";
   }
 ): Promise<boolean> {
+  // Use requestNumber if available (shorter), otherwise fall back to last 8 chars of UUID
+  const displayId = details.requestNumber ? `#${details.requestNumber}` : `#${details.requestId.slice(-8)}`;
+
   const message =
     details.language === "es"
-      ? `Solicitud de reparación recibida (#${details.requestId}). Su solicitud ha sido enviada y será revisada pronto.`
-      : `Repair request received (#${details.requestId}). Your request has been submitted and will be reviewed soon.`;
+      ? `Solicitud de reparación recibida (${displayId}). Su solicitud ha sido enviada y será revisada pronto.`
+      : `Repair request received (${displayId}). Your request has been submitted and will be reviewed soon.`;
   return sendSMS(phone, message);
 }
 
@@ -160,16 +164,20 @@ export async function sendRepairBookingLink(
   phone: string,
   details: {
     requestId: string;
+    requestNumber?: number;
     link: string;
     issueSummary: string;
     language?: "en" | "es";
     suggestedSlot?: string;
   }
 ) {
+  // Use requestNumber if available (shorter), otherwise fall back to last 8 chars of UUID
+  const displayId = details.requestNumber ? `#${details.requestNumber}` : `#${details.requestId.slice(-8)}`;
+
   const message =
     details.language === "es"
-      ? `Agenda tu reparación (#${details.requestId}): ${details.link}\nMotivo: ${details.issueSummary}${details.suggestedSlot ? `\nSugerencia: ${details.suggestedSlot}` : ""}`
-      : `Book your repair (#${details.requestId}): ${details.link}\nIssue: ${details.issueSummary}${details.suggestedSlot ? `\nSuggested: ${details.suggestedSlot}` : ""}`;
+      ? `Agenda tu reparación (${displayId}): ${details.link}\nMotivo: ${details.issueSummary}${details.suggestedSlot ? `\nSugerencia: ${details.suggestedSlot}` : ""}`
+      : `Book your repair (${displayId}): ${details.link}\nIssue: ${details.issueSummary}${details.suggestedSlot ? `\nSuggested: ${details.suggestedSlot}` : ""}`;
   return sendSMS(phone, message);
 }
 

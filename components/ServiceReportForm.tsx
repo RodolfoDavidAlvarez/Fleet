@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, X, CheckCircle, Wrench, User, Calendar, AlertCircle, Search, Bell } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, X, CheckCircle, Wrench, User, Calendar, AlertCircle, Search, Bell, ExternalLink } from "lucide-react";
 import { RepairRequest } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDate } from "@/lib/utils";
@@ -48,6 +49,7 @@ export default function ServiceReportForm({
   onSubmit,
   isSubmitting = false,
 }: ServiceReportFormProps) {
+  const router = useRouter();
   const { showToast } = useToast();
   const [selectedRepairRequest, setSelectedRepairRequest] = useState<RepairRequest | undefined>(initialRepairRequest);
   const [repairSearch, setRepairSearch] = useState("");
@@ -261,12 +263,25 @@ export default function ServiceReportForm({
             {/* Show Repair Request Details if linked */}
             {selectedRepairRequest && (
               <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                    <AlertCircle className="h-4 w-4 text-indigo-600" />
-                  </div>
-                  Repair Request Details
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                      <AlertCircle className="h-4 w-4 text-indigo-600" />
+                    </div>
+                    Related Repair Request
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      router.push(`/repairs?id=${selectedRepairRequest.id}`);
+                      onClose();
+                    }}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    View Full Details
+                  </button>
+                </div>
                 <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-4 space-y-3">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -292,6 +307,14 @@ export default function ServiceReportForm({
                     <div className="pt-3 border-t border-gray-200">
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Issue Description</p>
                       <p className="text-sm text-gray-700 line-clamp-3">{selectedRepairRequest.description}</p>
+                    </div>
+                  )}
+                  {selectedRepairRequest.status && (
+                    <div className="pt-3 border-t border-gray-200">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Status</p>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 capitalize">
+                        {selectedRepairRequest.status.replace(/_/g, " ")}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -385,18 +408,6 @@ export default function ServiceReportForm({
                           value={form.laborHours}
                           onChange={(e) => setForm({ ...form, laborHours: e.target.value })}
                           placeholder="e.g. 2.5"
-                        />
-                      </label>
-
-                      <label className="space-y-1.5 block">
-                        <span className="text-sm font-semibold text-gray-700">Labor cost</span>
-                        <input
-                          className="input-field w-full"
-                          type="number"
-                          step="0.01"
-                          value={form.laborCost}
-                          onChange={(e) => setForm({ ...form, laborCost: e.target.value })}
-                          placeholder="USD"
                         />
                       </label>
 

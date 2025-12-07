@@ -111,11 +111,7 @@ export default function DatePicker({
   const isToday = (day: number | null) => {
     if (day === null) return false;
     const today = new Date();
-    return (
-      currentMonth.getFullYear() === today.getFullYear() &&
-      currentMonth.getMonth() === today.getMonth() &&
-      day === today.getDate()
-    );
+    return currentMonth.getFullYear() === today.getFullYear() && currentMonth.getMonth() === today.getMonth() && day === today.getDate();
   };
 
   const handleDateSelect = (day: number) => {
@@ -172,22 +168,21 @@ export default function DatePicker({
             {value ? formatDisplayDate(value) : placeholder}
           </span>
         </div>
-        <ChevronRight
-          className={`h-4 w-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ${isOpen ? "transform rotate-90" : ""}`}
-        />
+        <ChevronRight className={`h-4 w-4 text-gray-400 transition-transform duration-200 flex-shrink-0 ${isOpen ? "transform rotate-90" : ""}`} />
       </button>
 
       <AnimatePresence>
         {isOpen && (
           <>
-            <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+            <div className="fixed inset-0 z-[5]" onClick={() => setIsOpen(false)} />
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="absolute z-20 mt-2 w-full bg-white border-2 border-gray-300 rounded-lg shadow-xl p-4"
+              className="absolute z-[100] mt-2 w-full bg-white border-2 border-gray-300 rounded-lg shadow-xl p-4"
               style={{ minWidth: "320px" }}
+              onClick={(e) => e.stopPropagation()}
             >
               {/* Calendar Header */}
               <div className="flex items-center justify-between mb-4">
@@ -266,4 +261,3 @@ export default function DatePicker({
     </div>
   );
 }
-

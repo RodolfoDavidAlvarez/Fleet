@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import {
@@ -41,6 +41,7 @@ const statusStyles: Record<string, string> = {
 
 export default function RepairsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
   const [user, setUser] = useState<any>(null);
   const [filter, setFilter] = useState<string>("all");
@@ -76,6 +77,19 @@ export default function RepairsPage() {
     }
     setUser(parsedUser);
   }, [router]);
+
+  // Handle URL parameter to open specific repair request
+  useEffect(() => {
+    const repairId = searchParams.get("id");
+    if (repairId && requests.length > 0 && !selected) {
+      const foundRequest = requests.find((req) => req.id === repairId);
+      if (foundRequest) {
+        setSelected(foundRequest);
+        // Clean up URL parameter
+        router.replace("/repairs", { scroll: false });
+      }
+    }
+  }, [searchParams, requests, selected, router]);
 
   const copyLink = useCallback(
     (link?: string) => {
@@ -436,21 +450,21 @@ export default function RepairsPage() {
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm min-h-[400px]">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-gray-50 border-b border-gray-100">
+                  <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Driver & Vehicle</th>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Issue</th>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                      <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Driver & Vehicle</th>
+                      <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Issue</th>
+                      <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-200">
                     {isLoading ? (
                       Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={5} />)
                     ) : filteredRequests.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                        <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                           <div className="flex flex-col items-center justify-center">
                             <ClipboardList className="h-12 w-12 mb-3 opacity-20" />
                             <p>No repair requests found.</p>
@@ -483,45 +497,67 @@ export default function RepairsPage() {
                               }
                             }}
                           >
-                            <td className="px-6 py-4 align-top">
-                              <div className="space-y-1">
-                                <p className="text-sm font-semibold text-gray-900">{req.driverName}</p>
-                                {req.vehicleIdentifier && (
-                                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                                    <Wrench className="h-3 w-3" /> {req.vehicleIdentifier}
-                                  </p>
+                            <td className="px-4 py-2 align-middle">
+                              <div className="flex items-center gap-2.5">
+                                {/* Compact square thumbnail - shows first repair photo or driver initials */}
+                                {req.thumbUrls && req.thumbUrls.length > 0 ? (
+                                  <img
+                                    src={req.thumbUrls[0]}
+                                    alt={req.driverName}
+                                    className="w-9 h-9 rounded-md object-cover flex-shrink-0 border border-gray-200"
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-md bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center justify-center flex-shrink-0 border border-gray-200">
+                                    {req.driverName
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")
+                                      .toUpperCase()
+                                      .slice(0, 2)}
+                                  </div>
                                 )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-semibold text-gray-900 truncate leading-snug">{req.driverName}</p>
+                                  {req.vehicleIdentifier && (
+                                    <p className="text-xs text-gray-500 flex items-center gap-1 leading-snug mt-0.5">
+                                      <Wrench className="h-3 w-3 flex-shrink-0" /> <span className="truncate">{req.vehicleIdentifier}</span>
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 align-top">
-                              <div className="space-y-1 max-w-xs">
-                                <div className="flex items-center gap-2">
-                                  <span className="pill bg-primary-50 border-primary-100 text-primary-800 text-[10px] px-1.5 py-0.5 h-auto">
+                            <td className="px-4 py-2 align-middle">
+                              <div className="max-w-xs">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <span className="pill bg-primary-50 border-primary-100 text-primary-800 text-[10px] px-1.5 py-0.5 h-auto font-medium">
                                     {req.urgency}
                                   </span>
                                   {req.aiCategory && (
-                                    <span className="pill bg-indigo-50 border-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 h-auto">
+                                    <span className="pill bg-indigo-50 border-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 h-auto font-medium">
                                       {req.aiCategory}
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-700 line-clamp-2">{req.description}</p>
+                                <p className="text-sm text-gray-700 line-clamp-2 leading-snug">{req.description}</p>
                               </div>
                             </td>
-                            <td className="px-6 py-4 align-top">
-                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusStyles[req.status] || ""}`}>
+                            <td className="px-4 py-2 align-middle">
+                              <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusStyles[req.status] || ""}`}>
                                 {req.status.replace("_", " ")}
                               </span>
                             </td>
-                            <td className="px-6 py-4 align-top text-sm text-gray-500">{formatDate(req.createdAt)}</td>
-                            <td className="px-6 py-4 align-top text-right">
-                              <div className="flex justify-end items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-4 py-2 align-middle">
+                              <span className="text-sm text-gray-600 font-medium">{formatDate(req.createdAt)}</span>
+                            </td>
+                            <td className="px-4 py-2 align-middle text-right">
+                              <div className="flex justify-end items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                 {req.bookingLinkSentAt && (
                                   <span
-                                    className="text-xs text-green-600 flex items-center gap-1"
+                                    className="text-xs text-green-600 flex items-center gap-1 font-medium"
                                     title={`Sent on ${new Date(req.bookingLinkSentAt).toLocaleString()}`}
                                   >
-                                    <CheckCircle className="h-3 w-3" />
+                                    <CheckCircle className="h-3.5 w-3.5" />
                                     Sent
                                   </span>
                                 )}
@@ -530,7 +566,7 @@ export default function RepairsPage() {
                                     <Copy className="h-4 w-4" />
                                   </button>
                                 )}
-                                <button onClick={() => setSelected(req)} className="btn btn-ghost text-sm">
+                                <button onClick={() => setSelected(req)} className="btn btn-ghost text-sm font-medium">
                                   View
                                 </button>
                               </div>
@@ -757,11 +793,35 @@ export default function RepairsPage() {
                       </h3>
                       <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-5 grid grid-cols-2 gap-4">
                         <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Request Number</p>
+                          <p className="text-base font-bold text-gray-900">
+                            {selected.requestNumber ? `#${selected.requestNumber}` : <span className="text-gray-400 italic">—</span>}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle</p>
                           <p className="text-base font-bold text-gray-900">
                             {selected.vehicleIdentifier || <span className="text-gray-400 italic">Not specified</span>}
                           </p>
                         </div>
+                        {selected.makeModel && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Make & Model</p>
+                            <p className="text-base font-bold text-gray-900">{selected.makeModel}</p>
+                          </div>
+                        )}
+                        {selected.vehicleType && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle Type</p>
+                            <p className="text-base font-bold text-gray-900">{selected.vehicleType}</p>
+                          </div>
+                        )}
+                        {selected.division && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Division</p>
+                            <p className="text-base font-bold text-gray-900">{selected.division}</p>
+                          </div>
+                        )}
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Odometer</p>
                           <p className="text-base font-bold text-gray-900">
@@ -777,9 +837,62 @@ export default function RepairsPage() {
                             {selected.driverPhone || <span className="text-gray-400 italic">—</span>}
                           </a>
                         </div>
+                        {selected.driverEmail && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Email</p>
+                            <a
+                              href={`mailto:${selected.driverEmail}`}
+                              className="text-base font-bold text-primary-600 hover:text-primary-700 hover:underline"
+                            >
+                              {selected.driverEmail}
+                            </a>
+                          </div>
+                        )}
+                        {selected.preferredLanguage && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred Language</p>
+                            <p className="text-base font-bold text-gray-900 uppercase">{selected.preferredLanguage}</p>
+                          </div>
+                        )}
+                        {selected.smsConsent !== undefined && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">SMS Consent</p>
+                            <p className="text-base font-bold text-gray-900">{selected.smsConsent ? "Yes" : "No"}</p>
+                          </div>
+                        )}
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Location</p>
                           <p className="text-base font-bold text-gray-900">{selected.location || <span className="text-gray-400 italic">—</span>}</p>
+                        </div>
+                        {selected.incidentDate && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Incident Date</p>
+                            <p className="text-base font-bold text-gray-900">{formatDate(selected.incidentDate)}</p>
+                          </div>
+                        )}
+                        {selected.incidentType && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Incident Type</p>
+                            <p className="text-base font-bold text-gray-900">{selected.incidentType}</p>
+                          </div>
+                        )}
+                        {selected.isImmediate && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Immediate Attention</p>
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+                              Required
+                            </span>
+                          </div>
+                        )}
+                        {selected.bookingId && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Booking ID</p>
+                            <p className="text-base font-bold text-gray-900 font-mono text-sm">{selected.bookingId.slice(0, 8)}...</p>
+                          </div>
+                        )}
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Updated</p>
+                          <p className="text-base font-bold text-gray-900">{formatDate(selected.updatedAt)}</p>
                         </div>
                       </div>
                     </section>

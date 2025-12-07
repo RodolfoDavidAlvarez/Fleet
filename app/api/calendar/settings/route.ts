@@ -37,8 +37,38 @@ export async function GET() {
       advanceBookingUnit: "days",
     };
 
+    // Transform database response from snake_case to camelCase
+    if (data) {
+      // Convert TIME type to HH:MM string format
+      const formatTime = (time: string | null): string => {
+        if (!time) return "06:00";
+        // If it's already in HH:MM format, return as is
+        if (typeof time === "string" && time.match(/^\d{2}:\d{2}$/)) {
+          return time;
+        }
+        // If it's in HH:MM:SS format, extract HH:MM
+        if (typeof time === "string" && time.includes(":")) {
+          return time.substring(0, 5);
+        }
+        return "06:00";
+      };
+
+      return NextResponse.json({
+        settings: {
+          maxBookingsPerWeek: data.max_bookings_per_week ?? defaults.maxBookingsPerWeek,
+          startTime: formatTime(data.start_time),
+          endTime: formatTime(data.end_time),
+          slotDuration: data.slot_duration ?? defaults.slotDuration,
+          slotBufferTime: data.slot_buffer_time ?? defaults.slotBufferTime,
+          workingDays: data.working_days ?? defaults.workingDays,
+          advanceBookingWindow: data.advance_booking_window ?? defaults.advanceBookingWindow,
+          advanceBookingUnit: data.advance_booking_unit ?? defaults.advanceBookingUnit,
+        },
+      });
+    }
+
     return NextResponse.json({
-      settings: data || defaults,
+      settings: defaults,
     });
   } catch (error) {
     console.error("Error fetching calendar settings:", error);
@@ -91,11 +121,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to save calendar settings" }, { status: 500 });
     }
 
+    // Convert TIME type to HH:MM string format
+    const formatTime = (time: string | null): string => {
+      if (!time) return "06:00";
+      // If it's already in HH:MM format, return as is
+      if (typeof time === "string" && time.match(/^\d{2}:\d{2}$/)) {
+        return time;
+      }
+      // If it's in HH:MM:SS format, extract HH:MM
+      if (typeof time === "string" && time.includes(":")) {
+        return time.substring(0, 5);
+      }
+      return "06:00";
+    };
+
     return NextResponse.json({
       settings: {
         maxBookingsPerWeek: data.max_bookings_per_week,
-        startTime: data.start_time,
-        endTime: data.end_time,
+        startTime: formatTime(data.start_time),
+        endTime: formatTime(data.end_time),
         slotDuration: data.slot_duration,
         workingDays: data.working_days,
         advanceBookingWindow: data.advance_booking_window ?? 0,

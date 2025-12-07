@@ -28,13 +28,13 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       const sentAt = new Date(existing.bookingLinkSentAt);
       const now = new Date();
       const secondsSinceSent = (now.getTime() - sentAt.getTime()) / 1000;
-      
+
       if (secondsSinceSent < 5) {
         // Recently sent, return existing without sending again
-        return NextResponse.json({ 
-          request: existing, 
+        return NextResponse.json({
+          request: existing,
           link: existing.bookingLink,
-          message: "Booking link was already sent recently"
+          message: "Booking link was already sent recently",
         });
       }
     }
@@ -52,10 +52,13 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
       if (isProduction) {
         console.error("CRITICAL: No production base URL configured. Set NEXT_PUBLIC_APP_URL environment variable.");
-        return NextResponse.json({
-          error: "Booking link cannot be generated. Please contact support.",
-          details: "Server configuration error: missing base URL"
-        }, { status: 500 });
+        return NextResponse.json(
+          {
+            error: "Booking link cannot be generated. Please contact support.",
+            details: "Server configuration error: missing base URL",
+          },
+          { status: 500 }
+        );
       }
       // In development, use localhost as fallback
       console.warn("Using localhost for booking link - this is only acceptable in development");
@@ -67,12 +70,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const phoneToUse = (parsed.data as any).customPhone || existing.driverPhone;
 
     // Use the specialized booking link page - use finalBaseUrl
-    const bookingLink = `${finalBaseUrl}/booking-link/${existing.id}?name=${encodeURIComponent(existing.driverName)}&phone=${encodeURIComponent(phoneToUse || '')}`;
+    const bookingLink = `${finalBaseUrl}/booking-link/${existing.id}?name=${encodeURIComponent(existing.driverName)}&phone=${encodeURIComponent(phoneToUse || "")}`;
 
     const suggestedSlot =
-      parsed.data.suggestedDate && parsed.data.suggestedTime
-        ? `${parsed.data.suggestedDate} • ${parsed.data.suggestedTime}`
-        : undefined;
+      parsed.data.suggestedDate && parsed.data.suggestedTime ? `${parsed.data.suggestedDate} • ${parsed.data.suggestedTime}` : undefined;
 
     // Update repair request, including phone if changed
     const updateData: any = {
@@ -82,12 +83,12 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       scheduledDate: parsed.data.suggestedDate,
       scheduledTime: parsed.data.suggestedTime,
     };
-    
+
     // Update phone number if custom phone was provided
     if ((parsed.data as any).customPhone && (parsed.data as any).customPhone !== existing.driverPhone) {
       updateData.driverPhone = (parsed.data as any).customPhone;
     }
-    
+
     const updated = await repairRequestDB.update(existing.id, updateData);
 
     let smsSuccess = true;
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       try {
         smsSuccess = await sendRepairBookingLink(phoneToUse, {
           requestId: existing.id,
+          requestNumber: existing.requestNumber,
           link: bookingLink,
           issueSummary: existing.description.slice(0, 120),
           language: existing.preferredLanguage,
@@ -129,6 +131,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         await sendRepairBookingLinkEmail(existing.driverEmail, {
           driverName: existing.driverName,
           requestId: existing.id,
+          requestNumber: existing.requestNumber,
           link: bookingLink,
           issueSummary: existing.description.slice(0, 120),
           language: existing.preferredLanguage,
@@ -141,17 +144,14 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }
     }
 
-    return NextResponse.json({ 
-      request: updated || existing, 
+    return NextResponse.json({
+      request: updated || existing,
       link: bookingLink,
       smsSuccess,
       emailSuccess,
       smsError,
       emailError,
-      warnings: [
-        ...(smsError ? [smsError] : []),
-        ...(emailError ? [emailError] : [])
-      ].filter(Boolean)
+      warnings: [...(smsError ? [smsError] : []), ...(emailError ? [emailError] : [])].filter(Boolean),
     });
   } catch (error) {
     console.error("Failed to send booking link", error);

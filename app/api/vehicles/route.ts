@@ -13,10 +13,28 @@ const vehicleSchema = z.object({
   vin: z.string().min(3),
   licensePlate: z.string().min(1),
   mileage: z.coerce.number().nonnegative().optional(),
-  status: z.enum(["active", "in_service", "retired"]).optional(),
+  status: z
+    .enum([
+      "operational",
+      "active",
+      "in_service",
+      "broken_down",
+      "for_sale",
+      "idle",
+      "upcoming",
+      "retired",
+      "maintenance",
+      "reserved",
+      "out_of_service",
+    ])
+    .optional(),
   lastServiceDate: z.string().optional(),
   nextServiceDue: z.string().optional(),
+  lastUsedDate: z.string().optional(),
   driverId: z.string().uuid().optional(),
+  vehicleNumber: z.string().optional(),
+  vehicleType: z.enum(["Vehicle", "Equipment", "Trailer"]).optional(),
+  department: z.string().optional(),
 });
 
 export async function GET() {
@@ -38,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     const vehicle = await vehicleDB.create({
       ...parsed.data,
-      status: parsed.data.status || "active",
+      status: parsed.data.status || "operational",
       mileage: parsed.data.mileage || 0,
       serviceHistory: [],
     });

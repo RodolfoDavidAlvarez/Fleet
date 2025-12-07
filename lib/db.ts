@@ -6,6 +6,35 @@ import { Vehicle, Booking, Job, Mechanic, User, DashboardStats, ServiceRecord, P
 
 // Helper to convert database row to Vehicle
 function rowToVehicle(row: any): Vehicle {
+  // Calculate days since last use if last_used_date exists
+  let daysSinceLastUse: number | undefined;
+  let usageCategory: string | undefined;
+  if (row.last_used_date) {
+    const lastUsed = new Date(row.last_used_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    lastUsed.setHours(0, 0, 0, 0);
+    daysSinceLastUse = Math.floor((today.getTime() - lastUsed.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (daysSinceLastUse === 0) {
+      usageCategory = "Used today";
+    } else if (daysSinceLastUse === 1) {
+      usageCategory = "Used yesterday";
+    } else if (daysSinceLastUse <= 7) {
+      usageCategory = "Used this week";
+    } else if (daysSinceLastUse <= 30) {
+      usageCategory = "Used this month";
+    } else if (daysSinceLastUse <= 90) {
+      usageCategory = "Used in last 3 months";
+    } else if (daysSinceLastUse <= 180) {
+      usageCategory = "Used in last 6 months";
+    } else {
+      usageCategory = "Long idle";
+    }
+  } else if (row.last_used_date === null) {
+    usageCategory = "Never tracked";
+  }
+
   return {
     id: row.id,
     make: row.make,
@@ -37,6 +66,10 @@ function rowToVehicle(row: any): Vehicle {
     airtableId: row.airtable_id,
     vehicleType: row.vehicle_type,
     createdAt: row.created_at,
+    // Usage tracking
+    lastUsedDate: row.last_used_date,
+    daysSinceLastUse: row.days_since_last_use || daysSinceLastUse,
+    usageCategory: row.usage_category || usageCategory,
   };
 }
 
@@ -56,6 +89,8 @@ function vehicleToRow(vehicle: Partial<Vehicle>): any {
     mileage: vehicle.mileage,
     driver_id: vehicle.driverId,
     photo_url: vehicle.photoUrl,
+    last_used_date: vehicle.lastUsedDate,
+    department: vehicle.department,
   };
 }
 
@@ -106,6 +141,7 @@ function bookingToRow(booking: Partial<Booking>): any {
 function rowToRepairRequest(row: any): RepairRequest {
   return {
     id: row.id,
+    requestNumber: row.request_number,
     driverId: row.driver_id,
     driverName: row.driver_name,
     driverPhone: row.driver_phone,
@@ -143,6 +179,7 @@ function rowToRepairRequest(row: any): RepairRequest {
 // Helper to convert RepairRequest to database row
 function repairRequestToRow(request: Partial<RepairRequest>): any {
   return {
+    request_number: request.requestNumber,
     driver_id: request.driverId,
     driver_name: request.driverName,
     driver_phone: request.driverPhone,
@@ -266,7 +303,9 @@ export const driverDB = {
     }));
   },
 
-  create: async (user: Pick<User, "name" | "email"> & { phone?: string; role?: User["role"]; approval_status?: User["approval_status"] }): Promise<User> => {
+  create: async (
+    user: Pick<User, "name" | "email"> & { phone?: string; role?: User["role"]; approval_status?: User["approval_status"] }
+  ): Promise<User> => {
     const supabase = createServerClient();
     const { data, error } = await supabase
       .from("users")
@@ -551,6 +590,11 @@ export const repairRequestDB = {
       thumbUrls: request.thumbUrls || [],
     });
     Object.keys(row).forEach((key) => row[key] === undefined && delete row[key]);
+
+    // Get the next sequential request number from the database
+    // We'll use a trigger or default value, but for now set it in the insert
+    // The database will handle this via a trigger or default
+
     const { data, error } = await supabase.from("repair_requests").insert(row).select().single();
 
     if (error || !data) {

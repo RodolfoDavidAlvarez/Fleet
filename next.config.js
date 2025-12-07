@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: [],
+    domains: ['images.unsplash.com'],
     formats: ['image/avif', 'image/webp'],
   },
   // Exclude fleet-app directory from build

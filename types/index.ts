@@ -19,6 +19,19 @@ export interface User {
   createdAt: string;
 }
 
+export type VehicleStatus =
+  | "operational" // Fully active and operational
+  | "active" // Active and ready for use (legacy support)
+  | "in_service" // Currently in service/repair
+  | "broken_down" // Broken down, needs repair
+  | "for_sale" // Marked for sale
+  | "idle" // Sitting unused, needs attention
+  | "upcoming" // Upcoming/new vehicle not yet in service
+  | "retired" // Retired from service
+  | "maintenance" // In maintenance
+  | "reserved" // Reserved for specific use
+  | "out_of_service"; // Out of service (temporary)
+
 export interface Vehicle {
   id: string;
   make: string;
@@ -26,7 +39,7 @@ export interface Vehicle {
   year: number;
   vin: string;
   licensePlate: string;
-  status: "active" | "in_service" | "retired";
+  status: VehicleStatus;
   lastServiceDate?: string;
   nextServiceDue?: string;
   mileage: number;
@@ -52,6 +65,10 @@ export interface Vehicle {
   createdAt: string;
   repairRequests?: RepairRequest[];
   mileageHistory?: MileageHistory[];
+  // Usage tracking
+  lastUsedDate?: string;
+  daysSinceLastUse?: number;
+  usageCategory?: string;
 }
 
 export type ServiceRecordStatus = "in_progress" | "completed" | "cancelled" | "open";
@@ -188,6 +205,7 @@ export type RepairRequestStatus = "submitted" | "triaged" | "waiting_booking" | 
 
 export interface RepairRequest {
   id: string;
+  requestNumber?: number; // Sequential number for display (shorter than UUID)
   driverId?: string;
   driverName: string;
   driverPhone?: string;

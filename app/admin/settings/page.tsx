@@ -518,10 +518,25 @@ function AdminSettingsPageContent() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async (responseData) => {
       // Reset initialization flag so new data can be loaded after save
       initializedRef.current = null;
-      queryClient.invalidateQueries({ queryKey: queryKeys.calendarSettings });
+      // Invalidate and refetch to ensure fresh data
+      await queryClient.invalidateQueries({ queryKey: queryKeys.calendarSettings });
+      await queryClient.refetchQueries({ queryKey: queryKeys.calendarSettings });
+      // Also update local state immediately with the response data
+      if (responseData?.settings) {
+        setCalendarSettings({
+          maxBookingsPerWeek: responseData.settings.maxBookingsPerWeek ?? 5,
+          startTime: responseData.settings.startTime || "06:00",
+          endTime: responseData.settings.endTime || "14:00",
+          slotDuration: responseData.settings.slotDuration ?? 30,
+          slotBufferTime: responseData.settings.slotBufferTime ?? 0,
+          workingDays: responseData.settings.workingDays || [1, 2, 3, 4, 5],
+          advanceBookingWindow: responseData.settings.advanceBookingWindow ?? 0,
+          advanceBookingUnit: responseData.settings.advanceBookingUnit || "days",
+        });
+      }
       setSuccess("Calendar settings saved successfully");
       setTimeout(() => setSuccess(null), 3000);
     },
