@@ -56,8 +56,39 @@ const dictionary = {
   },
 };
 
-const divisionOptions = ["Construction", "Maintenance", "Landscaping", "Other"];
-const vehicleTypeOptions = ["Truck", "Trailer", "Excavator", "Van", "Sedan", "Other"];
+const divisionOptions = [
+  "Construction",
+  "Maintenance",
+  "SSW",
+  "UFE",
+  "Tree",
+  "Salvage",
+  "Enhancements",
+  "Development",
+  "Office/Sales",
+  "Misc. Use Vehicles/Fleet",
+  "Tucson",
+  "Farm",
+  "Trash Can",
+  "Not Applicable",
+  "Other"
+];
+
+const vehicleTypeOptions = [
+  "Truck",
+  "Trailer",
+  "Excavator",
+  "Loader",
+  "Van",
+  "Sedan",
+  "SUV",
+  "Equipment",
+  "Mower",
+  "Gator/UTV",
+  "Golf Cart",
+  "Boat",
+  "Other"
+];
 
 export default function RepairRequestPage() {
   const [language, setLanguage] = useState<"en" | "es">("en");
