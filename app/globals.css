@@ -1170,45 +1170,57 @@ body {
   }
 }
 
-/* Accelerating spin - starts slow, speeds up dramatically */
+/* Accelerating spin - starts VERY slow, speeds up dramatically */
 @keyframes spin-accelerate {
   0% {
     transform: rotate(0deg);
-    animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
+    animation-timing-function: cubic-bezier(0.75, 0, 1, 1);
   }
-  50% {
-    transform: rotate(180deg);
-    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  40% {
+    transform: rotate(60deg);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  70% {
+    transform: rotate(200deg);
+    animation-timing-function: cubic-bezier(0, 0, 0.1, 1);
   }
   100% {
     transform: rotate(360deg);
   }
 }
 
-/* Accelerating spin reverse - counter-clockwise acceleration */
+/* Accelerating spin reverse - counter-clockwise with dramatic acceleration */
 @keyframes spin-accelerate-reverse {
   0% {
     transform: rotate(360deg);
-    animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
+    animation-timing-function: cubic-bezier(0.75, 0, 1, 1);
   }
-  50% {
-    transform: rotate(180deg);
-    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  40% {
+    transform: rotate(300deg);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  70% {
+    transform: rotate(160deg);
+    animation-timing-function: cubic-bezier(0, 0, 0.1, 1);
   }
   100% {
     transform: rotate(0deg);
   }
 }
 
-/* Loading bar that accelerates from slow to fast */
+/* Loading bar that accelerates from VERY slow to blazing fast */
 @keyframes loading-bar-accelerate {
   0% {
     transform: translateX(-100%);
-    animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
+    animation-timing-function: cubic-bezier(0.85, 0, 1, 1);
   }
-  50% {
-    transform: translateX(-20%);
-    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  30% {
+    transform: translateX(-60%);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.3, 1);
+  }
+  60% {
+    transform: translateX(-10%);
+    animation-timing-function: cubic-bezier(0, 0, 0.1, 1);
   }
   100% {
     transform: translateX(100%);

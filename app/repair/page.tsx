@@ -60,11 +60,11 @@ const dictionary = {
 function LoadingScreen({ isExiting }: { isExiting: boolean }) {
   return (
     <div
-      className={`fixed inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center z-50 transition-opacity duration-500 ${
-        isExiting ? 'opacity-0' : 'opacity-100'
+      className={`fixed inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center z-50 transition-all duration-400 ${
+        isExiting ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
       }`}
     >
-      <div className="flex flex-col items-center gap-8 animate-fade-in-up">
+      <div className="flex flex-col items-center gap-12 animate-fade-in-up">
         {/* Logo with epic spinning effects */}
         <div className="relative">
           {/* Outermost orbital ring with gradient */}
@@ -206,13 +206,13 @@ export default function RepairRequestPage() {
   useEffect(() => {
     // Use requestAnimationFrame for optimal performance
     const timer = requestAnimationFrame(() => {
-      // Show loading screen for 1800ms to let user see the logo and accelerating animation
+      // Show loading screen for 1500ms - enough to see acceleration, then fast transition
       setTimeout(() => {
         // Trigger exit animation
         setIsExiting(true);
-        // Wait for fade-out animation to complete (600ms), then hide loading screen
-        setTimeout(() => setIsLoading(false), 600);
-      }, 1800);
+        // Quick fade-out (400ms) for snappy transition
+        setTimeout(() => setIsLoading(false), 400);
+      }, 1500);
     });
     return () => cancelAnimationFrame(timer);
   }, []);
