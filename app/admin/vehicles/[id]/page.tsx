@@ -25,7 +25,7 @@ import { Vehicle, VehicleStatus } from "@/types";
 import { useToast } from "@/components/ui/toast";
 import { useUpdateVehicle, useDrivers } from "@/hooks/use-vehicles";
 import { formatDate } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-client";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -35,6 +35,7 @@ export default function VehicleDetailPage() {
   const { showToast } = useToast();
   const vehicleId = params.id as string;
   const updateVehicle = useUpdateVehicle();
+  const queryClient = useQueryClient();
   const { data: drivers = [], isLoading: driversLoading } = useDrivers();
   const [user, setUser] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -42,6 +43,7 @@ export default function VehicleDetailPage() {
   const [isDriverDropdownOpen, setIsDriverDropdownOpen] = useState(false);
   const [driverSearch, setDriverSearch] = useState("");
   const driverDropdownRef = useRef<HTMLDivElement>(null);
+  const justSavedRef = useRef(false);
 
   // Load persisted driver search from localStorage
   useEffect(() => {
@@ -116,11 +118,9 @@ export default function VehicleDetailPage() {
 
   useEffect(() => {
     if (vehicle) {
-      const storageKey = `vehicle-edit-${vehicleId}`;
-      const persistedData = localStorage.getItem(storageKey);
-
-      // Only reset form data if there's no persisted data or if persisted data is for a different vehicle
-      if (!persistedData) {
+      // If we just saved, update formData with the new vehicle data and reset the flag
+      if (justSavedRef.current) {
+        justSavedRef.current = false;
         setFormData({
           make: vehicle.make,
           model: vehicle.model,
@@ -142,36 +142,16 @@ export default function VehicleDetailPage() {
           lastUsedDate: vehicle.lastUsedDate,
           driverId: vehicle.driverId,
         });
-      } else {
-        // Merge persisted data with vehicle data to ensure we have all fields
-        try {
-          const parsed = JSON.parse(persistedData);
-          if (parsed.vehicleId === vehicleId) {
-            setFormData({
-              make: vehicle.make,
-              model: vehicle.model,
-              year: vehicle.year,
-              vin: vehicle.vin,
-              licensePlate: vehicle.licensePlate,
-              vehicleNumber: vehicle.vehicleNumber,
-              vehicleType: vehicle.vehicleType,
-              status: vehicle.status,
-              mileage: vehicle.mileage,
-              department: vehicle.department,
-              supervisor: vehicle.supervisor,
-              tagExpiry: vehicle.tagExpiry,
-              loanLender: vehicle.loanLender,
-              firstAidFire: vehicle.firstAidFire,
-              title: vehicle.title,
-              lastServiceDate: vehicle.lastServiceDate,
-              nextServiceDue: vehicle.nextServiceDue,
-              lastUsedDate: vehicle.lastUsedDate,
-              driverId: vehicle.driverId,
-              ...parsed.formData, // Override with persisted changes
-            });
-          }
-        } catch (e) {
-          // If parsing fails, use vehicle data
+        return;
+      }
+
+      // Only update formData if we're not editing or if formData is empty
+      if (!isEditing || Object.keys(formData).length === 0) {
+        const storageKey = `vehicle-edit-${vehicleId}`;
+        const persistedData = localStorage.getItem(storageKey);
+
+        // Only reset form data if there's no persisted data or if persisted data is for a different vehicle
+        if (!persistedData) {
           setFormData({
             make: vehicle.make,
             model: vehicle.model,
@@ -193,10 +173,62 @@ export default function VehicleDetailPage() {
             lastUsedDate: vehicle.lastUsedDate,
             driverId: vehicle.driverId,
           });
+        } else {
+          // Merge persisted data with vehicle data to ensure we have all fields
+          try {
+            const parsed = JSON.parse(persistedData);
+            if (parsed.vehicleId === vehicleId) {
+              setFormData({
+                make: vehicle.make,
+                model: vehicle.model,
+                year: vehicle.year,
+                vin: vehicle.vin,
+                licensePlate: vehicle.licensePlate,
+                vehicleNumber: vehicle.vehicleNumber,
+                vehicleType: vehicle.vehicleType,
+                status: vehicle.status,
+                mileage: vehicle.mileage,
+                department: vehicle.department,
+                supervisor: vehicle.supervisor,
+                tagExpiry: vehicle.tagExpiry,
+                loanLender: vehicle.loanLender,
+                firstAidFire: vehicle.firstAidFire,
+                title: vehicle.title,
+                lastServiceDate: vehicle.lastServiceDate,
+                nextServiceDue: vehicle.nextServiceDue,
+                lastUsedDate: vehicle.lastUsedDate,
+                driverId: vehicle.driverId,
+                ...parsed.formData, // Override with persisted changes
+              });
+            }
+          } catch (e) {
+            // If parsing fails, use vehicle data
+            setFormData({
+              make: vehicle.make,
+              model: vehicle.model,
+              year: vehicle.year,
+              vin: vehicle.vin,
+              licensePlate: vehicle.licensePlate,
+              vehicleNumber: vehicle.vehicleNumber,
+              vehicleType: vehicle.vehicleType,
+              status: vehicle.status,
+              mileage: vehicle.mileage,
+              department: vehicle.department,
+              supervisor: vehicle.supervisor,
+              tagExpiry: vehicle.tagExpiry,
+              loanLender: vehicle.loanLender,
+              firstAidFire: vehicle.firstAidFire,
+              title: vehicle.title,
+              lastServiceDate: vehicle.lastServiceDate,
+              nextServiceDue: vehicle.nextServiceDue,
+              lastUsedDate: vehicle.lastUsedDate,
+              driverId: vehicle.driverId,
+            });
+          }
         }
       }
     }
-  }, [vehicle, vehicleId]);
+  }, [vehicle, vehicleId, isEditing]);
 
   // Filter drivers based on search
   const filteredDrivers = useMemo(() => {
@@ -299,15 +331,101 @@ export default function VehicleDetailPage() {
     if (!vehicle) return;
 
     try {
-      await updateVehicle.mutateAsync({
-        id: vehicle.id,
-        updates: formData,
+      // Build updates object - only include fields that can be updated
+      // Merge vehicle data with formData to ensure we have all current values
+      const updates: Partial<Vehicle> = {};
+
+      // List of updatable fields
+      const updatableFields: (keyof Vehicle)[] = [
+        "make",
+        "model",
+        "year",
+        "vin",
+        "licensePlate",
+        "vehicleNumber",
+        "vehicleType",
+        "status",
+        "mileage",
+        "department",
+        "supervisor",
+        "tagExpiry",
+        "loanLender",
+        "firstAidFire",
+        "title",
+        "lastServiceDate",
+        "nextServiceDue",
+        "lastUsedDate",
+        "driverId",
+      ];
+
+      // For each updatable field, use formData value if present, otherwise use vehicle value
+      updatableFields.forEach((field) => {
+        if (field in formData && formData[field] !== undefined) {
+          updates[field] = formData[field];
+        } else if (field in vehicle && vehicle[field] !== undefined) {
+          updates[field] = vehicle[field];
+        }
       });
+
+      // Ensure driverId is explicitly set (even if null to clear assignment)
+      if ("driverId" in formData) {
+        updates.driverId = formData.driverId ?? null;
+      }
+
+      console.log("Saving vehicle with updates:", updates);
+      console.log("DriverId being sent:", updates.driverId);
+
+      // Send the update - the mutation will update the cache automatically
+      const result = await updateVehicle.mutateAsync({
+        id: vehicle.id,
+        updates,
+      });
+
+      console.log("Save result:", result);
+
+      // Invalidate and refetch to ensure we have the latest data
+      await queryClient.invalidateQueries({ queryKey: [...queryKeys.vehicles, vehicleId] });
+      await queryClient.refetchQueries({ queryKey: [...queryKeys.vehicles, vehicleId] });
+
+      // Get the updated vehicle data from the mutation result
+      const updatedVehicle = result?.vehicle;
+
+      console.log("Updated vehicle:", updatedVehicle);
+
+      // Update formData with the fresh vehicle data
+      if (updatedVehicle) {
+        setFormData({
+          make: updatedVehicle.make,
+          model: updatedVehicle.model,
+          year: updatedVehicle.year,
+          vin: updatedVehicle.vin,
+          licensePlate: updatedVehicle.licensePlate,
+          vehicleNumber: updatedVehicle.vehicleNumber,
+          vehicleType: updatedVehicle.vehicleType,
+          status: updatedVehicle.status,
+          mileage: updatedVehicle.mileage,
+          department: updatedVehicle.department,
+          supervisor: updatedVehicle.supervisor,
+          tagExpiry: updatedVehicle.tagExpiry,
+          loanLender: updatedVehicle.loanLender,
+          firstAidFire: updatedVehicle.firstAidFire,
+          title: updatedVehicle.title,
+          lastServiceDate: updatedVehicle.lastServiceDate,
+          nextServiceDue: updatedVehicle.nextServiceDue,
+          lastUsedDate: updatedVehicle.lastUsedDate,
+          driverId: updatedVehicle.driverId,
+        });
+      }
+
+      // Set flag to prevent useEffect from overwriting
+      justSavedRef.current = true;
       setIsEditing(false);
+
       // Clear persisted data after successful save
       const storageKey = `vehicle-edit-${vehicleId}`;
       localStorage.removeItem(storageKey);
       localStorage.removeItem(`vehicle-editing-${vehicleId}`);
+
       showToast("Vehicle updated successfully!", "success");
     } catch (error) {
       console.error("Error updating vehicle:", error);

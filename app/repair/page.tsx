@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Camera, CheckCircle, Languages, Phone, ShieldCheck, Upload, Wrench } from "lucide-react";
 import { RepairRequest } from "@/types";
@@ -56,6 +56,50 @@ const dictionary = {
   },
 };
 
+// Loading Screen Component
+function LoadingScreen() {
+  return (
+    <div className="fixed inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center z-50">
+      <div className="flex flex-col items-center gap-8">
+        {/* Logo with spinning loader around it */}
+        <div className="relative">
+          {/* Spinning rings around logo */}
+          <div className="absolute -inset-8 flex items-center justify-center">
+            <div className="w-48 h-48 border-4 border-indigo-100 rounded-full"></div>
+            <div className="absolute w-48 h-48 border-4 border-transparent border-t-indigo-600 border-r-purple-600 rounded-full animate-spin"></div>
+          </div>
+
+          {/* Middle ring */}
+          <div className="absolute -inset-6 flex items-center justify-center">
+            <div className="w-40 h-40 border-2 border-purple-100 rounded-full"></div>
+            <div className="absolute w-40 h-40 border-2 border-transparent border-b-purple-500 border-l-pink-500 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '2s' }}></div>
+          </div>
+
+          {/* Better Systems AI Logo */}
+          <div className="relative w-32 h-32 flex items-center justify-center bg-white rounded-full shadow-lg">
+            <img
+              src="/better-systems-ai-logo.png"
+              alt="Better Systems AI"
+              className="w-24 h-24 object-contain animate-pulse-slow"
+            />
+          </div>
+        </div>
+
+        {/* Loading text with animated dots */}
+        <div className="text-center">
+          <p className="text-lg font-semibold text-gray-700 mb-1">Loading...</p>
+          <p className="text-sm text-gray-500">Preparing your repair request form</p>
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-64 h-1 bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 animate-loading-bar"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const divisionOptions = [
   "Construction",
   "Maintenance",
@@ -91,6 +135,7 @@ const vehicleTypeOptions = [
 ];
 
 export default function RepairRequestPage() {
+  const [isLoading, setIsLoading] = useState(true);
   const [language, setLanguage] = useState<"en" | "es">("en");
   const t = useMemo(() => dictionary[language], [language]);
 
@@ -112,6 +157,16 @@ export default function RepairRequestPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState<RepairRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Fast loading optimization - hide loader as soon as component mounts
+  useEffect(() => {
+    // Use requestAnimationFrame for optimal performance
+    const timer = requestAnimationFrame(() => {
+      // Short delay to show the beautiful loading screen
+      setTimeout(() => setIsLoading(false), 300);
+    });
+    return () => cancelAnimationFrame(timer);
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).slice(0, 3);
@@ -166,6 +221,11 @@ export default function RepairRequestPage() {
       setSubmitting(false);
     }
   };
+
+  // Show loading screen first
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   if (submitted) {
     return (

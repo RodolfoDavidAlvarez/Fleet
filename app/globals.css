@@ -115,7 +115,12 @@ html {
 }
 
 body {
-  font-family: var(--font-space-grotesk), 'Inter', system-ui, -apple-system, sans-serif;
+  font-family:
+    var(--font-space-grotesk),
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
   color: var(--text-primary);
   background: var(--bg-secondary);
   min-height: 100vh;
@@ -128,7 +133,7 @@ body {
   .card-surface {
     @apply bg-white border border-gray-200 shadow-sm;
   }
-  
+
   [data-theme="dark"] .card-surface {
     @apply bg-slate-800 border-slate-700;
   }
@@ -136,29 +141,32 @@ body {
   .input-field {
     @apply w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 placeholder-gray-500 transition-shadow;
   }
-  
+
   [data-theme="dark"] .input-field {
     @apply bg-slate-800 border-slate-600 text-white placeholder-gray-400;
   }
 
   /* Override for modern input classes to ensure light background */
-  .input, .select, .textarea {
+  .input,
+  .select,
+  .textarea {
     background-color: white !important;
     color: #0f172a !important;
   }
-  
-  .input::placeholder, .textarea::placeholder {
+
+  .input::placeholder,
+  .textarea::placeholder {
     color: #64748b !important;
   }
-  
+
   [data-theme="dark"] .input,
-  [data-theme="dark"] .select, 
+  [data-theme="dark"] .select,
   [data-theme="dark"] .textarea {
     background-color: #1e293b !important;
     color: #f8fafc !important;
     border-color: #475569 !important;
   }
-  
+
   [data-theme="dark"] .input::placeholder,
   [data-theme="dark"] .textarea::placeholder {
     color: #94a3b8 !important;
@@ -264,9 +272,7 @@ body {
   }
 
   .pattern-grid {
-    background-image:
-      linear-gradient(to right, var(--border) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+    background-image: linear-gradient(to right, var(--border) 1px, transparent 1px), linear-gradient(to bottom, var(--border) 1px, transparent 1px);
     background-size: 24px 24px;
   }
 
@@ -541,25 +547,13 @@ body {
     bottom: 0;
     left: 0;
     transform: translateX(-100%);
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0) 0,
-      rgba(255, 255, 255, 0.2) 20%,
-      rgba(255, 255, 255, 0.5) 60%,
-      rgba(255, 255, 255, 0)
-    );
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0, rgba(255, 255, 255, 0.2) 20%, rgba(255, 255, 255, 0.5) 60%, rgba(255, 255, 255, 0));
     animation: skeleton-wave 2s infinite;
-    content: '';
+    content: "";
   }
 
   [data-theme="dark"] .skeleton::after {
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0) 0,
-      rgba(255, 255, 255, 0.05) 20%,
-      rgba(255, 255, 255, 0.1) 60%,
-      rgba(255, 255, 255, 0)
-    );
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0, rgba(255, 255, 255, 0.05) 20%, rgba(255, 255, 255, 0.1) 60%, rgba(255, 255, 255, 0));
   }
 
   @keyframes skeleton-wave {
@@ -570,7 +564,9 @@ body {
 
   /* Hover effects */
   .hover-lift {
-    transition: transform var(--transition-base), box-shadow var(--transition-base);
+    transition:
+      transform var(--transition-base),
+      box-shadow var(--transition-base);
     will-change: transform, box-shadow;
   }
 
@@ -585,14 +581,30 @@ body {
     opacity: 0;
   }
 
-  .stagger > *:nth-child(1) { animation-delay: 0.05s; }
-  .stagger > *:nth-child(2) { animation-delay: 0.1s; }
-  .stagger > *:nth-child(3) { animation-delay: 0.15s; }
-  .stagger > *:nth-child(4) { animation-delay: 0.2s; }
-  .stagger > *:nth-child(5) { animation-delay: 0.25s; }
-  .stagger > *:nth-child(6) { animation-delay: 0.3s; }
-  .stagger > *:nth-child(7) { animation-delay: 0.35s; }
-  .stagger > *:nth-child(8) { animation-delay: 0.4s; }
+  .stagger > *:nth-child(1) {
+    animation-delay: 0.05s;
+  }
+  .stagger > *:nth-child(2) {
+    animation-delay: 0.1s;
+  }
+  .stagger > *:nth-child(3) {
+    animation-delay: 0.15s;
+  }
+  .stagger > *:nth-child(4) {
+    animation-delay: 0.2s;
+  }
+  .stagger > *:nth-child(5) {
+    animation-delay: 0.25s;
+  }
+  .stagger > *:nth-child(6) {
+    animation-delay: 0.3s;
+  }
+  .stagger > *:nth-child(7) {
+    animation-delay: 0.35s;
+  }
+  .stagger > *:nth-child(8) {
+    animation-delay: 0.4s;
+  }
 
   .hover-scale {
     transition: transform var(--transition-base);
@@ -722,6 +734,19 @@ body {
     }
   }
 
+  .animate-slide-in-right {
+    animation: slideInRight 0.3s ease-out forwards;
+  }
+
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
   @keyframes scaleIn {
     from {
       transform: scale(0.9);
@@ -743,7 +768,8 @@ body {
   }
 
   @keyframes pulse {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 1;
     }
     50% {
@@ -752,7 +778,8 @@ body {
   }
 
   @keyframes bounce {
-    0%, 100% {
+    0%,
+    100% {
       transform: translateY(-25%);
       animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
     }
@@ -768,16 +795,36 @@ body {
     animation: fadeIn 0.5s ease-out forwards;
   }
 
-  .stagger > *:nth-child(1) { animation-delay: 0ms; }
-  .stagger > *:nth-child(2) { animation-delay: 50ms; }
-  .stagger > *:nth-child(3) { animation-delay: 100ms; }
-  .stagger > *:nth-child(4) { animation-delay: 150ms; }
-  .stagger > *:nth-child(5) { animation-delay: 200ms; }
-  .stagger > *:nth-child(6) { animation-delay: 250ms; }
-  .stagger > *:nth-child(7) { animation-delay: 300ms; }
-  .stagger > *:nth-child(8) { animation-delay: 350ms; }
-  .stagger > *:nth-child(9) { animation-delay: 400ms; }
-  .stagger > *:nth-child(10) { animation-delay: 450ms; }
+  .stagger > *:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  .stagger > *:nth-child(2) {
+    animation-delay: 50ms;
+  }
+  .stagger > *:nth-child(3) {
+    animation-delay: 100ms;
+  }
+  .stagger > *:nth-child(4) {
+    animation-delay: 150ms;
+  }
+  .stagger > *:nth-child(5) {
+    animation-delay: 200ms;
+  }
+  .stagger > *:nth-child(6) {
+    animation-delay: 250ms;
+  }
+  .stagger > *:nth-child(7) {
+    animation-delay: 300ms;
+  }
+  .stagger > *:nth-child(8) {
+    animation-delay: 350ms;
+  }
+  .stagger > *:nth-child(9) {
+    animation-delay: 400ms;
+  }
+  .stagger > *:nth-child(10) {
+    animation-delay: 450ms;
+  }
 }
 
 /* Modern scrollbar */
@@ -866,7 +913,7 @@ body {
 }
 
 .dark-mode-toggle::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 2px;
   left: 2px;
@@ -897,7 +944,7 @@ body {
 }
 
 .status-online::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   right: 0;
@@ -981,19 +1028,20 @@ body {
   .no-print {
     display: none !important;
   }
-  
+
   * {
     color-adjust: exact;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  
+
   body {
     background: white !important;
     color: black !important;
   }
-  
-  .card, .card-glass {
+
+  .card,
+  .card-glass {
     background: white !important;
     border: 1px solid #e5e7eb !important;
     box-shadow: none !important;
@@ -1005,11 +1053,11 @@ body {
   .card {
     border-width: 2px;
   }
-  
+
   .btn {
     border-width: 2px;
   }
-  
+
   .input {
     border-width: 2px;
   }
@@ -1022,11 +1070,11 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  
+
   .hover-lift:hover {
     transform: none;
   }
-  
+
   .hover-scale:hover {
     transform: none;
   }
@@ -1094,4 +1142,42 @@ body {
   100% {
     background-position: 200% 0;
   }
+}
+
+/* Loading screen animations - optimized for fast, smooth loading */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes loading-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-loading-bar {
+  animation: loading-bar 1.5s ease-in-out infinite;
+}
+
+.animate-ping {
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
