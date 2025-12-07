@@ -171,13 +171,13 @@ export default function RepairRequestPage() {
   useEffect(() => {
     // Use requestAnimationFrame for optimal performance
     const timer = requestAnimationFrame(() => {
-      // Show loading screen for 800ms to let user see the logo and accelerating animation
+      // Show loading screen for 1800ms to let user see the logo and accelerating animation
       setTimeout(() => {
         // Trigger exit animation
         setIsExiting(true);
-        // Wait for fade-out animation to complete (500ms), then hide loading screen
-        setTimeout(() => setIsLoading(false), 500);
-      }, 800);
+        // Wait for fade-out animation to complete (600ms), then hide loading screen
+        setTimeout(() => setIsLoading(false), 600);
+      }, 1800);
     });
     return () => cancelAnimationFrame(timer);
   }, []);

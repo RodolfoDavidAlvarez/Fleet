@@ -1253,15 +1253,15 @@ body {
 }
 
 .animate-spin-accelerate {
-  animation: spin-accelerate 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: spin-accelerate 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .animate-spin-accelerate-reverse {
-  animation: spin-accelerate-reverse 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: spin-accelerate-reverse 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .animate-loading-bar-accelerate {
-  animation: loading-bar-accelerate 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: loading-bar-accelerate 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .animate-pulse-glow {
