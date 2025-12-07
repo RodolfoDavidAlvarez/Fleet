@@ -1,160 +1,167 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
-import sharp from 'sharp'
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { createClient as createServerClient } from "@/lib/supabase/server";
+import { Resend } from "resend";
+import sharp from "sharp";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Service role client for storage operations (bypasses RLS)
+const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // GET - Fetch bug reports for the logged-in user
 export async function GET(request: NextRequest) {
   try {
-    // Get user from session (you may need to adjust based on your auth implementation)
-    const cookieHeader = request.headers.get('cookie')
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Get user from session using server client
+    const supabase = createServerClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      // If no user session, return empty array or error based on your preference
-      return NextResponse.json({ reports: [] })
+      // If no user session, return empty array
+      return NextResponse.json({ reports: [] });
     }
 
     // Fetch bug reports for this user
-    const { data: reports, error } = await supabase
-      .from('bug_reports')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+    const { data: reports, error } = await supabase.from("bug_reports").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
 
     if (error) {
-      console.error('Error fetching bug reports:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch bug reports' },
-        { status: 500 }
-      )
+      console.error("Error fetching bug reports:", error);
+      return NextResponse.json({ error: "Failed to fetch bug reports" }, { status: 500 });
     }
 
-    return NextResponse.json({ reports })
+    return NextResponse.json({ reports: reports || [] });
   } catch (error) {
-    console.error('Error in GET /api/bug-reports:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error("Error in GET /api/bug-reports:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 // POST - Create a new bug report
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData()
-    const title = formData.get('title') as string
-    const description = formData.get('description') as string
-    const screenshot = formData.get('screenshot') as File | null
+    const formData = await request.formData();
+    const title = formData.get("title") as string;
+    const description = formData.get("description") as string;
+    const screenshot = formData.get("screenshot") as File | null;
 
     // Validate required fields
     if (!title || !description) {
-      return NextResponse.json(
-        { error: 'Title and description are required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "Title and description are required" }, { status: 400 });
     }
 
-    // Get user from session
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Get user from session using server client
+    const supabase = createServerClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: "Unauthorized. Please log in to submit a bug report." }, { status: 401 });
     }
 
-    // Fetch user details
-    const { data: userData } = await supabase
-      .from('users')
-      .select('name, email')
-      .eq('id', user.id)
-      .single()
+    // Fetch user details using admin client (bypasses RLS)
+    const { data: userData, error: userError } = await supabaseAdmin.from("users").select("name, email").eq("id", user.id).single();
 
-    const userName = userData?.name || 'Unknown User'
-    const userEmail = userData?.email || user.email || 'unknown@example.com'
+    if (userError) {
+      console.error("Error fetching user data:", userError);
+    }
 
-    let screenshot_url = null
+    const userName = userData?.name || user.user_metadata?.name || "Unknown User";
+    const userEmail = userData?.email || user.email || user.user_metadata?.email || "unknown@example.com";
+
+    let screenshot_url = null;
 
     // Handle screenshot upload if provided
     if (screenshot && screenshot.size > 0) {
       try {
+        // Validate file size (max 10MB)
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (screenshot.size > maxSize) {
+          return NextResponse.json({ error: "Screenshot file is too large. Maximum size is 10MB." }, { status: 400 });
+        }
+
         // Read the file as buffer
-        const arrayBuffer = await screenshot.arrayBuffer()
-        const buffer = Buffer.from(arrayBuffer)
+        const arrayBuffer = await screenshot.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
 
         // Optimize image with sharp
         const optimizedImageBuffer = await sharp(buffer)
           .resize(1920, 1080, {
-            fit: 'inside',
-            withoutEnlargement: true
+            fit: "inside",
+            withoutEnlargement: true,
           })
           .jpeg({ quality: 85, progressive: true })
-          .toBuffer()
+          .toBuffer();
 
-        // Generate unique filename
-        const timestamp = Date.now()
-        const randomString = Math.random().toString(36).substring(7)
-        const filename = `bug-report-${timestamp}-${randomString}.jpg`
+        // Generate unique filename with user ID to avoid conflicts
+        const timestamp = Date.now();
+        const randomString = Math.random().toString(36).substring(7);
+        const filename = `${user.id}/bug-report-${timestamp}-${randomString}.jpg`;
 
-        // Upload to Supabase storage
-        const { data: uploadData, error: uploadError } = await supabase
-          .storage
-          .from('bug-reports')
-          .upload(filename, optimizedImageBuffer, {
-            contentType: 'image/jpeg',
-            upsert: false
-          })
+        // Upload to Supabase storage using admin client
+        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage.from("bug-reports").upload(filename, optimizedImageBuffer, {
+          contentType: "image/jpeg",
+          upsert: false,
+          cacheControl: "3600",
+        });
 
         if (uploadError) {
-          console.error('Error uploading screenshot:', uploadError)
-        } else {
+          console.error("Error uploading screenshot:", uploadError);
+          // Log error but continue - screenshot is optional
+        } else if (uploadData) {
           // Get public URL
-          const { data: urlData } = supabase
-            .storage
-            .from('bug-reports')
-            .getPublicUrl(filename)
+          const { data: urlData } = supabaseAdmin.storage.from("bug-reports").getPublicUrl(filename);
 
-          screenshot_url = urlData.publicUrl
+          screenshot_url = urlData.publicUrl;
+          console.log("Screenshot uploaded successfully:", screenshot_url);
         }
       } catch (imageError) {
-        console.error('Error processing image:', imageError)
-        // Continue without screenshot if there's an error
+        console.error("Error processing image:", imageError);
+        // Continue without screenshot if there's an error - screenshot is optional
       }
     }
 
-    // Insert bug report into database
-    const { data: bugReport, error: insertError } = await supabase
-      .from('bug_reports')
+    // Insert bug report into database using admin client
+    const { data: bugReport, error: insertError } = await supabaseAdmin
+      .from("bug_reports")
       .insert({
         user_id: user.id,
         user_name: userName,
         user_email: userEmail,
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim(),
         screenshot_url,
-        application_source: 'fleet-management',
-        status: 'pending'
+        application_source: "fleet-management",
+        status: "pending",
       })
       .select()
-      .single()
+      .single();
 
     if (insertError) {
-      console.error('Error inserting bug report:', insertError)
+      console.error("Error inserting bug report:", insertError);
       return NextResponse.json(
-        { error: 'Failed to create bug report' },
+        {
+          error: "Failed to create bug report",
+          details: insertError.message,
+        },
         { status: 500 }
-      )
+      );
     }
+
+    if (!bugReport) {
+      console.error("Bug report created but no data returned");
+      return NextResponse.json({ error: "Failed to create bug report - no data returned" }, { status: 500 });
+    }
+
+    console.log("Bug report created successfully:", {
+      id: bugReport.id,
+      title: bugReport.title,
+      hasScreenshot: !!bugReport.screenshot_url,
+    });
 
     // Send email notification to developer
     try {
@@ -196,7 +203,7 @@ export async function POST(request: NextRequest) {
 
                 <div class="field">
                   <div class="label">Description</div>
-                  <div class="value">${description.replace(/\n/g, '<br>')}</div>
+                  <div class="value">${description.replace(/\n/g, "<br>")}</div>
                 </div>
 
                 <div class="field">
@@ -212,12 +219,16 @@ export async function POST(request: NextRequest) {
                   <div class="value"><code>${bugReport.id}</code></div>
                 </div>
 
-                ${screenshot_url ? `
+                ${
+                  screenshot_url
+                    ? `
                   <div class="screenshot">
                     <div class="label">Screenshot</div>
                     <img src="${screenshot_url}" alt="Bug Screenshot" />
                   </div>
-                ` : ''}
+                `
+                    : ""
+                }
 
                 <div class="footer">
                   <p>This bug report was submitted on ${new Date().toLocaleString()}</p>
@@ -227,28 +238,25 @@ export async function POST(request: NextRequest) {
             </div>
           </body>
         </html>
-      `
+      `;
 
       await resend.emails.send({
-        from: 'AgaveFleet Bug Reports <noreply@agavefleet.com>',
-        to: 'developer@bettersystems.ai',
+        from: "AgaveFleet Bug Reports <noreply@agavefleet.com>",
+        to: "developer@bettersystems.ai",
         subject: `🐛 New Bug Report: ${title}`,
-        html: emailHtml
-      })
+        html: emailHtml,
+      });
     } catch (emailError) {
-      console.error('Error sending email:', emailError)
+      console.error("Error sending email:", emailError);
       // Don't fail the request if email fails
     }
 
     return NextResponse.json({
       success: true,
-      report: bugReport
-    })
+      report: bugReport,
+    });
   } catch (error) {
-    console.error('Error in POST /api/bug-reports:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error("Error in POST /api/bug-reports:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

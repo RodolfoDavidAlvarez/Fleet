@@ -1170,6 +1170,76 @@ body {
   }
 }
 
+/* Accelerating spin - starts slow, speeds up dramatically */
+@keyframes spin-accelerate {
+  0% {
+    transform: rotate(0deg);
+    animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
+  }
+  50% {
+    transform: rotate(180deg);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Accelerating spin reverse - counter-clockwise acceleration */
+@keyframes spin-accelerate-reverse {
+  0% {
+    transform: rotate(360deg);
+    animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
+  }
+  50% {
+    transform: rotate(180deg);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/* Loading bar that accelerates from slow to fast */
+@keyframes loading-bar-accelerate {
+  0% {
+    transform: translateX(-100%);
+    animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
+  }
+  50% {
+    transform: translateX(-20%);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Pulsing glow effect */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
+/* Fade in with upward motion */
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animation classes */
 .animate-pulse-slow {
   animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
@@ -1180,4 +1250,24 @@ body {
 
 .animate-ping {
   animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-spin-accelerate {
+  animation: spin-accelerate 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-spin-accelerate-reverse {
+  animation: spin-accelerate-reverse 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-loading-bar-accelerate {
+  animation: loading-bar-accelerate 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
 }

@@ -56,44 +56,52 @@ const dictionary = {
   },
 };
 
-// Loading Screen Component
-function LoadingScreen() {
+// Loading Screen Component with smooth fade transition
+function LoadingScreen({ isExiting }: { isExiting: boolean }) {
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center z-50">
-      <div className="flex flex-col items-center gap-8">
-        {/* Logo with spinning loader around it */}
+    <div
+      className={`fixed inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center z-50 transition-opacity duration-500 ${
+        isExiting ? 'opacity-0' : 'opacity-100'
+      }`}
+    >
+      <div className="flex flex-col items-center gap-8 animate-fade-in-up">
+        {/* Logo - appears immediately */}
         <div className="relative">
-          {/* Spinning rings around logo */}
+          {/* Outer spinning ring - starts slow, speeds up */}
           <div className="absolute -inset-8 flex items-center justify-center">
             <div className="w-48 h-48 border-4 border-indigo-100 rounded-full"></div>
-            <div className="absolute w-48 h-48 border-4 border-transparent border-t-indigo-600 border-r-purple-600 rounded-full animate-spin"></div>
+            <div className="absolute w-48 h-48 border-4 border-transparent border-t-indigo-600 border-r-purple-600 rounded-full animate-spin-accelerate"></div>
           </div>
 
-          {/* Middle ring */}
+          {/* Middle ring - accelerating reverse */}
           <div className="absolute -inset-6 flex items-center justify-center">
             <div className="w-40 h-40 border-2 border-purple-100 rounded-full"></div>
-            <div className="absolute w-40 h-40 border-2 border-transparent border-b-purple-500 border-l-pink-500 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '2s' }}></div>
+            <div className="absolute w-40 h-40 border-2 border-transparent border-b-purple-500 border-l-pink-500 rounded-full animate-spin-accelerate-reverse"></div>
           </div>
 
-          {/* Better Systems AI Logo */}
-          <div className="relative w-32 h-32 flex items-center justify-center bg-white rounded-full shadow-lg">
+          {/* Better Systems AI Logo - sharp and clear */}
+          <div className="relative w-32 h-32 flex items-center justify-center bg-white rounded-full shadow-2xl ring-4 ring-indigo-100">
             <img
               src="/better-systems-ai-logo.png"
               alt="Better Systems AI"
-              className="w-24 h-24 object-contain animate-pulse-slow"
+              className="w-24 h-24 object-contain"
+              style={{ imageRendering: '-webkit-optimize-contrast' }}
             />
           </div>
+
+          {/* Glowing pulse effect */}
+          <div className="absolute inset-0 w-32 h-32 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full animate-pulse-glow"></div>
         </div>
 
-        {/* Loading text with animated dots */}
-        <div className="text-center">
-          <p className="text-lg font-semibold text-gray-700 mb-1">Loading...</p>
-          <p className="text-sm text-gray-500">Preparing your repair request form</p>
+        {/* Loading text */}
+        <div className="text-center animate-fade-in" style={{ animationDelay: '200ms' }}>
+          <p className="text-lg font-semibold text-gray-700 mb-1">Loading</p>
+          <p className="text-sm text-gray-500">Preparing your form...</p>
         </div>
 
-        {/* Progress bar */}
-        <div className="w-64 h-1 bg-gray-200 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 animate-loading-bar"></div>
+        {/* Accelerating progress bar */}
+        <div className="w-64 h-1.5 bg-gray-200 rounded-full overflow-hidden shadow-inner" style={{ animationDelay: '300ms' }}>
+          <div className="h-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 animate-loading-bar-accelerate rounded-full"></div>
         </div>
       </div>
     </div>
@@ -136,6 +144,7 @@ const vehicleTypeOptions = [
 
 export default function RepairRequestPage() {
   const [isLoading, setIsLoading] = useState(true);
+  const [isExiting, setIsExiting] = useState(false);
   const [language, setLanguage] = useState<"en" | "es">("en");
   const t = useMemo(() => dictionary[language], [language]);
 
@@ -158,12 +167,17 @@ export default function RepairRequestPage() {
   const [submitted, setSubmitted] = useState<RepairRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fast loading optimization - hide loader as soon as component mounts
+  // Fast loading optimization with smooth fade-out transition
   useEffect(() => {
     // Use requestAnimationFrame for optimal performance
     const timer = requestAnimationFrame(() => {
-      // Short delay to show the beautiful loading screen
-      setTimeout(() => setIsLoading(false), 300);
+      // Show loading screen for 800ms to let user see the logo and accelerating animation
+      setTimeout(() => {
+        // Trigger exit animation
+        setIsExiting(true);
+        // Wait for fade-out animation to complete (500ms), then hide loading screen
+        setTimeout(() => setIsLoading(false), 500);
+      }, 800);
     });
     return () => cancelAnimationFrame(timer);
   }, []);
@@ -224,12 +238,12 @@ export default function RepairRequestPage() {
 
   // Show loading screen first
   if (isLoading) {
-    return <LoadingScreen />;
+    return <LoadingScreen isExiting={isExiting} />;
   }
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 animate-fade-in">
         <div className="max-w-2xl w-full bg-white rounded-xl shadow-lg p-8 space-y-6 text-center">
           {/* Agave Logo */}
           <div className="flex justify-center mb-6">
@@ -254,8 +268,8 @@ export default function RepairRequestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 animate-fade-in">
+      <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden animate-slide-up">
         {/* Header with Logo */}
         <div className="bg-white p-6 border-b border-gray-100 flex flex-col items-center">
           <img src="/images/AEC-Horizontal-Official-Logo-2020.png" alt="Agave" className="h-20 object-contain mb-4" />
