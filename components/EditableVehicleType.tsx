@@ -89,18 +89,24 @@ export default function EditableVehicleType({ vehicleType, onUpdate, className =
         onClick={() => setIsOpen(!isOpen)}
         disabled={isSaving}
         className={`
-          px-2.5 py-1.5 rounded-md font-medium text-xs
-          transition-all duration-200 flex items-center gap-2
-          border shadow-sm
+          px-2 py-1.5 rounded-md font-medium text-xs
+          transition-all duration-200 flex items-center gap-1.5
+          border shadow-sm w-full max-w-full
           ${isOpen ? "border-primary-500 ring-2 ring-primary-200 scale-105" : "border-gray-300 hover:border-primary-400 hover:bg-primary-50"}
           ${isSaving ? "opacity-70 cursor-wait" : "cursor-pointer"}
           ${typeBgColor}
         `}
         title="Click to change type"
       >
-        {isSaving ? <Loader2 className={`h-4 w-4 animate-spin ${typeColor}`} /> : <TypeIcon className={`h-4 w-4 ${typeColor}`} />}
-        <span className={`${typeColor} whitespace-nowrap`}>{currentType?.label || "Vehicle"}</span>
-        {!isSaving && <ChevronDown className={`h-3.5 w-3.5 ${typeColor} transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />}
+        {isSaving ? (
+          <Loader2 className={`h-3.5 w-3.5 animate-spin ${typeColor} flex-shrink-0`} />
+        ) : (
+          <TypeIcon className={`h-3.5 w-3.5 ${typeColor} flex-shrink-0`} />
+        )}
+        <span className={`${typeColor} whitespace-nowrap overflow-hidden text-ellipsis flex-1 min-w-0 text-left`}>
+          {currentType?.value === "Equipment" ? "Equip." : currentType?.label || "Vehicle"}
+        </span>
+        {!isSaving && <ChevronDown className={`h-3 w-3 ${typeColor} transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`} />}
       </button>
 
       <AnimatePresence>
@@ -145,3 +151,4 @@ export default function EditableVehicleType({ vehicleType, onUpdate, className =
     </div>
   );
 }
+

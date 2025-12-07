@@ -2,12 +2,89 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email";
 import { sendSMS } from "@/lib/twilio";
+import { phoenixToUTC } from "@/lib/timezone";
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const body = await request.json();
-    const { type, recipientGroups, individualRecipients, customRecipients, subject, messageEn, messageEs } = body;
+    const { type, recipientGroups, individualRecipients, customRecipients, subject, messageEn, messageEs, scheduledAt } = body;
+
+    // If scheduledAt is provided, save as scheduled message instead of sending immediately
+    if (scheduledAt) {
+      // scheduledAt should be in format "YYYY-MM-DDTHH:MM" (Phoenix local time)
+      // We need to convert it to UTC for storage
+      let scheduledDateTimeUTC: Date;
+
+      if (scheduledAt.includes("T")) {
+        // Already in ISO format, parse it
+        const [datePart, timePart] = scheduledAt.split("T");
+        scheduledDateTimeUTC = new Date(phoenixToUTC(datePart, timePart));
+      } else {
+        // Legacy format or direct date string
+        scheduledDateTimeUTC = new Date(scheduledAt);
+      }
+
+      if (scheduledDateTimeUTC <= new Date()) {
+        return NextResponse.json({ error: "Scheduled date and time must be in the future" }, { status: 400 });
+      }
+
+      // Get current user
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+      if (!authUser) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      // Get user record
+      const { data: userData } = await supabase.from("users").select("id").eq("id", authUser.id).single();
+
+      // Save scheduled message
+      const { data: scheduledMessage, error: scheduleError } = await supabase
+        .from("scheduled_messages")
+        .insert({
+          type,
+          subject,
+          message_en: messageEn,
+          message_es: messageEs || null,
+          recipient_groups: recipientGroups || [],
+          individual_recipients: individualRecipients || [],
+          custom_recipients: customRecipients || [],
+          scheduled_at: scheduledDateTimeUTC.toISOString(),
+          status: "pending",
+          created_by: userData?.id || null,
+        })
+        .select()
+        .single();
+
+      if (scheduleError) {
+        console.error("[Send Announcement] Error saving scheduled message:", scheduleError);
+        console.error("[Send Announcement] Schedule error details:", JSON.stringify(scheduleError, null, 2));
+        return NextResponse.json(
+          {
+            error: "Failed to schedule message",
+            details: scheduleError.message || "Unknown database error",
+          },
+          { status: 500 }
+        );
+      }
+
+      console.log(
+        `[Send Announcement] Message scheduled successfully: ${scheduledMessage.id}, scheduled for ${scheduledDateTimeUTC.toISOString()} (UTC)`
+      );
+
+      return NextResponse.json(
+        {
+          success: true,
+          scheduled: true,
+          scheduledMessageId: scheduledMessage.id,
+          scheduledAt: scheduledDateTimeUTC.toISOString(),
+          message: "Message scheduled successfully",
+        },
+        { status: 200 }
+      );
+    }
 
     let allRecipients: any[] = [];
     let sentCount = 0;

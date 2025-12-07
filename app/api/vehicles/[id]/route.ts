@@ -3,16 +3,16 @@ import { z } from "zod";
 import { vehicleDB } from "@/lib/db";
 
 const updateVehicleSchema = z.object({
-  make: z.string().min(1).optional(),
-  model: z.string().min(1).optional(),
+  make: z.preprocess((val) => (val === "" ? undefined : val), z.string().min(1).optional()),
+  model: z.preprocess((val) => (val === "" ? undefined : val), z.string().min(1).optional()),
   year: z.coerce
     .number()
     .int()
     .min(1900)
     .max(new Date().getFullYear() + 1)
     .optional(),
-  vin: z.string().min(3).optional(),
-  licensePlate: z.string().min(1).optional(),
+  vin: z.preprocess((val) => (val === "" ? undefined : val), z.string().min(3).optional()),
+  licensePlate: z.preprocess((val) => (val === "" ? undefined : val), z.string().min(1).optional()),
   mileage: z.coerce.number().nonnegative().optional(),
   status: z
     .enum([
@@ -29,18 +29,18 @@ const updateVehicleSchema = z.object({
       "out_of_service",
     ])
     .optional(),
-  lastServiceDate: z.string().optional(),
-  nextServiceDue: z.string().optional(),
-  lastUsedDate: z.string().optional(),
-  driverId: z.string().uuid().nullable().optional(),
-  vehicleNumber: z.string().optional(),
+  lastServiceDate: z.preprocess((val) => (val === "" ? null : val), z.string().nullable().optional()),
+  nextServiceDue: z.preprocess((val) => (val === "" ? null : val), z.string().nullable().optional()),
+  lastUsedDate: z.preprocess((val) => (val === "" ? null : val), z.string().nullable().optional()),
+  driverId: z.preprocess((val) => (val === "" ? null : val), z.string().uuid().nullable().optional()),
+  vehicleNumber: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),
   vehicleType: z.enum(["Vehicle", "Equipment", "Trailer"]).optional(),
-  department: z.string().optional(),
-  supervisor: z.string().optional(),
-  tagExpiry: z.string().optional(),
-  loanLender: z.string().optional(),
-  firstAidFire: z.string().optional(),
-  title: z.string().optional(),
+  department: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),
+  supervisor: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),
+  tagExpiry: z.preprocess((val) => (val === "" ? null : val), z.string().nullable().optional()),
+  loanLender: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),
+  firstAidFire: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),
+  title: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),
 });
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {

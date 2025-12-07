@@ -5,7 +5,26 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Send, Save, MessageSquare, Users, Bell, Mail, Calendar, Edit2, Trash2, Copy, Eye, Search, X } from "lucide-react";
+import {
+  Send,
+  Save,
+  MessageSquare,
+  Users,
+  Bell,
+  Mail,
+  Calendar,
+  Edit2,
+  Trash2,
+  Copy,
+  Eye,
+  Search,
+  X,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+} from "lucide-react";
+import { phoenixToUTC, utcToPhoenix, formatPhoenixTime, getMinScheduleTime } from "@/lib/timezone";
 
 interface Template {
   id: string;
@@ -27,12 +46,24 @@ interface Member {
   role: "admin" | "mechanic" | "driver" | "customer";
 }
 
+interface ScheduledMessage {
+  id: string;
+  type: "email" | "sms" | "both";
+  subject?: string;
+  message_en: string;
+  scheduled_at: string;
+  status: "pending" | "processing" | "sent" | "failed" | "cancelled";
+  sent_count: number;
+  failed_count: number;
+  created_at: string;
+}
+
 export default function AnnouncementsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [activeView, setActiveView] = useState<"compose" | "templates">("compose");
+  const [activeView, setActiveView] = useState<"compose" | "templates" | "scheduled">("compose");
   const [messageType, setMessageType] = useState<"email" | "sms" | "both">("email");
-  const [sendType, setSendType] = useState<"onetime" | "template">("onetime");
+  const [sendType, setSendType] = useState<"onetime" | "template" | "scheduled">("onetime");
   const [recipients, setRecipients] = useState<string[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<Member[]>([]);
   const [customRecipients, setCustomRecipients] = useState("");
@@ -46,6 +77,9 @@ export default function AnnouncementsPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showMemberSearch, setShowMemberSearch] = useState(false);
+  const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessage[]>([]);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
 
   const [formData, setFormData] = useState({
     templateName: "",
@@ -72,6 +106,7 @@ export default function AnnouncementsPage() {
     setUser(parsedUser);
     loadTemplates();
     loadMembers();
+    loadScheduledMessages();
   }, [router]);
 
   const loadTemplates = async () => {
@@ -95,6 +130,18 @@ export default function AnnouncementsPage() {
       }
     } catch (err) {
       console.error("Error loading members:", err);
+    }
+  };
+
+  const loadScheduledMessages = async () => {
+    try {
+      const res = await fetch("/api/admin/scheduled-messages");
+      if (res.ok) {
+        const data = await res.json();
+        setScheduledMessages(data.messages || []);
+      }
+    } catch (err) {
+      console.error("Error loading scheduled messages:", err);
     }
   };
 
@@ -129,6 +176,18 @@ export default function AnnouncementsPage() {
         throw new Error("Email subject is required");
       }
 
+      // Validate scheduled date/time if scheduling
+      if (sendType === "scheduled") {
+        if (!scheduledDate || !scheduledTime) {
+          throw new Error("Please select both date and time for scheduling");
+        }
+        // Convert Phoenix time to UTC for storage
+        const scheduledDateTimeUTC = new Date(phoenixToUTC(scheduledDate, scheduledTime));
+        if (scheduledDateTimeUTC <= new Date()) {
+          throw new Error("Scheduled date and time must be in the future");
+        }
+      }
+
       // Build recipient lists
       const individualRecipients = selectedMembers.map((m) => ({
         id: m.id,
@@ -137,24 +196,37 @@ export default function AnnouncementsPage() {
         phone: m.phone,
       }));
 
+      const requestBody: any = {
+        type: messageType,
+        recipientGroups: recipients,
+        individualRecipients,
+        customRecipients: customRecipients.trim() ? customRecipients.split(",").map((r) => r.trim()) : [],
+        subject: formData.subject,
+        messageEn: formData.message,
+        messageEs: "",
+      };
+
+      // Add scheduling info if scheduling (already in Phoenix time format)
+      if (sendType === "scheduled") {
+        requestBody.scheduledAt = `${scheduledDate}T${scheduledTime}`;
+      }
+
       const res = await fetch("/api/admin/send-announcement", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: messageType,
-          recipientGroups: recipients,
-          individualRecipients,
-          customRecipients: customRecipients.trim() ? customRecipients.split(",").map((r) => r.trim()) : [],
-          subject: formData.subject,
-          messageEn: formData.message,
-          messageEs: "",
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to send message");
 
-      setSuccess(`Message sent successfully to ${data.sentCount} recipient(s)`);
+      if (sendType === "scheduled") {
+        setSuccess(`Message scheduled successfully for ${formatPhoenixTime(new Date(phoenixToUTC(scheduledDate, scheduledTime)).toISOString())}`);
+        loadScheduledMessages();
+        setActiveView("scheduled");
+      } else {
+        setSuccess(`Message sent successfully to ${data.sentCount} recipient(s)`);
+      }
 
       // Reset form if one-time send
       if (sendType === "onetime") {
@@ -167,6 +239,8 @@ export default function AnnouncementsPage() {
         setRecipients([]);
         setSelectedMembers([]);
         setCustomRecipients("");
+        setScheduledDate("");
+        setScheduledTime("");
       }
 
       setTimeout(() => setSuccess(null), 5000);
@@ -244,6 +318,22 @@ export default function AnnouncementsPage() {
     }
   };
 
+  const handleCancelScheduled = async (id: string) => {
+    if (!confirm("Are you sure you want to cancel this scheduled message?")) return;
+
+    try {
+      const res = await fetch(`/api/admin/scheduled-messages/${id}/cancel`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to cancel scheduled message");
+      setSuccess("Scheduled message cancelled successfully");
+      loadScheduledMessages();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel scheduled message");
+    }
+  };
+
   const recipientGroups = [
     { id: "all_admins", label: "All Admins", icon: Users, count: "5" },
     { id: "all_mechanics", label: "All Mechanics", icon: Users, count: "12" },
@@ -295,6 +385,22 @@ export default function AnnouncementsPage() {
                   <div className="flex items-center space-x-2">
                     <Save className="w-5 h-5" />
                     <span>Saved Templates ({templates.length})</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveView("scheduled");
+                    loadScheduledMessages();
+                  }}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeView === "scheduled"
+                      ? "border-primary-500 text-primary-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-5 h-5" />
+                    <span>Scheduled Messages ({scheduledMessages.filter((m) => m.status === "pending").length})</span>
                   </div>
                 </button>
               </nav>
@@ -384,8 +490,67 @@ export default function AnnouncementsPage() {
                           <span className="text-xs text-gray-500">Save for future use</span>
                         </div>
                       </label>
+                      <label className="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                        <input
+                          type="radio"
+                          checked={sendType === "scheduled"}
+                          onChange={() => setSendType("scheduled")}
+                          className="w-4 h-4 text-primary-600"
+                        />
+                        <Clock className="w-5 h-5 ml-3 mr-2 text-purple-600" />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-gray-900 block">Schedule Message</span>
+                          <span className="text-xs text-gray-500">Send at a specific date and time</span>
+                        </div>
+                      </label>
                     </div>
                   </div>
+
+                  {/* Scheduling Options */}
+                  {sendType === "scheduled" && (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <Calendar className="w-5 h-5 text-purple-600" />
+                        Schedule Settings
+                      </h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Date (Phoenix Time) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            value={scheduledDate}
+                            onChange={(e) => setScheduledDate(e.target.value)}
+                            min={getMinScheduleTime().date}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Time (Phoenix Time) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="time"
+                            value={scheduledTime}
+                            onChange={(e) => setScheduledTime(e.target.value)}
+                            min={scheduledDate === getMinScheduleTime().date ? getMinScheduleTime().time : undefined}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Phoenix, Arizona (MST - UTC-7, no DST)</p>
+                        </div>
+                        {scheduledDate && scheduledTime && (
+                          <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                            <p className="text-sm text-purple-900">
+                              <span className="font-semibold">Scheduled for:</span>{" "}
+                              {formatPhoenixTime(new Date(phoenixToUTC(scheduledDate, scheduledTime)).toISOString())}
+                            </p>
+                            <p className="text-xs text-purple-700 mt-1">All times are in Phoenix (MST) timezone</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Recipients */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -691,6 +856,15 @@ export default function AnnouncementsPage() {
                           <Send className="w-5 h-5" />
                           {sending ? "Sending..." : "Send Now"}
                         </button>
+                      ) : sendType === "scheduled" ? (
+                        <button
+                          onClick={handleSendMessage}
+                          disabled={sending || !formData.message.trim() || !scheduledDate || !scheduledTime}
+                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
+                        >
+                          <Clock className="w-5 h-5" />
+                          {sending ? "Scheduling..." : "Schedule Message"}
+                        </button>
                       ) : (
                         <>
                           <button
@@ -714,6 +888,109 @@ export default function AnnouncementsPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Scheduled Messages View */}
+            {activeView === "scheduled" && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                {scheduledMessages.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <Clock className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No Scheduled Messages</h3>
+                    <p className="text-gray-600 mb-6">Schedule your first message to get started</p>
+                    <button
+                      onClick={() => setActiveView("compose")}
+                      className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-semibold"
+                    >
+                      Schedule Message
+                    </button>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-200">
+                    {scheduledMessages
+                      .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+                      .map((message) => {
+                        const scheduledDate = new Date(message.scheduled_at);
+                        const isPast = scheduledDate < new Date();
+                        const statusColors = {
+                          pending: "bg-yellow-100 text-yellow-800",
+                          processing: "bg-blue-100 text-blue-800",
+                          sent: "bg-green-100 text-green-800",
+                          failed: "bg-red-100 text-red-800",
+                          cancelled: "bg-gray-100 text-gray-800",
+                        };
+                        const statusIcons = {
+                          pending: Clock,
+                          processing: AlertCircle,
+                          sent: CheckCircle,
+                          failed: XCircle,
+                          cancelled: XCircle,
+                        };
+                        const StatusIcon = statusIcons[message.status];
+
+                        return (
+                          <div key={message.id} className="p-6 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <StatusIcon className={`w-5 h-5 ${statusColors[message.status].split(" ")[1]}`} />
+                                  <h4 className="text-lg font-semibold text-gray-900">{message.subject || "No Subject"}</h4>
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[message.status]}`}>
+                                    {message.status.charAt(0).toUpperCase() + message.status.slice(1)}
+                                  </span>
+                                  <span
+                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      message.type === "email"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : message.type === "sms"
+                                          ? "bg-green-100 text-green-800"
+                                          : "bg-purple-100 text-purple-800"
+                                    }`}
+                                  >
+                                    {message.type === "both" ? "Email & SMS" : message.type.toUpperCase()}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-700 line-clamp-2 mb-2">{message.message_en}</p>
+                                <div className="flex items-center gap-4 text-xs text-gray-500">
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>
+                                      Scheduled: {formatPhoenixTime(message.scheduled_at)}
+                                      {isPast && message.status === "pending" && (
+                                        <span className="ml-2 text-orange-600 font-semibold">(Overdue)</span>
+                                      )}
+                                    </span>
+                                  </div>
+                                  {message.status === "sent" && (
+                                    <div className="flex items-center gap-1">
+                                      <CheckCircle className="w-4 h-4 text-green-600" />
+                                      <span>Sent: {message.sent_count} recipients</span>
+                                    </div>
+                                  )}
+                                  {message.failed_count > 0 && (
+                                    <div className="flex items-center gap-1">
+                                      <XCircle className="w-4 h-4 text-red-600" />
+                                      <span>Failed: {message.failed_count}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              {message.status === "pending" && (
+                                <button
+                                  onClick={() => handleCancelScheduled(message.id)}
+                                  className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Cancel scheduled message"
+                                >
+                                  <X className="w-5 h-5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
               </div>
             )}
 

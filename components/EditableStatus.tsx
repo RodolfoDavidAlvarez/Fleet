@@ -70,16 +70,20 @@ export default function EditableStatus({ status, onUpdate, className = "" }: Edi
         onClick={() => setIsOpen(!isOpen)}
         disabled={isSaving}
         className={`
-          px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap
-          transition-all duration-200 flex items-center gap-1.5
+          px-2.5 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap
+          transition-all duration-200 flex items-center gap-1 max-w-full
           ${isOpen ? "ring-2 ring-primary-300 scale-105" : "hover:ring-2 hover:ring-primary-200 hover:scale-105"}
           ${getStatusColor(status)}
           ${isSaving ? "opacity-70 cursor-wait" : "cursor-pointer"}
         `}
         title="Click to change status"
       >
-        {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <span>{status.replace("_", " ")}</span>}
-        {!isSaving && <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />}
+        {isSaving ? (
+          <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />
+        ) : (
+          <span className="truncate flex-1 min-w-0">{status.replace("_", " ")}</span>
+        )}
+        {!isSaving && <ChevronDown className={`h-2.5 w-2.5 transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`} />}
       </button>
 
       <AnimatePresence>
@@ -116,3 +120,4 @@ export default function EditableStatus({ status, onUpdate, className = "" }: Edi
     </div>
   );
 }
+

@@ -65,3 +65,4 @@ CREATE INDEX IF NOT EXISTS idx_repair_requests_request_number ON repair_requests
 -- Add NOT NULL constraint after populating existing data
 -- We'll do this in a separate step to avoid issues with existing NULL values
 -- ALTER TABLE repair_requests ALTER COLUMN request_number SET NOT NULL;
+

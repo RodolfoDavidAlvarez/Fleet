@@ -1,8 +1,10 @@
 'use client'
 
-import { Bell, User, Menu, CheckCircle, AlertCircle, Settings, Users, Calendar, LogOut, Edit2 } from 'lucide-react'
+import { Bell, User, Menu, CheckCircle, AlertCircle, Settings, Users, Calendar, LogOut, Edit2, Bug, List } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import BugReportDialog from './BugReportDialog'
+import BugReportsList from './BugReportsList'
 
 interface HeaderProps {
   userName: string
@@ -16,6 +18,8 @@ export default function Header({ userName, userRole, userEmail, onMenuClick }: H
   const [showNotifications, setShowNotifications] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
+  const [showBugReportDialog, setShowBugReportDialog] = useState(false)
+  const [showBugReportsList, setShowBugReportsList] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -140,6 +144,30 @@ export default function Header({ userName, userRole, userEmail, onMenuClick }: H
             <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
             Operational
           </span>
+        </div>
+
+        {/* Bug Report Button - Floating style */}
+        <div className="relative">
+          <button
+            onClick={() => setShowBugReportDialog(true)}
+            className="btn-ghost btn-icon relative group"
+            aria-label="Report an issue"
+            title="Report an issue"
+          >
+            <Bug className="h-5 w-5 text-red-600 group-hover:text-red-700" />
+          </button>
+        </div>
+
+        {/* View Bug Reports */}
+        <div className="relative">
+          <button
+            onClick={() => setShowBugReportsList(true)}
+            className="btn-ghost btn-icon relative"
+            aria-label="View my reports"
+            title="View my reports"
+          >
+            <List className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Notifications */}
@@ -487,6 +515,21 @@ export default function Header({ userName, userRole, userEmail, onMenuClick }: H
           </div>
         </>
       )}
+
+      {/* Bug Report Dialog */}
+      <BugReportDialog
+        isOpen={showBugReportDialog}
+        onClose={() => setShowBugReportDialog(false)}
+        onSuccess={() => {
+          // Optionally refresh bug reports list or show success notification
+        }}
+      />
+
+      {/* Bug Reports List */}
+      <BugReportsList
+        isOpen={showBugReportsList}
+        onClose={() => setShowBugReportsList(false)}
+      />
     </header>
   )
 }

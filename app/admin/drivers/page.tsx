@@ -78,14 +78,13 @@ export default function DriversPage() {
   // New state for enhanced features
   const [filters, setFilters] = useState<DriverFiltersType>({
     role: "all",
-    approval_status: "all",
     has_phone: "all",
     has_certification: "all",
     has_vehicle: "all",
   });
   const [sortBy, setSortBy] = useState<"name" | "role" | "email" | "phone" | "createdAt">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [groupBy, setGroupBy] = useState<"none" | "role" | "approval_status">("none");
+  const [groupBy, setGroupBy] = useState<"none" | "role">("none");
   const [showColumnConfig, setShowColumnConfig] = useState(false);
 
   // Default column configuration for drivers
@@ -96,8 +95,7 @@ export default function DriversPage() {
     { id: "phone", label: "Phone", visible: true, order: 3, width: "w-32" },
     { id: "certification", label: "Certification", visible: false, order: 4, width: "w-36" },
     { id: "language", label: "Language", visible: false, order: 5, width: "w-24" },
-    { id: "status", label: "Status", visible: true, order: 6, width: "w-24" },
-    { id: "joined", label: "Joined", visible: true, order: 7, width: "w-28" },
+    { id: "joined", label: "Joined", visible: true, order: 6, width: "w-28" },
   ];
 
   // Load column configuration from localStorage with user-specific key
@@ -234,16 +232,6 @@ export default function DriversPage() {
             placeholder="Add lang"
           />
         );
-      case "status":
-        return (
-          <EditableApprovalStatus
-            status={driver.approval_status}
-            onUpdate={async (newStatus) => {
-              await updateDriver(driver.id, { approval_status: newStatus });
-              showToast("Status updated successfully!", "success");
-            }}
-          />
-        );
       case "joined":
         return <span className="text-xs text-gray-600">{new Date(driver.createdAt).toLocaleDateString()}</span>;
       default:
@@ -330,11 +318,6 @@ export default function DriversPage() {
       filtered = filtered.filter((d) => d.role === filters.role);
     }
 
-    // Apply approval status filter
-    if (filters.approval_status && filters.approval_status !== "all") {
-      filtered = filtered.filter((d) => d.approval_status === filters.approval_status);
-    }
-
     // Apply has_phone filter
     if (filters.has_phone && filters.has_phone !== "all") {
       filtered = filtered.filter((d) => (filters.has_phone === "yes" ? !!d.phone : !d.phone));
@@ -403,9 +386,6 @@ export default function DriversPage() {
       switch (groupBy) {
         case "role":
           groupKey = driver.role ? driver.role.charAt(0).toUpperCase() + driver.role.slice(1) : "No Role";
-          break;
-        case "approval_status":
-          groupKey = driver.approval_status === "approved" ? "Approved" : "Pending Approval";
           break;
       }
 
@@ -668,8 +648,6 @@ export default function DriversPage() {
   }, [allVehicles, memberVehicleSearch]);
 
   // Count stats
-  const approvedCount = drivers.filter((d) => d.approval_status === "approved").length;
-  const pendingCount = drivers.filter((d) => d.approval_status === "pending_approval").length;
   const driverCount = drivers.filter((d) => d.role === "driver").length;
   const mechanicCount = drivers.filter((d) => d.role === "mechanic").length;
 
@@ -695,17 +673,11 @@ export default function DriversPage() {
 
               {/* Stats Cards Row - Compact */}
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-green-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
-                  <p className="text-xs text-gray-500 font-medium mb-0.5">Approved</p>
-                  <p className="text-xl font-bold text-gray-900">{approvedCount}</p>
-                </div>
-                {pendingCount > 0 && (
-                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-yellow-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
-                    <p className="text-xs text-gray-500 font-medium mb-0.5">Pending</p>
-                    <p className="text-xl font-bold text-gray-900">{pendingCount}</p>
-                  </div>
-                )}
                 <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-blue-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                  <p className="text-xs text-gray-500 font-medium mb-0.5">Total Members</p>
+                  <p className="text-xl font-bold text-gray-900">{drivers.length}</p>
+                </div>
+                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-green-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
                   <p className="text-xs text-gray-500 font-medium mb-0.5">Drivers</p>
                   <p className="text-xl font-bold text-gray-900">{driverCount}</p>
                 </div>
@@ -864,7 +836,6 @@ export default function DriversPage() {
                         >
                           <option value="none">No Grouping</option>
                           <option value="role">Group by Role</option>
-                          <option value="approval_status">Group by Status</option>
                         </select>
                       </div>
                     </div>
@@ -933,7 +904,6 @@ export default function DriversPage() {
               {/* Results Count - Compact */}
               {(searchTerm ||
                 filters.role !== "all" ||
-                filters.approval_status !== "all" ||
                 filters.has_phone !== "all" ||
                 filters.has_certification !== "all" ||
                 filters.has_vehicle !== "all") && (

@@ -87,17 +87,17 @@ export default function VehiclesPage() {
 
   // Default column configuration
   const defaultColumns: ColumnConfig[] = [
-    { id: "type", label: "Type", visible: true, order: 0, width: "w-12" },
-    { id: "companyId", label: "Co. ID", visible: true, order: 1, width: "w-16" },
-    { id: "make", label: "Make", visible: true, order: 2, width: "w-24" },
-    { id: "model", label: "Model", visible: true, order: 3, width: "w-28" },
-    { id: "year", label: "Year", visible: true, order: 4, width: "w-16" },
-    { id: "vin", label: "VIN", visible: true, order: 5, width: "w-36" },
-    { id: "plate", label: "Plate", visible: true, order: 6, width: "w-20" },
-    { id: "department", label: "Dept", visible: true, order: 7, width: "w-28" },
-    { id: "mileage", label: "Mileage", visible: false, order: 8, width: "w-24" },
-    { id: "driver", label: "Driver", visible: true, order: 9, width: "flex-1" },
-    { id: "status", label: "Status", visible: true, order: 10, width: "w-20" },
+    { id: "type", label: "Type", visible: true, order: 0, width: "w-32" },
+    { id: "companyId", label: "Co. ID", visible: true, order: 1, width: "w-24" },
+    { id: "make", label: "Make", visible: true, order: 2, width: "w-28" },
+    { id: "model", label: "Model", visible: true, order: 3, width: "w-32" },
+    { id: "year", label: "Year", visible: true, order: 4, width: "w-20" },
+    { id: "vin", label: "VIN", visible: true, order: 5, width: "w-40" },
+    { id: "plate", label: "Plate", visible: true, order: 6, width: "w-24" },
+    { id: "department", label: "Dept", visible: true, order: 7, width: "w-36" },
+    { id: "mileage", label: "Mileage", visible: false, order: 8, width: "w-28" },
+    { id: "driver", label: "Driver", visible: true, order: 9, width: "w-44 min-w-[11rem]" },
+    { id: "status", label: "Status", visible: true, order: 10, width: "w-28" },
   ];
 
   // Load column configuration from localStorage
