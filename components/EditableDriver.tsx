@@ -73,18 +73,25 @@ export default function EditableDriver({ value, onUpdate, drivers, className = "
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          w-full px-2 py-1 text-left bg-white border border-gray-300 rounded text-xs
+          w-full px-2.5 py-1.5 text-left bg-white border rounded-md text-xs font-medium
           focus:ring-2 focus:ring-primary-500 focus:border-primary-500
           transition-all duration-200
-          flex items-center justify-between
-          hover:border-gray-400 cursor-pointer
-          ${isOpen ? "border-primary-500 ring-2 ring-primary-200" : ""}
+          flex items-center justify-between gap-2
+          cursor-pointer shadow-sm
+          ${isOpen
+            ? "border-primary-500 ring-2 ring-primary-200 bg-primary-50"
+            : "border-gray-300 hover:border-primary-400 hover:bg-primary-50"
+          }
           ${selectedDriver ? "text-gray-900" : "text-gray-500"}
         `}
       >
-        {selectedDriver ? <span className="truncate text-xs">{selectedDriver.name}</span> : <span className="text-xs">No driver</span>}
+        {selectedDriver ? (
+          <span className="truncate flex-1 text-xs">{selectedDriver.name}</span>
+        ) : (
+          <span className="text-xs flex-1">No driver</span>
+        )}
         <ChevronDown
-          className={`h-3 w-3 text-gray-400 transition-transform duration-200 flex-shrink-0 ml-1 ${isOpen ? "transform rotate-180" : ""}`}
+          className={`h-3.5 w-3.5 text-gray-400 transition-transform duration-200 flex-shrink-0 ${isOpen ? "transform rotate-180 text-primary-600" : ""}`}
         />
       </button>
 

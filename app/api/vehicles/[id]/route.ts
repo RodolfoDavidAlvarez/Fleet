@@ -60,16 +60,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   try {
     const json = await request.json();
     const parsed = updateVehicleSchema.safeParse(json);
-    
+
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
     }
 
     const vehicle = await vehicleDB.update(params.id, parsed.data);
-    
+
     if (!vehicle) {
       return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }

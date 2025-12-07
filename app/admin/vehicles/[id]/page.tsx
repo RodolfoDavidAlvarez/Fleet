@@ -679,6 +679,7 @@ export default function VehicleDetailPage() {
                   {isEditing ? (
                     <div ref={driverDropdownRef} className="relative">
                       <button
+                        id="driver-dropdown-button"
                         type="button"
                         onClick={() => !driversLoading && setIsDriverDropdownOpen(!isDriverDropdownOpen)}
                         disabled={driversLoading}
@@ -703,9 +704,7 @@ export default function VehicleDetailPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900 truncate">{selectedDriver.name}</p>
-                              {selectedDriver.email && (
-                                <p className="text-xs text-gray-500 truncate">{selectedDriver.email}</p>
-                              )}
+                              {selectedDriver.email && <p className="text-xs text-gray-500 truncate">{selectedDriver.email}</p>}
                             </div>
                           </div>
                         ) : (
@@ -717,122 +716,156 @@ export default function VehicleDetailPage() {
                       </button>
 
                       <AnimatePresence>
-                        {isDriverDropdownOpen && (
-                          <>
-                            <div className="fixed inset-0 z-10" onClick={() => setIsDriverDropdownOpen(false)} />
-                            <motion.div
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              transition={{ duration: 0.2 }}
-                              className="absolute z-20 w-full mt-2 bg-white border-2 border-gray-200 rounded-lg shadow-xl max-h-80 overflow-hidden"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {/* Search Input */}
-                              <div className="p-3 border-b border-gray-200 sticky top-0 bg-white z-10">
-                                <div className="relative">
-                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                  <input
-                                    type="text"
-                                    placeholder="Search by name, email, or phone..."
-                                    value={driverSearch}
-                                    onChange={(e) => setDriverSearch(e.target.value)}
-                                    onFocus={(e) => e.stopPropagation()}
-                                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                                    autoFocus
-                                  />
-                                </div>
-                              </div>
+                        {isDriverDropdownOpen &&
+                          (() => {
+                            const button = document.getElementById("driver-dropdown-button");
+                            const rect = button?.getBoundingClientRect();
+                            const viewportHeight = window.innerHeight;
+                            const viewportWidth = window.innerWidth;
+                            const spaceBelow = rect ? viewportHeight - rect.bottom : 0;
+                            const spaceAbove = rect ? rect.top : 0;
+                            const dropdownHeight = 320; // max-h-80 = 320px
+                            const shouldOpenAbove = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
 
-                              {/* Driver List */}
-                              <div className="max-h-60 overflow-y-auto">
-                                {driversLoading ? (
-                                  <div className="p-4 text-center">
-                                    <Loader2 className="h-5 w-5 animate-spin text-primary-600 mx-auto mb-2" />
-                                    <p className="text-sm text-gray-500">Loading drivers...</p>
+                            // Calculate position, ensuring dropdown stays within viewport
+                            let top = "0px";
+                            let left = "0px";
+                            let width = "auto";
+
+                            if (rect) {
+                              // Vertical positioning
+                              if (shouldOpenAbove) {
+                                const topPosition = rect.top - dropdownHeight - 8;
+                                top = `${Math.max(8, topPosition)}px`; // Ensure at least 8px from top
+                              } else {
+                                top = `${Math.min(rect.bottom + 8, viewportHeight - dropdownHeight - 8)}px`; // Ensure it fits
+                              }
+
+                              // Horizontal positioning - ensure it doesn't go off screen
+                              const dropdownWidth = Math.min(rect.width, viewportWidth - 16); // Leave 8px margin on each side
+                              const leftPosition = Math.min(rect.left, viewportWidth - dropdownWidth - 8);
+                              left = `${Math.max(8, leftPosition)}px`;
+                              width = `${dropdownWidth}px`;
+                            }
+
+                            return (
+                              <>
+                                <div className="fixed inset-0 z-10" onClick={() => setIsDriverDropdownOpen(false)} />
+                                <motion.div
+                                  initial={{ opacity: 0, y: shouldOpenAbove ? 10 : -10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: shouldOpenAbove ? 10 : -10 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="fixed z-20 bg-white border-2 border-gray-200 rounded-lg shadow-xl max-h-80 overflow-hidden"
+                                  style={{
+                                    top,
+                                    left,
+                                    width,
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {/* Search Input */}
+                                  <div className="p-3 border-b border-gray-200 sticky top-0 bg-white z-10">
+                                    <div className="relative">
+                                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                      <input
+                                        type="text"
+                                        placeholder="Search by name, email, or phone..."
+                                        value={driverSearch}
+                                        onChange={(e) => setDriverSearch(e.target.value)}
+                                        onFocus={(e) => e.stopPropagation()}
+                                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                                        autoFocus
+                                      />
+                                    </div>
                                   </div>
-                                ) : filteredDrivers.length === 0 ? (
-                                  <div className="p-4 text-sm text-gray-500 text-center">
-                                    {driverSearch.trim() ? "No drivers found matching your search" : "No drivers available"}
-                                  </div>
-                                ) : (
-                                  <>
-                                    {/* Option to clear selection */}
-                                    <button
-                                      type="button"
-                                        onClick={() => {
-                                          setFormData({ ...formData, driverId: null });
-                                          setIsDriverDropdownOpen(false);
-                                          // Keep search term for next time
-                                        }}
-                                      className={`
+
+                                  {/* Driver List */}
+                                  <div className="max-h-60 overflow-y-auto">
+                                    {driversLoading ? (
+                                      <div className="p-4 text-center">
+                                        <Loader2 className="h-5 w-5 animate-spin text-primary-600 mx-auto mb-2" />
+                                        <p className="text-sm text-gray-500">Loading drivers...</p>
+                                      </div>
+                                    ) : filteredDrivers.length === 0 ? (
+                                      <div className="p-4 text-sm text-gray-500 text-center">
+                                        {driverSearch.trim() ? "No drivers found matching your search" : "No drivers available"}
+                                      </div>
+                                    ) : (
+                                      <>
+                                        {/* Option to clear selection */}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setFormData({ ...formData, driverId: null });
+                                            setIsDriverDropdownOpen(false);
+                                            // Keep search term for next time
+                                          }}
+                                          className={`
                                         w-full px-4 py-2.5 text-left flex items-center justify-between
                                         transition-colors duration-150 border-b border-gray-100
                                         ${!formData.driverId ? "bg-primary-50 text-primary-900" : "hover:bg-gray-50 text-gray-900"}
                                       `}
-                                    >
-                                      <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                                          <UserIcon className="h-4 w-4 text-gray-500" />
-                                        </div>
-                                        <div>
-                                          <p className="text-sm font-medium">No driver assigned</p>
-                                          <p className="text-xs text-gray-500">Remove assignment</p>
-                                        </div>
-                                      </div>
-                                      {!formData.driverId && <Check className="h-4 w-4 text-primary-600 flex-shrink-0" />}
-                                    </button>
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                                              <UserIcon className="h-4 w-4 text-gray-500" />
+                                            </div>
+                                            <div>
+                                              <p className="text-sm font-medium">No driver assigned</p>
+                                              <p className="text-xs text-gray-500">Remove assignment</p>
+                                            </div>
+                                          </div>
+                                          {!formData.driverId && <Check className="h-4 w-4 text-primary-600 flex-shrink-0" />}
+                                        </button>
 
-                                    {/* Driver options */}
-                                    {filteredDrivers.map((driver) => (
-                                      <button
-                                        key={driver.id}
-                                        type="button"
-                                        onClick={() => {
-                                          setFormData({ ...formData, driverId: driver.id });
-                                          setIsDriverDropdownOpen(false);
-                                          // Keep search term for next time
-                                        }}
-                                        className={`
+                                        {/* Driver options */}
+                                        {filteredDrivers.map((driver) => (
+                                          <button
+                                            key={driver.id}
+                                            type="button"
+                                            onClick={() => {
+                                              setFormData({ ...formData, driverId: driver.id });
+                                              setIsDriverDropdownOpen(false);
+                                              // Keep search term for next time
+                                            }}
+                                            className={`
                                           w-full px-4 py-2.5 text-left flex items-center justify-between
                                           transition-colors duration-150 border-b border-gray-100 last:border-0
                                           ${formData.driverId === driver.id ? "bg-primary-50 text-primary-900" : "hover:bg-gray-50 text-gray-900"}
                                         `}
-                                      >
-                                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center flex-shrink-0 text-white text-xs font-semibold">
-                                            {driver.name
-                                              ?.split(" ")
-                                              .map((n) => n[0])
-                                              .join("")
-                                              .toUpperCase()
-                                              .slice(0, 2) || "?"}
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium truncate">{driver.name || "Unknown"}</p>
-                                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                              {driver.email && (
-                                                <p className="text-xs text-gray-500 truncate">{driver.email}</p>
-                                              )}
-                                              {driver.phone && (
-                                                <p className="text-xs text-gray-500 truncate">
-                                                  {driver.email && "•"} {driver.phone}
-                                                </p>
-                                              )}
+                                          >
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center flex-shrink-0 text-white text-xs font-semibold">
+                                                {driver.name
+                                                  ?.split(" ")
+                                                  .map((n) => n[0])
+                                                  .join("")
+                                                  .toUpperCase()
+                                                  .slice(0, 2) || "?"}
+                                              </div>
+                                              <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium truncate">{driver.name || "Unknown"}</p>
+                                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                                  {driver.email && <p className="text-xs text-gray-500 truncate">{driver.email}</p>}
+                                                  {driver.phone && (
+                                                    <p className="text-xs text-gray-500 truncate">
+                                                      {driver.email && "•"} {driver.phone}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              </div>
                                             </div>
-                                          </div>
-                                        </div>
-                                        {formData.driverId === driver.id && (
-                                          <Check className="h-4 w-4 text-primary-600 flex-shrink-0 ml-2" />
-                                        )}
-                                      </button>
-                                    ))}
-                                  </>
-                                )}
-                              </div>
-                            </motion.div>
-                          </>
-                        )}
+                                            {formData.driverId === driver.id && <Check className="h-4 w-4 text-primary-600 flex-shrink-0 ml-2" />}
+                                          </button>
+                                        ))}
+                                      </>
+                                    )}
+                                  </div>
+                                </motion.div>
+                              </>
+                            );
+                          })()}
                       </AnimatePresence>
                     </div>
                   ) : (
@@ -850,9 +883,7 @@ export default function VehicleDetailPage() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-900">{vehicle.driverName}</p>
                             <div className="flex items-center gap-2 mt-1">
-                              {vehicle.driverEmail && (
-                                <p className="text-xs text-gray-600 truncate">{vehicle.driverEmail}</p>
-                              )}
+                              {vehicle.driverEmail && <p className="text-xs text-gray-600 truncate">{vehicle.driverEmail}</p>}
                               {vehicle.driverPhone && (
                                 <p className="text-xs text-gray-600 truncate">
                                   {vehicle.driverEmail && "•"} {vehicle.driverPhone}

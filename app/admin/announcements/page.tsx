@@ -50,8 +50,7 @@ export default function AnnouncementsPage() {
   const [formData, setFormData] = useState({
     templateName: "",
     subject: "",
-    messageEn: "",
-    messageEs: "",
+    message: "",
     category: "announcement",
   });
 
@@ -123,7 +122,7 @@ export default function AnnouncementsPage() {
       if (recipients.length === 0 && selectedMembers.length === 0 && !customRecipients.trim()) {
         throw new Error("Please select at least one recipient");
       }
-      if (!formData.messageEn.trim()) {
+      if (!formData.message.trim()) {
         throw new Error("Please enter a message");
       }
       if (messageType === "email" && !formData.subject.trim()) {
@@ -147,8 +146,8 @@ export default function AnnouncementsPage() {
           individualRecipients,
           customRecipients: customRecipients.trim() ? customRecipients.split(",").map((r) => r.trim()) : [],
           subject: formData.subject,
-          messageEn: formData.messageEn,
-          messageEs: formData.messageEs,
+          messageEn: formData.message,
+          messageEs: "",
         }),
       });
 
@@ -162,8 +161,7 @@ export default function AnnouncementsPage() {
         setFormData({
           templateName: "",
           subject: "",
-          messageEn: "",
-          messageEs: "",
+          message: "",
           category: "announcement",
         });
         setRecipients([]);
@@ -188,7 +186,7 @@ export default function AnnouncementsPage() {
       if (!formData.templateName.trim()) {
         throw new Error("Template name is required");
       }
-      if (!formData.messageEn.trim()) {
+      if (!formData.message.trim()) {
         throw new Error("Message content is required");
       }
 
@@ -198,8 +196,8 @@ export default function AnnouncementsPage() {
         body: JSON.stringify({
           name: formData.templateName,
           subject: formData.subject,
-          messageEn: formData.messageEn,
-          messageEs: formData.messageEs,
+          messageEn: formData.message,
+          messageEs: "",
           type: messageType,
           category: formData.category,
         }),
@@ -222,8 +220,7 @@ export default function AnnouncementsPage() {
     setFormData({
       templateName: template.name,
       subject: template.subject || "",
-      messageEn: template.message_en,
-      messageEs: template.message_es || "",
+      message: template.message_en,
       category: template.category,
     });
     setMessageType(template.type);
@@ -651,39 +648,21 @@ export default function AnnouncementsPage() {
                         </div>
                       )}
 
-                      {/* English Message */}
+                      {/* Message */}
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Message (English) <span className="text-red-500">*</span>
+                          Message <span className="text-red-500">*</span>
                         </label>
                         <textarea
-                          value={formData.messageEn}
-                          onChange={(e) => setFormData({ ...formData, messageEn: e.target.value })}
-                          placeholder="Enter your message in English..."
-                          rows={8}
+                          value={formData.message}
+                          onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                          placeholder="Enter your message..."
+                          rows={12}
                           className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm transition-colors"
                         />
                         <p className="text-xs text-gray-500 mt-1.5">
-                          {formData.messageEn.length} characters
-                          {messageType !== "email" && formData.messageEn.length > 160 && (
-                            <span className="text-orange-600 ml-2">⚠️ SMS may be split into multiple messages</span>
-                          )}
-                        </p>
-                      </div>
-
-                      {/* Spanish Message */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Message (Spanish - Optional)</label>
-                        <textarea
-                          value={formData.messageEs}
-                          onChange={(e) => setFormData({ ...formData, messageEs: e.target.value })}
-                          placeholder="Ingrese su mensaje en español... (opcional)"
-                          rows={8}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm transition-colors"
-                        />
-                        <p className="text-xs text-gray-500 mt-1.5">
-                          {formData.messageEs.length} characters
-                          {messageType !== "email" && formData.messageEs.length > 160 && (
+                          {formData.message.length} characters
+                          {messageType !== "email" && formData.message.length > 160 && (
                             <span className="text-orange-600 ml-2">⚠️ SMS may be split into multiple messages</span>
                           )}
                         </p>
@@ -706,7 +685,7 @@ export default function AnnouncementsPage() {
                       {sendType === "onetime" ? (
                         <button
                           onClick={handleSendMessage}
-                          disabled={sending || !formData.messageEn.trim()}
+                          disabled={sending || !formData.message.trim()}
                           className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
                         >
                           <Send className="w-5 h-5" />
@@ -716,7 +695,7 @@ export default function AnnouncementsPage() {
                         <>
                           <button
                             onClick={handleSaveTemplate}
-                            disabled={saving || !formData.templateName.trim() || !formData.messageEn.trim()}
+                            disabled={saving || !formData.templateName.trim() || !formData.message.trim()}
                             className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
                           >
                             <Save className="w-5 h-5" />
@@ -724,7 +703,7 @@ export default function AnnouncementsPage() {
                           </button>
                           <button
                             onClick={handleSendMessage}
-                            disabled={sending || !formData.messageEn.trim()}
+                            disabled={sending || !formData.message.trim()}
                             className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
                           >
                             <Send className="w-5 h-5" />
@@ -834,14 +813,8 @@ export default function AnnouncementsPage() {
                     </div>
                   )}
                   <div className="bg-white p-4 rounded border border-gray-200">
-                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{formData.messageEn}</p>
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{formData.message}</p>
                   </div>
-                  {formData.messageEs && (
-                    <div className="bg-white p-4 rounded border border-gray-200 mt-3">
-                      <p className="text-xs text-gray-500 mb-2">Spanish Version:</p>
-                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{formData.messageEs}</p>
-                    </div>
-                  )}
                 </div>
               )}
               {(messageType === "sms" || messageType === "both") && (
@@ -851,14 +824,8 @@ export default function AnnouncementsPage() {
                     <h4 className="font-semibold text-gray-900">SMS Preview</h4>
                   </div>
                   <div className="max-w-xs bg-green-100 p-4 rounded-2xl rounded-tl-none">
-                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{formData.messageEn}</p>
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{formData.message}</p>
                   </div>
-                  {formData.messageEs && (
-                    <div className="max-w-xs bg-green-100 p-4 rounded-2xl rounded-tl-none mt-3">
-                      <p className="text-xs text-gray-500 mb-2">Spanish:</p>
-                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{formData.messageEs}</p>
-                    </div>
-                  )}
                 </div>
               )}
             </div>

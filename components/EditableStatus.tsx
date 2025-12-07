@@ -1,129 +1,118 @@
-'use client'
+"use client";
 
-import { useState, useRef, useEffect } from 'react'
-import { Check, X as XIcon, Loader2 } from 'lucide-react'
-import { VehicleStatus } from '@/types'
-import { getStatusColor } from '@/lib/utils'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useRef, useEffect } from "react";
+import { ChevronDown, Check, Loader2 } from "lucide-react";
+import { VehicleStatus } from "@/types";
+import { getStatusColor } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface EditableStatusProps {
-  status: VehicleStatus
-  onUpdate: (newStatus: VehicleStatus) => Promise<void>
-  className?: string
+  status: VehicleStatus;
+  onUpdate: (newStatus: VehicleStatus) => Promise<void>;
+  className?: string;
 }
 
 const STATUS_OPTIONS: VehicleStatus[] = [
-  'operational',
-  'active',
-  'in_service',
-  'broken_down',
-  'for_sale',
-  'idle',
-  'upcoming',
-  'retired',
-  'maintenance',
-  'reserved',
-  'out_of_service',
-]
+  "operational",
+  "active",
+  "in_service",
+  "broken_down",
+  "for_sale",
+  "idle",
+  "upcoming",
+  "retired",
+  "maintenance",
+  "reserved",
+  "out_of_service",
+];
 
-export default function EditableStatus({ status, onUpdate, className = '' }: EditableStatusProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [selectedStatus, setSelectedStatus] = useState<VehicleStatus>(status)
-  const [isSaving, setIsSaving] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+export default function EditableStatus({ status, onUpdate, className = "" }: EditableStatusProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsEditing(false)
-        setSelectedStatus(status)
+        setIsOpen(false);
       }
-    }
+    };
 
-    if (isEditing) {
-      document.addEventListener('mousedown', handleClickOutside)
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isEditing, status])
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
 
-  const handleSave = async () => {
-    if (selectedStatus === status) {
-      setIsEditing(false)
-      return
+  const handleSelect = async (newStatus: VehicleStatus) => {
+    if (newStatus === status) {
+      setIsOpen(false);
+      return;
     }
 
-    setIsSaving(true)
+    setIsSaving(true);
     try {
-      await onUpdate(selectedStatus)
-      setIsEditing(false)
+      await onUpdate(newStatus);
+      setIsOpen(false);
     } catch (error) {
-      console.error('Failed to update status:', error)
-      setSelectedStatus(status) // Revert on error
+      console.error("Failed to update status:", error);
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
-
-  const handleCancel = () => {
-    setSelectedStatus(status)
-    setIsEditing(false)
-  }
-
-  if (isEditing) {
-    return (
-      <div ref={dropdownRef} className={`relative ${className}`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-1">
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value as VehicleStatus)}
-            className="px-2 py-1 text-xs font-semibold rounded border-2 border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200 bg-white"
-            autoFocus
-            disabled={isSaving}
-          >
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt.replace('_', ' ')}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="p-1 text-green-600 hover:bg-green-50 rounded transition-colors"
-            title="Save"
-          >
-            {isSaving ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Check className="h-3 w-3" />
-            )}
-          </button>
-          <button
-            onClick={handleCancel}
-            disabled={isSaving}
-            className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
-            title="Cancel"
-          >
-            <XIcon className="h-3 w-3" />
-          </button>
-        </div>
-      </div>
-    )
-  }
+  };
 
   return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation()
-        setIsEditing(true)
-      }}
-      className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap transition-all hover:ring-2 hover:ring-primary-200 ${getStatusColor(status)} ${className}`}
-      title="Click to edit status"
-    >
-      {status.replace('_', ' ')}
-    </button>
-  )
+    <div ref={dropdownRef} className={`relative ${className}`} onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={isSaving}
+        className={`
+          px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap
+          transition-all duration-200 flex items-center gap-1.5
+          ${isOpen ? "ring-2 ring-primary-300 scale-105" : "hover:ring-2 hover:ring-primary-200 hover:scale-105"}
+          ${getStatusColor(status)}
+          ${isSaving ? "opacity-70 cursor-wait" : "cursor-pointer"}
+        `}
+        title="Click to change status"
+      >
+        {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <span>{status.replace("_", " ")}</span>}
+        {!isSaving && <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />}
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="absolute z-20 mt-2 w-48 bg-white border-2 border-gray-200 rounded-lg shadow-xl overflow-hidden"
+            >
+              <div className="py-1 max-h-64 overflow-y-auto">
+                {STATUS_OPTIONS.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => handleSelect(opt)}
+                    className={`
+                      w-full px-3 py-2 text-left text-xs font-medium
+                      transition-colors duration-150 flex items-center justify-between
+                      ${status === opt ? "bg-primary-50 text-primary-900" : "hover:bg-gray-50 text-gray-900"}
+                    `}
+                  >
+                    <span className="capitalize">{opt.replace("_", " ")}</span>
+                    {status === opt && <Check className="h-3.5 w-3.5 text-primary-600" />}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }

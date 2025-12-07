@@ -22,6 +22,9 @@ import {
   ChevronDown,
   Check,
   Download,
+  ArrowUpDown,
+  Layers,
+  Settings,
 } from "lucide-react";
 import { User, Vehicle } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +32,11 @@ import { useToast } from "@/components/ui/toast";
 import { useVehicles } from "@/hooks/use-vehicles";
 import { Pagination } from "@/components/ui/pagination";
 import { exportDrivers } from "@/lib/export-utils";
+import EditableTextField from "@/components/EditableTextField";
+import EditableRole from "@/components/EditableRole";
+import EditableApprovalStatus from "@/components/EditableApprovalStatus";
+import DriverFilters, { DriverFilters as DriverFiltersType } from "@/components/DriverFilters";
+import DriverColumnConfigModal, { ColumnConfig } from "@/components/DriverColumnConfigModal";
 
 export default function DriversPage() {
   const router = useRouter();
@@ -41,7 +49,7 @@ export default function DriversPage() {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<User>>({});
   const [saving, setSaving] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
@@ -66,6 +74,182 @@ export default function DriversPage() {
   const [isMemberVehicleDropdownOpen, setIsMemberVehicleDropdownOpen] = useState(false);
   const [memberVehicleSearch, setMemberVehicleSearch] = useState("");
   const memberVehicleDropdownRef = useRef<HTMLDivElement>(null);
+
+  // New state for enhanced features
+  const [filters, setFilters] = useState<DriverFiltersType>({
+    role: "all",
+    approval_status: "all",
+    has_phone: "all",
+    has_certification: "all",
+    has_vehicle: "all",
+  });
+  const [sortBy, setSortBy] = useState<"name" | "role" | "email" | "phone" | "createdAt">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [groupBy, setGroupBy] = useState<"none" | "role" | "approval_status">("none");
+  const [showColumnConfig, setShowColumnConfig] = useState(false);
+
+  // Default column configuration for drivers
+  const defaultColumns: ColumnConfig[] = [
+    { id: "name", label: "Name", visible: true, order: 0, width: "w-48" },
+    { id: "role", label: "Role", visible: true, order: 1, width: "w-24" },
+    { id: "email", label: "Email", visible: true, order: 2, width: "flex-1" },
+    { id: "phone", label: "Phone", visible: true, order: 3, width: "w-32" },
+    { id: "certification", label: "Certification", visible: false, order: 4, width: "w-36" },
+    { id: "language", label: "Language", visible: false, order: 5, width: "w-24" },
+    { id: "status", label: "Status", visible: true, order: 6, width: "w-24" },
+    { id: "joined", label: "Joined", visible: true, order: 7, width: "w-28" },
+  ];
+
+  // Load column configuration from localStorage with user-specific key
+  const getUserSettingsKey = (key: string) => {
+    return user?.id ? `${key}-user-${user.id}` : key;
+  };
+
+  const [columns, setColumns] = useState<ColumnConfig[]>(() => {
+    if (typeof window !== "undefined") {
+      const savedUser = localStorage.getItem("user");
+      if (savedUser) {
+        const parsedUser = JSON.parse(savedUser);
+        const saved = localStorage.getItem(`drivers-column-config-user-${parsedUser.id}`);
+        if (saved) {
+          try {
+            return JSON.parse(saved);
+          } catch (e) {
+            return defaultColumns;
+          }
+        }
+      }
+    }
+    return defaultColumns;
+  });
+
+  // Persist column configuration
+  useEffect(() => {
+    if (user?.id) {
+      localStorage.setItem(`drivers-column-config-user-${user.id}`, JSON.stringify(columns));
+    }
+  }, [columns, user?.id]);
+
+  // Get visible columns sorted by order
+  const visibleColumns = useMemo(() => {
+    return [...columns].filter((col) => col.visible).sort((a, b) => a.order - b.order);
+  }, [columns]);
+
+  // Update driver helper function
+  const updateDriver = async (driverId: string, updates: Partial<User>) => {
+    try {
+      const res = await fetch(`/api/drivers/${driverId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: "Failed to update driver" }));
+        throw new Error(errorData.error || "Failed to update driver");
+      }
+
+      const data = await res.json();
+      if (!data.driver) {
+        throw new Error("Invalid response from server");
+      }
+
+      // Update the driver in the list
+      setDrivers((prev) => prev.map((d) => (d.id === driverId ? data.driver : d)));
+      return data.driver;
+    } catch (error) {
+      console.error("Error updating driver:", error);
+      throw error;
+    }
+  };
+
+  // Render cell content based on column type
+  const renderCell = (column: ColumnConfig, driver: User) => {
+    switch (column.id) {
+      case "name":
+        return (
+          <EditableTextField
+            value={driver.name}
+            onUpdate={async (value) => {
+              await updateDriver(driver.id, { name: value });
+              showToast("Name updated successfully!", "success");
+            }}
+            className="font-semibold text-sm"
+          />
+        );
+      case "role":
+        return (
+          <EditableRole
+            role={driver.role}
+            onUpdate={async (newRole) => {
+              await updateDriver(driver.id, { role: newRole });
+              showToast("Role updated successfully!", "success");
+            }}
+          />
+        );
+      case "email":
+        return (
+          <EditableTextField
+            value={driver.email}
+            onUpdate={async (value) => {
+              await updateDriver(driver.id, { email: value });
+              showToast("Email updated successfully!", "success");
+            }}
+            className="text-sm"
+          />
+        );
+      case "phone":
+        return (
+          <EditableTextField
+            value={driver.phone}
+            onUpdate={async (value) => {
+              await updateDriver(driver.id, { phone: value || undefined });
+              showToast("Phone updated successfully!", "success");
+            }}
+            className="font-mono text-sm"
+            placeholder="Add phone"
+          />
+        );
+      case "certification":
+        return (
+          <EditableTextField
+            value={driver.level_certification}
+            onUpdate={async (value) => {
+              await updateDriver(driver.id, { level_certification: value || undefined });
+              showToast("Certification updated successfully!", "success");
+            }}
+            className="text-xs"
+            placeholder="Add cert"
+          />
+        );
+      case "language":
+        return (
+          <EditableTextField
+            value={driver.preferred_language}
+            onUpdate={async (value) => {
+              await updateDriver(driver.id, { preferred_language: value || undefined });
+              showToast("Language updated successfully!", "success");
+            }}
+            className="text-xs"
+            placeholder="Add lang"
+          />
+        );
+      case "status":
+        return (
+          <EditableApprovalStatus
+            status={driver.approval_status}
+            onUpdate={async (newStatus) => {
+              await updateDriver(driver.id, { approval_status: newStatus });
+              showToast("Status updated successfully!", "success");
+            }}
+          />
+        );
+      case "joined":
+        return <span className="text-xs text-gray-600">{new Date(driver.createdAt).toLocaleDateString()}</span>;
+      default:
+        return null;
+    }
+  };
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -100,56 +284,168 @@ export default function DriversPage() {
     // Run once on mount; router object identity can change and cause loops
   }, []);
 
-  // Load view preference from localStorage
+  // Load view preference from localStorage with user-specific key
   useEffect(() => {
-    const savedView = localStorage.getItem("drivers-view-mode");
+    if (!user?.id) return;
+    const savedView = localStorage.getItem(getUserSettingsKey("drivers-view-mode"));
     if (savedView === "grid" || savedView === "list") {
       setViewMode(savedView);
     }
-    const savedItemsPerPage = localStorage.getItem("drivers-items-per-page");
+    const savedItemsPerPage = localStorage.getItem(getUserSettingsKey("drivers-items-per-page"));
     if (savedItemsPerPage) {
       const parsed = parseInt(savedItemsPerPage, 10);
       if (!isNaN(parsed) && parsed > 0) {
         setItemsPerPage(parsed);
       }
     }
-  }, []);
+  }, [user?.id]);
 
   // Save view preference to localStorage
   const handleViewModeChange = (mode: "grid" | "list") => {
     setViewMode(mode);
-    localStorage.setItem("drivers-view-mode", mode);
+    if (user?.id) {
+      localStorage.setItem(getUserSettingsKey("drivers-view-mode"), mode);
+    }
   };
 
-  // Filter drivers based on search term
+  // Filter drivers based on search term and filters
   const filteredDrivers = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return drivers;
+    let filtered = drivers;
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((driver) => {
+        const name = (driver.name || "").toLowerCase();
+        const email = (driver.email || "").toLowerCase();
+        const phone = (driver.phone || "").toLowerCase();
+        const role = (driver.role || "").toLowerCase();
+
+        return name.includes(searchLower) || email.includes(searchLower) || phone.includes(searchLower) || role.includes(searchLower);
+      });
     }
-    const searchLower = searchTerm.toLowerCase().trim();
-    return drivers.filter((driver) => {
-      const name = (driver.name || "").toLowerCase();
-      const email = (driver.email || "").toLowerCase();
-      const phone = (driver.phone || "").toLowerCase();
-      const role = (driver.role || "").toLowerCase();
 
-      return name.includes(searchLower) || email.includes(searchLower) || phone.includes(searchLower) || role.includes(searchLower);
+    // Apply role filter
+    if (filters.role && filters.role !== "all") {
+      filtered = filtered.filter((d) => d.role === filters.role);
+    }
+
+    // Apply approval status filter
+    if (filters.approval_status && filters.approval_status !== "all") {
+      filtered = filtered.filter((d) => d.approval_status === filters.approval_status);
+    }
+
+    // Apply has_phone filter
+    if (filters.has_phone && filters.has_phone !== "all") {
+      filtered = filtered.filter((d) => (filters.has_phone === "yes" ? !!d.phone : !d.phone));
+    }
+
+    // Apply has_certification filter
+    if (filters.has_certification && filters.has_certification !== "all") {
+      filtered = filtered.filter((d) => (filters.has_certification === "yes" ? !!d.level_certification : !d.level_certification));
+    }
+
+    // Apply has_vehicle filter (based on allVehicles data)
+    if (filters.has_vehicle && filters.has_vehicle !== "all") {
+      const driversWithVehicles = new Set(allVehicles.filter((v) => v.driverId).map((v) => v.driverId));
+      filtered = filtered.filter((d) => (filters.has_vehicle === "yes" ? driversWithVehicles.has(d.id) : !driversWithVehicles.has(d.id)));
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortBy) {
+        case "name":
+          aValue = (a.name || "").toLowerCase();
+          bValue = (b.name || "").toLowerCase();
+          break;
+        case "role":
+          aValue = a.role || "";
+          bValue = b.role || "";
+          break;
+        case "email":
+          aValue = (a.email || "").toLowerCase();
+          bValue = (b.email || "").toLowerCase();
+          break;
+        case "phone":
+          aValue = a.phone || "";
+          bValue = b.phone || "";
+          break;
+        case "createdAt":
+          aValue = new Date(a.createdAt).getTime();
+          bValue = new Date(b.createdAt).getTime();
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
+      return 0;
     });
-  }, [drivers, searchTerm]);
 
-  // Calculate pagination
+    return sorted;
+  }, [drivers, searchTerm, filters, sortBy, sortOrder, allVehicles]);
+
+  // Group drivers if groupBy is set
+  const groupedDrivers = useMemo(() => {
+    if (groupBy === "none") {
+      return { "All Members": filteredDrivers };
+    }
+
+    const groups: Record<string, User[]> = {};
+
+    filteredDrivers.forEach((driver) => {
+      let groupKey = "Unassigned";
+
+      switch (groupBy) {
+        case "role":
+          groupKey = driver.role ? driver.role.charAt(0).toUpperCase() + driver.role.slice(1) : "No Role";
+          break;
+        case "approval_status":
+          groupKey = driver.approval_status === "approved" ? "Approved" : "Pending Approval";
+          break;
+      }
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+      groups[groupKey].push(driver);
+    });
+
+    // Sort group keys
+    const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+      if (a === "Unassigned" || a === "No Role") return 1;
+      if (b === "Unassigned" || b === "No Role") return -1;
+      return a.localeCompare(b);
+    });
+
+    const sortedGroups: Record<string, User[]> = {};
+    sortedGroupKeys.forEach((key) => {
+      sortedGroups[key] = groups[key];
+    });
+
+    return sortedGroups;
+  }, [filteredDrivers, groupBy]);
+
+  // Calculate pagination (only if not grouped)
   const paginatedDrivers = useMemo(() => {
+    if (groupBy !== "none") {
+      return filteredDrivers; // Don't paginate when grouped
+    }
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filteredDrivers.slice(startIndex, endIndex);
-  }, [filteredDrivers, currentPage, itemsPerPage]);
+  }, [filteredDrivers, currentPage, itemsPerPage, groupBy]);
 
   const totalPages = Math.ceil(filteredDrivers.length / itemsPerPage);
 
-  // Reset to page 1 when items per page changes or search term changes
+  // Reset to page 1 when items per page changes, search term changes, or filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [itemsPerPage, searchTerm]);
+  }, [itemsPerPage, searchTerm, filters]);
 
   // Reset to page 1 if current page is out of bounds
   useEffect(() => {
@@ -160,7 +456,9 @@ export default function DriversPage() {
 
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
     setItemsPerPage(newItemsPerPage);
-    localStorage.setItem("drivers-items-per-page", newItemsPerPage.toString());
+    if (user?.id) {
+      localStorage.setItem(getUserSettingsKey("drivers-items-per-page"), newItemsPerPage.toString());
+    }
   };
 
   const openEdit = (driver: User) => {
@@ -203,28 +501,8 @@ export default function DriversPage() {
         }
       });
 
-      const res = await fetch(`/api/drivers/${selectedDriver.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cleanedForm),
-      });
+      const updatedDriver = await updateDriver(selectedDriver.id, cleanedForm);
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: "Failed to update driver" }));
-        const errorMessage = errorData.error || errorData.details || "Failed to update driver";
-        console.error("API Error:", errorData);
-        throw new Error(errorMessage);
-      }
-
-      const data = await res.json();
-      if (!data.driver) {
-        throw new Error("Invalid response from server");
-      }
-
-      const updatedDriver = data.driver;
-
-      // Update the driver in the list
-      setDrivers((prev) => prev.map((d) => (d.id === selectedDriver.id ? updatedDriver : d)));
       setSelectedDriver(updatedDriver);
       setEditing(false);
       setEditForm({});
@@ -389,6 +667,12 @@ export default function DriversPage() {
     });
   }, [allVehicles, memberVehicleSearch]);
 
+  // Count stats
+  const approvedCount = drivers.filter((d) => d.approval_status === "approved").length;
+  const pendingCount = drivers.filter((d) => d.approval_status === "pending_approval").length;
+  const driverCount = drivers.filter((d) => d.role === "driver").length;
+  const mechanicCount = drivers.filter((d) => d.role === "mechanic").length;
+
   if (!user) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
@@ -399,80 +683,263 @@ export default function DriversPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} userEmail={user.email} />
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="max-w-7xl mx-auto space-y-5">
+            {/* Header Section */}
+            <div className="flex flex-col gap-4">
+              {/* Title and Description */}
               <div>
-                <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Team</p>
-                <h1 className="text-3xl font-bold text-gray-900">Team Members</h1>
-                <p className="text-gray-600">Manage and view all registered team members including drivers, mechanics, and administrators.</p>
+                <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em] mb-1">Team</p>
+                <h1 className="text-3xl font-bold text-gray-900 mb-1">Team Members</h1>
+                <p className="text-gray-600 text-sm">Manage and view all registered team members including drivers, mechanics, and administrators.</p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-gray-200">
-                  <button
-                    onClick={() => handleViewModeChange("grid")}
-                    className={`p-2 rounded-md transition-all ${
-                      viewMode === "grid" ? "bg-white text-primary-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
-                    }`}
-                    aria-label="Grid view"
-                  >
-                    <Grid3x3 className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleViewModeChange("list")}
-                    className={`p-2 rounded-md transition-all ${
-                      viewMode === "list" ? "bg-white text-primary-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
-                    }`}
-                    aria-label="List view"
-                  >
-                    <List className="h-4 w-4" />
-                  </button>
-                </div>
-                <button
-                  onClick={() => exportDrivers(filteredDrivers)}
-                  className="btn btn-secondary flex items-center gap-2"
-                  disabled={filteredDrivers.length === 0}
-                >
-                  <Download className="h-4 w-4" />
-                  Export CSV
-                </button>
-                <button
-                  onClick={() => setShowAddMemberModal(true)}
-                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Add Member
-                </button>
-              </div>
-            </div>
 
-            {/* Search Bar */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 max-w-md relative">
-                <div className="input-group">
-                  <span className="input-group-icon input-group-icon-left">
-                    <Search className="h-4 w-4" />
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Search team members by name, email, phone, role..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="input input-with-icon-left pr-12"
-                  />
-                  {searchTerm && (
+              {/* Stats Cards Row - Compact */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-green-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                  <p className="text-xs text-gray-500 font-medium mb-0.5">Approved</p>
+                  <p className="text-xl font-bold text-gray-900">{approvedCount}</p>
+                </div>
+                {pendingCount > 0 && (
+                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-yellow-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                    <p className="text-xs text-gray-500 font-medium mb-0.5">Pending</p>
+                    <p className="text-xl font-bold text-gray-900">{pendingCount}</p>
+                  </div>
+                )}
+                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-blue-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                  <p className="text-xs text-gray-500 font-medium mb-0.5">Drivers</p>
+                  <p className="text-xl font-bold text-gray-900">{driverCount}</p>
+                </div>
+                {mechanicCount > 0 && (
+                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-purple-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                    <p className="text-xs text-gray-500 font-medium mb-0.5">Mechanics</p>
+                    <p className="text-xl font-bold text-gray-900">{mechanicCount}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Toolbar: Compact and Intuitive */}
+              <div className="flex flex-col lg:flex-row gap-2.5 items-stretch lg:items-center">
+                {/* Left: Filters & Search Group */}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="relative flex-shrink-0">
+                    <DriverFilters drivers={drivers} filters={filters} onFiltersChange={setFilters} />
+                  </div>
+                  <div className="flex-1 min-w-0 relative">
+                    <div className="input-group">
+                      <span className="input-group-icon input-group-icon-left">
+                        <Search className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
+                      </span>
+                      <input
+                        type="text"
+                        placeholder="Search members..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="input input-with-icon-left pr-10 text-sm"
+                      />
+                      {searchTerm && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchTerm("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 hover:scale-110 rounded transition-all duration-200"
+                          title="Clear search"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: View Controls & Actions Group */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {/* Sort - Compact Icon Button with Dropdown */}
+                  <div className="relative">
                     <button
-                      type="button"
-                      onClick={() => setSearchTerm("")}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                      className="p-2 rounded-lg border border-gray-300 bg-white hover:border-primary-400 hover:bg-primary-50 transition-all duration-200 hover:scale-105 group"
+                      title={`Sort by ${sortBy.replace(/([A-Z])/g, " $1").trim()}`}
+                      onMouseEnter={(e) => {
+                        const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (dropdown) {
+                          dropdown.classList.remove("opacity-0", "invisible");
+                          dropdown.classList.add("opacity-100", "visible");
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (dropdown) {
+                          setTimeout(() => {
+                            if (!dropdown.matches(":hover")) {
+                              dropdown.classList.add("opacity-0", "invisible");
+                              dropdown.classList.remove("opacity-100", "visible");
+                            }
+                          }, 100);
+                        }
+                      }}
                     >
-                      <X className="h-4 w-4" />
+                      <ArrowUpDown className="h-4 w-4 text-gray-600 group-hover:text-primary-600 transition-all duration-200 group-hover:scale-110" />
+                    </button>
+                    <div
+                      className="absolute right-0 top-full mt-1 opacity-0 invisible transition-all duration-200 z-50"
+                      onMouseEnter={(e) => {
+                        e.currentTarget.classList.remove("opacity-0", "invisible");
+                        e.currentTarget.classList.add("opacity-100", "visible");
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.classList.add("opacity-0", "invisible");
+                        e.currentTarget.classList.remove("opacity-100", "visible");
+                      }}
+                    >
+                      <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-2 min-w-[160px]">
+                        <select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value as any)}
+                          className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 mb-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <option value="name">Sort by Name</option>
+                          <option value="role">Sort by Role</option>
+                          <option value="email">Sort by Email</option>
+                          <option value="phone">Sort by Phone</option>
+                          <option value="createdAt">Sort by Join Date</option>
+                        </select>
+                        <button
+                          onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                          className="w-full px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded flex items-center justify-between transition-colors"
+                          title={sortOrder === "asc" ? "Ascending" : "Descending"}
+                        >
+                          <span>Order: {sortOrder === "asc" ? "Asc" : "Desc"}</span>
+                          <span className="text-base">{sortOrder === "asc" ? "↑" : "↓"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Group - Compact Icon Button with Dropdown */}
+                  <div className="relative">
+                    <button
+                      className={`p-2 rounded-lg border transition-all duration-200 hover:scale-105 group ${
+                        groupBy !== "none"
+                          ? "border-primary-400 bg-primary-50 text-primary-600"
+                          : "border-gray-300 bg-white text-gray-600 hover:border-primary-400 hover:bg-primary-50"
+                      }`}
+                      title={groupBy !== "none" ? `Grouped by ${groupBy}` : "Group members"}
+                      onMouseEnter={(e) => {
+                        const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (dropdown) {
+                          dropdown.classList.remove("opacity-0", "invisible");
+                          dropdown.classList.add("opacity-100", "visible");
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (dropdown) {
+                          setTimeout(() => {
+                            if (!dropdown.matches(":hover")) {
+                              dropdown.classList.add("opacity-0", "invisible");
+                              dropdown.classList.remove("opacity-100", "visible");
+                            }
+                          }, 100);
+                        }
+                      }}
+                    >
+                      <Layers className="h-4 w-4 transition-all duration-200 group-hover:scale-110" />
+                    </button>
+                    <div
+                      className="absolute right-0 top-full mt-1 opacity-0 invisible transition-all duration-200 z-50"
+                      onMouseEnter={(e) => {
+                        e.currentTarget.classList.remove("opacity-0", "invisible");
+                        e.currentTarget.classList.add("opacity-100", "visible");
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.classList.add("opacity-0", "invisible");
+                        e.currentTarget.classList.remove("opacity-100", "visible");
+                      }}
+                    >
+                      <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-2 min-w-[180px]">
+                        <select
+                          value={groupBy}
+                          onChange={(e) => setGroupBy(e.target.value as any)}
+                          className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-primary-200"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <option value="none">No Grouping</option>
+                          <option value="role">Group by Role</option>
+                          <option value="approval_status">Group by Status</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* View Mode Toggle - Compact */}
+                  <div className="flex items-center gap-0.5 p-0.5 bg-gray-100 rounded-lg border border-gray-200">
+                    <button
+                      onClick={() => handleViewModeChange("grid")}
+                      className={`p-1.5 rounded-md transition-all duration-200 hover:scale-110 ${
+                        viewMode === "grid" ? "bg-white text-primary-600 shadow-sm scale-105" : "text-gray-600 hover:text-gray-900"
+                      }`}
+                      aria-label="Grid view"
+                      title="Grid view"
+                    >
+                      <Grid3x3 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleViewModeChange("list")}
+                      className={`p-1.5 rounded-md transition-all duration-200 hover:scale-110 ${
+                        viewMode === "list" ? "bg-white text-primary-600 shadow-sm scale-105" : "text-gray-600 hover:text-gray-900"
+                      }`}
+                      aria-label="List view"
+                      title="List view"
+                    >
+                      <List className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="w-px h-6 bg-gray-300 mx-0.5" />
+
+                  {/* Column Config (list view only) */}
+                  {viewMode === "list" && (
+                    <button
+                      onClick={() => setShowColumnConfig(true)}
+                      className="p-2 rounded-lg border border-gray-300 bg-white hover:border-primary-400 hover:bg-primary-50 transition-all duration-200 hover:scale-105"
+                      title="Configure columns"
+                    >
+                      <Settings className="h-4 w-4 text-gray-600 hover:text-primary-600 transition-all duration-200 hover:scale-110" />
                     </button>
                   )}
+
+                  {/* Export - Compact Icon Button */}
+                  <button
+                    onClick={() => exportDrivers(filteredDrivers)}
+                    disabled={filteredDrivers.length === 0}
+                    className="p-2 rounded-lg border border-gray-300 bg-white hover:border-primary-400 hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
+                    title="Export to CSV"
+                  >
+                    <Download className="h-4 w-4 text-gray-600 hover:text-primary-600 transition-all duration-200 hover:scale-110" />
+                  </button>
+
+                  {/* Add Member - Primary Action */}
+                  <button
+                    onClick={() => setShowAddMemberModal(true)}
+                    className="px-3 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md flex items-center gap-1.5"
+                    title="Add new member"
+                  >
+                    <Plus className="h-4 w-4 transition-transform duration-200 hover:scale-110" />
+                    <span className="text-sm font-medium hidden sm:inline">Add</span>
+                  </button>
                 </div>
               </div>
-              {searchTerm && (
-                <div className="text-sm text-gray-600">
-                  {filteredDrivers.length} {filteredDrivers.length === 1 ? "member" : "members"} found
+
+              {/* Results Count - Compact */}
+              {(searchTerm ||
+                filters.role !== "all" ||
+                filters.approval_status !== "all" ||
+                filters.has_phone !== "all" ||
+                filters.has_certification !== "all" ||
+                filters.has_vehicle !== "all") && (
+                <div className="text-xs text-gray-500 font-medium px-1">
+                  Showing <span className="text-primary-600 font-semibold">{filteredDrivers.length}</span>{" "}
+                  {filteredDrivers.length === 1 ? "member" : "members"}
                 </div>
               )}
             </div>
@@ -480,10 +947,119 @@ export default function DriversPage() {
             {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">{error}</div>}
 
             {loading ? (
-              <div className="p-8 text-center text-gray-600">Loading drivers...</div>
+              <div className="p-8 text-center text-gray-600">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                Loading members...
+              </div>
             ) : (
               <>
-                {viewMode === "grid" ? (
+                {groupBy !== "none" ? (
+                  // Grouped View
+                  <div className="space-y-6">
+                    {Object.entries(groupedDrivers).map(([groupName, groupDrivers]) => (
+                      <div key={groupName} className="space-y-3">
+                        <div className="flex items-center justify-between px-4 py-2 bg-gray-100 rounded-lg border border-gray-200">
+                          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+                            {groupName} <span className="text-gray-500 font-normal">({groupDrivers.length})</span>
+                          </h3>
+                        </div>
+                        {viewMode === "grid" ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {groupDrivers.map((driver, i) => (
+                              <motion.div
+                                key={driver.id}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.2, delay: i * 0.05 }}
+                                onClick={() => setSelectedDriver(driver)}
+                                className="card-surface rounded-xl p-6 hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                              >
+                                <div className="flex items-center justify-between mb-4">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="bg-primary-100 p-3 rounded-full">
+                                      <Users className="h-6 w-6 text-primary-600" />
+                                    </div>
+                                    <div>
+                                      <h3 className="text-lg font-semibold text-gray-900">{driver.name}</h3>
+                                      {driver.role && (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-1">
+                                          {driver.role.charAt(0).toUpperCase() + driver.role.slice(1)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2 mb-4">
+                                  <div className="flex items-center text-sm text-gray-600">
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    {driver.email}
+                                  </div>
+                                  {driver.phone && (
+                                    <div className="flex items-center text-sm text-gray-600">
+                                      <Phone className="h-4 w-4 mr-2" />
+                                      {driver.phone}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                                  <div className="text-sm text-gray-500">Joined {new Date(driver.createdAt).toLocaleDateString()}</div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedDriver(driver);
+                                    }}
+                                    className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                                  >
+                                    View Details
+                                  </button>
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="card-surface rounded-xl border border-gray-200 overflow-hidden">
+                            <div className="divide-y divide-gray-100">
+                              {groupDrivers.map((driver, i) => (
+                                <motion.div
+                                  key={driver.id}
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ duration: 0.2, delay: i * 0.02 }}
+                                  onClick={() => setSelectedDriver(driver)}
+                                  className="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer group"
+                                >
+                                  <div className="hidden lg:flex items-center gap-3">
+                                    {visibleColumns.map((column) => (
+                                      <div key={column.id} className={column.width || "w-auto"}>
+                                        {renderCell(column, driver)}
+                                      </div>
+                                    ))}
+                                    <div className="w-16 text-right">
+                                      <button
+                                        className="text-primary-600 hover:text-primary-700 text-sm font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedDriver(driver);
+                                        }}
+                                      >
+                                        View
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : viewMode === "grid" ? (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {paginatedDrivers.map((driver) => (
@@ -561,52 +1137,41 @@ export default function DriversPage() {
                   </>
                 ) : (
                   <>
-                    <motion.div layout className="space-y-3">
-                      <AnimatePresence>
-                        {paginatedDrivers.map((driver, i) => (
-                          <motion.div
-                            key={driver.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.2, delay: i * 0.03 }}
-                            onClick={() => setSelectedDriver(driver)}
-                            className="card-surface rounded-xl p-4 hover:shadow-lg transition-all duration-300 border border-gray-200/60 group cursor-pointer"
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="bg-gradient-to-br from-primary-500 to-primary-600 p-3 rounded-lg shadow-sm flex-shrink-0">
-                                <Users className="h-5 w-5 text-white" />
-                              </div>
-                              <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-                                <div className="md:col-span-2">
-                                  <h3 className="text-base font-bold text-gray-900 mb-1 group-hover:text-primary-700 transition-colors">
-                                    {driver.name}
-                                  </h3>
-                                  {driver.role && (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                      {driver.role.charAt(0).toUpperCase() + driver.role.slice(1)}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Mail className="h-4 w-4 text-gray-400" />
-                                  <span className="text-gray-700 truncate max-w-[200px]" title={driver.email}>
-                                    {driver.email}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                  {driver.phone ? (
-                                    <>
-                                      <Phone className="h-4 w-4 text-gray-400" />
-                                      <span className="text-gray-700">{driver.phone}</span>
-                                    </>
-                                  ) : (
-                                    <span className="text-gray-400">No phone</span>
-                                  )}
-                                </div>
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="text-xs text-gray-500">{new Date(driver.createdAt).toLocaleDateString()}</span>
+                    <div className="card-surface rounded-xl border border-gray-200 overflow-hidden">
+                      {/* Table Header */}
+                      <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 hidden lg:block">
+                        <div className="flex items-center gap-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          {visibleColumns.map((column) => (
+                            <div key={column.id} className={column.width || "w-auto"}>
+                              {column.label}
+                            </div>
+                          ))}
+                          <div className="w-16"></div>
+                        </div>
+                      </div>
+                      {/* Table Body */}
+                      <div className="divide-y divide-gray-100">
+                        <AnimatePresence>
+                          {paginatedDrivers.map((driver, i) => (
+                            <motion.div
+                              key={driver.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.2, delay: i * 0.02 }}
+                              onClick={() => setSelectedDriver(driver)}
+                              className="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer group"
+                            >
+                              {/* Desktop View */}
+                              <div className="hidden lg:flex items-center gap-3">
+                                {visibleColumns.map((column) => (
+                                  <div key={column.id} className={column.width || "w-auto"}>
+                                    {renderCell(column, driver)}
+                                  </div>
+                                ))}
+                                {/* Action */}
+                                <div className="w-16 text-right">
                                   <button
-                                    className="text-primary-600 hover:text-primary-700 text-sm font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="text-primary-600 hover:text-primary-700 text-sm font-semibold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setSelectedDriver(driver);
@@ -619,29 +1184,60 @@ export default function DriversPage() {
                                   </button>
                                 </div>
                               </div>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
-                      {paginatedDrivers.length === 0 && (
+
+                              {/* Mobile/Tablet View */}
+                              <div className="lg:hidden flex items-center gap-3">
+                                <div className="bg-gradient-to-br from-primary-500 to-primary-600 p-2.5 rounded-lg flex-shrink-0">
+                                  <Users className="h-5 w-5 text-white" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="text-sm font-semibold text-gray-900 truncate">{driver.name}</h3>
+                                    {driver.role && (
+                                      <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                        {driver.role.charAt(0).toUpperCase() + driver.role.slice(1)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-1 flex-wrap">
+                                    <span className="flex items-center gap-1">
+                                      <Mail className="h-3 w-3" />
+                                      {driver.email}
+                                    </span>
+                                    {driver.phone && (
+                                      <span className="flex items-center gap-1">
+                                        <Phone className="h-3 w-3" />
+                                        {driver.phone}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                      {filteredDrivers.length === 0 && (
                         <div className="p-6 text-center text-gray-500">
                           {searchTerm ? `No team members found matching "${searchTerm}".` : "No team members found."}
                         </div>
                       )}
-                    </motion.div>
-                    {/* Pagination */}
-                    {filteredDrivers.length > 0 && (
-                      <div className="pt-4 border-t border-gray-200">
-                        <Pagination
-                          currentPage={currentPage}
-                          totalPages={totalPages}
-                          onPageChange={setCurrentPage}
-                          itemsPerPage={itemsPerPage}
-                          totalItems={filteredDrivers.length}
-                          onItemsPerPageChange={handleItemsPerPageChange}
-                          itemName="drivers"
-                        />
-                      </div>
+                    </div>
+
+                    {/* Pagination - Only show when not grouped */}
+                    {filteredDrivers.length > 0 && groupBy === "none" && (
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        itemsPerPage={itemsPerPage}
+                        totalItems={filteredDrivers.length}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                        itemName="drivers"
+                      />
                     )}
                   </>
                 )}
@@ -853,11 +1449,11 @@ export default function DriversPage() {
                         >
                           <span className={memberFormData.vehicleId ? "text-gray-900 font-medium" : "text-gray-500"}>
                             {memberFormData.vehicleId
-                              ? filteredMemberVehicles.find((v) => v.id === memberFormData.vehicleId)?.make +
+                              ? allVehicles.find((v) => v.id === memberFormData.vehicleId)?.make +
                                 " " +
-                                filteredMemberVehicles.find((v) => v.id === memberFormData.vehicleId)?.model +
+                                allVehicles.find((v) => v.id === memberFormData.vehicleId)?.model +
                                 " (" +
-                                filteredMemberVehicles.find((v) => v.id === memberFormData.vehicleId)?.licensePlate +
+                                allVehicles.find((v) => v.id === memberFormData.vehicleId)?.licensePlate +
                                 ")"
                               : "Select a vehicle (optional)"}
                           </span>
@@ -945,9 +1541,7 @@ export default function DriversPage() {
                           )}
                         </AnimatePresence>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Only unassigned vehicles are shown. You can assign a vehicle after creation if needed.
-                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Only unassigned vehicles are shown. You can assign a vehicle after creation if needed.</p>
                     </label>
                   </div>
 
@@ -1049,11 +1643,7 @@ export default function DriversPage() {
                     <div className="space-y-4">
                       <label className="space-y-1.5 block">
                         <span className="text-sm font-semibold text-gray-700">Name</span>
-                        <input
-                          className="input-field w-full"
-                          value={editForm.name || ""}
-                          onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                        />
+                        <input className="input-field w-full" value={editForm.name || ""} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
                       </label>
                     </div>
                   )}
@@ -1439,6 +2029,9 @@ export default function DriversPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Column Configuration Modal */}
+      <DriverColumnConfigModal isOpen={showColumnConfig} onClose={() => setShowColumnConfig(false)} columns={columns} onColumnsChange={setColumns} />
     </div>
   );
 }

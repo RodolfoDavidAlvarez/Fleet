@@ -605,175 +605,261 @@ export default function VehiclesPage() {
                 <p className="text-gray-600 text-sm">Manage your fleet vehicles and their status.</p>
               </div>
 
-              {/* Stats Cards Row */}
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="card-surface px-4 py-2.5 rounded-lg text-sm border-l-4 border-green-500">
-                  <p className="text-xs text-gray-500 font-medium">Operational</p>
+              {/* Stats Cards Row - Compact */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-green-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                  <p className="text-xs text-gray-500 font-medium mb-0.5">Operational</p>
                   <p className="text-xl font-bold text-gray-900">{activeCount}</p>
                 </div>
-                <div className="card-surface px-4 py-2.5 rounded-lg text-sm border-l-4 border-yellow-500">
-                  <p className="text-xs text-gray-500 font-medium">In Service</p>
+                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-yellow-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                  <p className="text-xs text-gray-500 font-medium mb-0.5">In Service</p>
                   <p className="text-xl font-bold text-gray-900">{inServiceCount}</p>
                 </div>
                 {forSaleCount > 0 && (
-                  <div className="card-surface p-3 rounded-xl text-sm border-l-4 border-purple-500">
-                    <p className="text-xs text-gray-500">For Sale</p>
+                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-purple-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                    <p className="text-xs text-gray-500 font-medium mb-0.5">For Sale</p>
                     <p className="text-lg font-semibold text-gray-900">{forSaleCount}</p>
                   </div>
                 )}
                 {idleCount > 0 && (
-                  <div className="card-surface p-3 rounded-xl text-sm border-l-4 border-orange-500">
-                    <p className="text-xs text-gray-500">Idle</p>
+                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-orange-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                    <p className="text-xs text-gray-500 font-medium mb-0.5">Idle</p>
                     <p className="text-lg font-semibold text-gray-900">{idleCount}</p>
                   </div>
                 )}
                 {brokenDownCount > 0 && (
-                  <div className="card-surface px-4 py-2.5 rounded-lg text-sm border-l-4 border-red-500">
-                    <p className="text-xs text-gray-500 font-medium">Broken Down</p>
+                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-red-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                    <p className="text-xs text-gray-500 font-medium mb-0.5">Broken Down</p>
                     <p className="text-xl font-bold text-gray-900">{brokenDownCount}</p>
                   </div>
                 )}
               </div>
 
-              {/* Toolbar: Filters, Search, Actions */}
-              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                {/* Left: Filters Button */}
-                <div className="relative">
-                  <VehicleFilters vehicles={vehicles} filters={filters} onFiltersChange={setFilters} />
-                </div>
-
-                {/* Center: Search Bar */}
-                <div className="flex-1 max-w-md relative">
-                  <div className="input-group">
-                    <span className="input-group-icon input-group-icon-left">
-                      <Search className="h-4 w-4" />
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Search vehicles, VIN, license plate, driver..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="input input-with-icon-left pr-12"
-                    />
-                    {searchTerm && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchTerm("")}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-700 transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
+              {/* Toolbar: Compact and Intuitive */}
+              <div className="flex flex-col lg:flex-row gap-2.5 items-stretch lg:items-center">
+                {/* Left: Filters & Search Group */}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="relative flex-shrink-0">
+                    <VehicleFilters vehicles={vehicles} filters={filters} onFiltersChange={setFilters} />
+                  </div>
+                  <div className="flex-1 min-w-0 relative">
+                    <div className="input-group">
+                      <span className="input-group-icon input-group-icon-left">
+                        <Search className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
+                      </span>
+                      <input
+                        type="text"
+                        placeholder="Search vehicles..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="input input-with-icon-left pr-10 text-sm"
+                      />
+                      {searchTerm && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchTerm("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 hover:scale-110 rounded transition-all duration-200"
+                          title="Clear search"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Right: Sort, Group, View Toggle, Export, Add */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Sort Control */}
-                  <div className="flex items-center gap-2">
-                    <ArrowUpDown className="h-4 w-4 text-gray-500" />
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value as any)}
-                      className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-200"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <option value="make">Sort by Make</option>
-                      <option value="year">Sort by Year</option>
-                      <option value="status">Sort by Status</option>
-                      <option value="vehicleType">Sort by Type</option>
-                      <option value="department">Sort by Department</option>
-                      <option value="mileage">Sort by Mileage</option>
-                      <option value="lastUsedDate">Sort by Last Used</option>
-                    </select>
+                {/* Right: View Controls & Actions Group */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {/* Sort - Compact Icon Button with Dropdown */}
+                  <div className="relative">
                     <button
-                      onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                      className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
-                      title={sortOrder === "asc" ? "Ascending" : "Descending"}
+                      className="p-2 rounded-lg border border-gray-300 bg-white hover:border-primary-400 hover:bg-primary-50 transition-all duration-200 hover:scale-105 group"
+                      title={`Sort by ${sortBy.replace(/([A-Z])/g, " $1").trim()}`}
+                      onMouseEnter={(e) => {
+                        const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (dropdown) {
+                          dropdown.classList.remove("opacity-0", "invisible");
+                          dropdown.classList.add("opacity-100", "visible");
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (dropdown) {
+                          setTimeout(() => {
+                            if (!dropdown.matches(":hover")) {
+                              dropdown.classList.add("opacity-0", "invisible");
+                              dropdown.classList.remove("opacity-100", "visible");
+                            }
+                          }, 100);
+                        }
+                      }}
                     >
-                      {sortOrder === "asc" ? "↑" : "↓"}
+                      <ArrowUpDown className="h-4 w-4 text-gray-600 group-hover:text-primary-600 transition-all duration-200 group-hover:scale-110" />
                     </button>
-                  </div>
-
-                  {/* Group Control */}
-                  <div className="flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-gray-500" />
-                    <select
-                      value={groupBy}
-                      onChange={(e) => setGroupBy(e.target.value as any)}
-                      className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-200"
-                      onClick={(e) => e.stopPropagation()}
+                    <div
+                      className="absolute right-0 top-full mt-1 opacity-0 invisible transition-all duration-200 z-50"
+                      onMouseEnter={(e) => {
+                        e.currentTarget.classList.remove("opacity-0", "invisible");
+                        e.currentTarget.classList.add("opacity-100", "visible");
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.classList.add("opacity-0", "invisible");
+                        e.currentTarget.classList.remove("opacity-100", "visible");
+                      }}
                     >
-                      <option value="none">No Grouping</option>
-                      <option value="status">Group by Status</option>
-                      <option value="vehicleType">Group by Type</option>
-                      <option value="department">Group by Department</option>
-                    </select>
+                      <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-2 min-w-[160px]">
+                        <select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value as any)}
+                          className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 mb-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <option value="make">Sort by Make</option>
+                          <option value="year">Sort by Year</option>
+                          <option value="status">Sort by Status</option>
+                          <option value="vehicleType">Sort by Type</option>
+                          <option value="department">Sort by Department</option>
+                          <option value="mileage">Sort by Mileage</option>
+                          <option value="lastUsedDate">Sort by Last Used</option>
+                        </select>
+                        <button
+                          onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                          className="w-full px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded flex items-center justify-between transition-colors"
+                          title={sortOrder === "asc" ? "Ascending" : "Descending"}
+                        >
+                          <span>Order: {sortOrder === "asc" ? "Asc" : "Desc"}</span>
+                          <span className="text-base">{sortOrder === "asc" ? "↑" : "↓"}</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* View Mode Toggle */}
-                  <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg border border-gray-200">
+                  {/* Group - Compact Icon Button with Dropdown */}
+                  <div className="relative">
+                    <button
+                      className={`p-2 rounded-lg border transition-all duration-200 hover:scale-105 group ${
+                        groupBy !== "none"
+                          ? "border-primary-400 bg-primary-50 text-primary-600"
+                          : "border-gray-300 bg-white text-gray-600 hover:border-primary-400 hover:bg-primary-50"
+                      }`}
+                      title={groupBy !== "none" ? `Grouped by ${groupBy}` : "Group vehicles"}
+                      onMouseEnter={(e) => {
+                        const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (dropdown) {
+                          dropdown.classList.remove("opacity-0", "invisible");
+                          dropdown.classList.add("opacity-100", "visible");
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (dropdown) {
+                          setTimeout(() => {
+                            if (!dropdown.matches(":hover")) {
+                              dropdown.classList.add("opacity-0", "invisible");
+                              dropdown.classList.remove("opacity-100", "visible");
+                            }
+                          }, 100);
+                        }
+                      }}
+                    >
+                      <Layers className="h-4 w-4 transition-all duration-200 group-hover:scale-110" />
+                    </button>
+                    <div
+                      className="absolute right-0 top-full mt-1 opacity-0 invisible transition-all duration-200 z-50"
+                      onMouseEnter={(e) => {
+                        e.currentTarget.classList.remove("opacity-0", "invisible");
+                        e.currentTarget.classList.add("opacity-100", "visible");
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.classList.add("opacity-0", "invisible");
+                        e.currentTarget.classList.remove("opacity-100", "visible");
+                      }}
+                    >
+                      <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-2 min-w-[140px]">
+                        <select
+                          value={groupBy}
+                          onChange={(e) => setGroupBy(e.target.value as any)}
+                          className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-primary-200"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <option value="none">No Grouping</option>
+                          <option value="status">Group by Status</option>
+                          <option value="vehicleType">Group by Type</option>
+                          <option value="department">Group by Department</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* View Mode Toggle - Compact */}
+                  <div className="flex items-center gap-0.5 p-0.5 bg-gray-100 rounded-lg border border-gray-200">
                     <button
                       onClick={() => handleViewModeChange("grid")}
-                      className={`p-2 rounded-md transition-all ${
-                        viewMode === "grid" ? "bg-white text-primary-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                      className={`p-1.5 rounded-md transition-all duration-200 hover:scale-110 ${
+                        viewMode === "grid" ? "bg-white text-primary-600 shadow-sm scale-105" : "text-gray-600 hover:text-gray-900"
                       }`}
                       aria-label="Grid view"
+                      title="Grid view"
                     >
-                      <Grid3x3 className="h-4 w-4" />
+                      <Grid3x3 className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => handleViewModeChange("list")}
-                      className={`p-2 rounded-md transition-all ${
-                        viewMode === "list" ? "bg-white text-primary-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                      className={`p-1.5 rounded-md transition-all duration-200 hover:scale-110 ${
+                        viewMode === "list" ? "bg-white text-primary-600 shadow-sm scale-105" : "text-gray-600 hover:text-gray-900"
                       }`}
                       aria-label="List view"
+                      title="List view"
                     >
-                      <List className="h-4 w-4" />
+                      <List className="h-3.5 w-3.5" />
                     </button>
                   </div>
 
-                  {/* Column Configuration Button (only in list view) */}
+                  {/* Divider */}
+                  <div className="w-px h-6 bg-gray-300 mx-0.5" />
+
+                  {/* Column Config (list view only) */}
                   {viewMode === "list" && (
                     <button
                       onClick={() => setShowColumnConfig(true)}
-                      className="btn btn-secondary flex items-center gap-2 px-4 py-2.5"
+                      className="p-2 rounded-lg border border-gray-300 bg-white hover:border-primary-400 hover:bg-primary-50 transition-all duration-200 hover:scale-105"
                       title="Configure columns"
                     >
-                      <Settings className="h-4 w-4" />
-                      <span className="hidden sm:inline">Columns</span>
+                      <Settings className="h-4 w-4 text-gray-600 hover:text-primary-600 transition-all duration-200 hover:scale-110" />
                     </button>
                   )}
 
-                  {/* Export Button */}
+                  {/* Export - Compact Icon Button */}
                   <button
                     onClick={() => exportVehicles(filteredVehicles)}
-                    className="btn btn-secondary flex items-center gap-2 px-4 py-2.5"
                     disabled={filteredVehicles.length === 0}
+                    className="p-2 rounded-lg border border-gray-300 bg-white hover:border-primary-400 hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
+                    title="Export to CSV"
                   >
-                    <Download className="h-4 w-4" />
-                    <span className="hidden sm:inline">Export CSV</span>
-                    <span className="sm:hidden">Export</span>
+                    <Download className="h-4 w-4 text-gray-600 hover:text-primary-600 transition-all duration-200 hover:scale-110" />
                   </button>
 
-                  {/* Add Vehicle Button */}
-                  <button onClick={() => setShowAddModal(true)} className="btn btn-primary flex items-center gap-2 px-4 py-2.5">
-                    <Plus className="h-5 w-5" />
-                    <span className="hidden sm:inline">Add Vehicle</span>
-                    <span className="sm:hidden">Add</span>
+                  {/* Add Vehicle - Primary Action */}
+                  <button
+                    onClick={() => setShowAddModal(true)}
+                    className="px-3 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md flex items-center gap-1.5"
+                    title="Add new vehicle"
+                  >
+                    <Plus className="h-4 w-4 transition-transform duration-200 hover:scale-110" />
+                    <span className="text-sm font-medium hidden sm:inline">Add</span>
                   </button>
                 </div>
               </div>
 
-              {/* Results Count */}
+              {/* Results Count - Compact */}
               {(searchTerm ||
                 filters.status !== "all" ||
                 filters.department !== "all" ||
                 filters.vehicleType !== "all" ||
                 filters.usageCategory !== "all" ||
                 filters.daysSinceLastUse !== "all") && (
-                <div className="text-sm text-gray-600 font-medium">
-                  Showing <span className="text-primary-600 font-bold">{filteredVehicles.length}</span>{" "}
+                <div className="text-xs text-gray-500 font-medium px-1">
+                  Showing <span className="text-primary-600 font-semibold">{filteredVehicles.length}</span>{" "}
                   {filteredVehicles.length === 1 ? "vehicle" : "vehicles"}
                 </div>
               )}
