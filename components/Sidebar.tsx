@@ -34,7 +34,6 @@ const unifiedLinks = [
   { href: '/admin/bookings', label: 'Bookings', icon: Calendar },
   { href: '/service-records', label: 'Service Records', icon: FileText },
   { href: '/admin/drivers', label: 'Drivers', icon: Users },
-  { href: '/mechanic/schedule', label: 'Schedule', icon: Calendar },
 ]
 
 const mechanicOnlyLinks = [
