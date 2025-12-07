@@ -65,22 +65,43 @@ function LoadingScreen({ isExiting }: { isExiting: boolean }) {
       }`}
     >
       <div className="flex flex-col items-center gap-8 animate-fade-in-up">
-        {/* Logo - appears immediately */}
+        {/* Logo with epic spinning effects */}
         <div className="relative">
-          {/* Outer spinning ring - starts slow, speeds up */}
-          <div className="absolute -inset-8 flex items-center justify-center">
-            <div className="w-48 h-48 border-4 border-indigo-100 rounded-full"></div>
-            <div className="absolute w-48 h-48 border-4 border-transparent border-t-indigo-600 border-r-purple-600 rounded-full animate-spin-accelerate"></div>
+          {/* Outermost orbital ring with gradient */}
+          <div className="absolute -inset-12 flex items-center justify-center">
+            <div className="w-56 h-56 rounded-full bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10"></div>
+            <div className="absolute w-56 h-56 rounded-full border-4 border-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-spin-accelerate" style={{
+              maskImage: 'linear-gradient(to right, transparent 0%, black 25%, black 75%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 25%, black 75%, transparent 100%)'
+            }}></div>
           </div>
 
-          {/* Middle ring - accelerating reverse */}
+          {/* Outer spinning ring with dots */}
+          <div className="absolute -inset-8 flex items-center justify-center">
+            <div className="w-48 h-48 rounded-full border-2 border-dashed border-indigo-200 animate-spin-slow"></div>
+            {/* Spinning orb on the outer ring */}
+            <div className="absolute w-48 h-48 animate-spin-accelerate">
+              <div className="absolute top-0 left-1/2 -ml-2 -mt-2 w-4 h-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full shadow-lg shadow-indigo-500/50"></div>
+            </div>
+          </div>
+
+          {/* Middle ring - solid gradient spin */}
           <div className="absolute -inset-6 flex items-center justify-center">
-            <div className="w-40 h-40 border-2 border-purple-100 rounded-full"></div>
-            <div className="absolute w-40 h-40 border-2 border-transparent border-b-purple-500 border-l-pink-500 rounded-full animate-spin-accelerate-reverse"></div>
+            <div className="w-40 h-40 rounded-full border-[3px] border-purple-100"></div>
+            <div className="absolute w-40 h-40 rounded-full border-[3px] border-transparent border-t-purple-500 border-r-pink-500 animate-spin-accelerate-reverse shadow-lg"></div>
+            {/* Counter-spinning orb */}
+            <div className="absolute w-40 h-40 animate-spin-accelerate-reverse" style={{ animationDirection: 'reverse' }}>
+              <div className="absolute bottom-0 left-1/2 -ml-1.5 -mb-1.5 w-3 h-3 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full shadow-md shadow-pink-500/50"></div>
+            </div>
+          </div>
+
+          {/* Inner glowing ring */}
+          <div className="absolute -inset-3 flex items-center justify-center">
+            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-400/20 to-purple-400/20 animate-pulse-glow blur-sm"></div>
           </div>
 
           {/* Better Systems AI Logo - sharp and clear */}
-          <div className="relative w-32 h-32 flex items-center justify-center bg-white rounded-full shadow-2xl ring-4 ring-indigo-100">
+          <div className="relative w-32 h-32 flex items-center justify-center bg-white rounded-full shadow-2xl ring-2 ring-indigo-100/50 backdrop-blur-sm">
             <img
               src="/better-systems-ai-logo.png"
               alt="Better Systems AI"
@@ -89,8 +110,22 @@ function LoadingScreen({ isExiting }: { isExiting: boolean }) {
             />
           </div>
 
-          {/* Glowing pulse effect */}
-          <div className="absolute inset-0 w-32 h-32 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full animate-pulse-glow"></div>
+          {/* Particle effects around logo */}
+          <div className="absolute -inset-10 pointer-events-none">
+            {[...Array(8)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-1 h-1 bg-indigo-400 rounded-full animate-particle-float"
+                style={{
+                  top: '50%',
+                  left: '50%',
+                  transform: `rotate(${i * 45}deg) translateY(-80px)`,
+                  animationDelay: `${i * 0.2}s`,
+                  opacity: 0.6,
+                }}
+              ></div>
+            ))}
+          </div>
         </div>
 
         {/* Loading text */}
