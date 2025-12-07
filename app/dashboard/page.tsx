@@ -1,66 +1,25 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useMemo, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import DashboardLayout from '@/components/DashboardLayout'
 import QuickActions from '@/components/dashboard/QuickActions'
-import { Car, Calendar, Users, CheckCircle, MessageSquare, Wrench, BarChart3, TrendingUp, AlertTriangle, Clock } from 'lucide-react'
+import { Calendar, CheckCircle, MessageSquare, Wrench, BarChart3, TrendingUp, AlertTriangle } from 'lucide-react'
 import { DashboardStats, RepairRequest } from '@/types'
-import { queryKeys, prefetchQueries } from '@/lib/query-client'
+import { queryKeys } from '@/lib/query-client'
 import { StatsCardSkeleton, ListSkeleton } from '@/components/ui/loading-optimized'
 import DashboardCharts from '@/components/dashboard/DashboardCharts'
+import { useAuth } from '@/components/providers/AuthProvider'
 
 // Remove local skeletons - using optimized versions from loading-optimized.tsx
 
 export default function UnifiedDashboard() {
-  const router = useRouter()
   const queryClient = useQueryClient()
-  const [user, setUser] = useState<any>(null)
-  const [authReady, setAuthReady] = useState(false)
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth()
 
-  useEffect(() => {
-    const bootstrapUser = async () => {
-      const userData = localStorage.getItem('user')
-      if (userData) {
-        const parsedUser = JSON.parse(userData)
-        if (parsedUser.role !== 'admin' && parsedUser.role !== 'mechanic') {
-          router.push('/login')
-          return
-        }
-        setUser(parsedUser)
-        setAuthReady(true)
-        return
-      }
-
-      try {
-        const res = await fetch('/api/auth/me', { cache: 'no-store' })
-        if (!res.ok) {
-          router.push('/login')
-          return
-        }
-        const { user: profile } = await res.json()
-        if (profile.role !== 'admin' && profile.role !== 'mechanic') {
-          router.push('/login')
-          return
-        }
-        const normalizedUser = {
-          id: profile.id,
-          email: profile.email,
-          role: profile.role,
-          name: profile.name,
-        }
-        localStorage.setItem('user', JSON.stringify(normalizedUser))
-        setUser(normalizedUser)
-        setAuthReady(true)
-      } catch (err) {
-        router.push('/login')
-      }
-    }
-
-    bootstrapUser()
-  }, [router])
+  // Auth is handled by AuthProvider - it will redirect if not authenticated
+  const authReady = isAuthenticated && !!user
 
   // Optimized query functions with better caching
   const statsQuery = useQuery<{ stats: DashboardStats }>({
@@ -186,7 +145,8 @@ export default function UnifiedDashboard() {
     ]).catch(console.warn)
   }, [queryClient])
 
-  if (!authReady || !user) {
+  // Show loading state while auth is being checked
+  if (authLoading || !authReady || !user) {
     return (
       <div className="flex items-center justify-center h-screen bg-[var(--bg-secondary)]">
         <div className="card p-6 flex items-center gap-3">
@@ -244,7 +204,7 @@ export default function UnifiedDashboard() {
   ]
 
   return (
-    <DashboardLayout userName={user.name} userRole={user.role}>
+    <DashboardLayout userName={user.name} userRole={user.role as 'admin' | 'mechanic'}>
       <div className="space-y-8">
         {/* Header Section */}
         <div className="animate-fade-in">

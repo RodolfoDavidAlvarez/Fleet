@@ -3,6 +3,7 @@
 import { Bell, User, Menu, CheckCircle, AlertCircle, Settings, Users, Calendar, LogOut, Edit2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/components/providers/AuthProvider'
 
 interface HeaderProps {
   userName: string
@@ -13,6 +14,7 @@ interface HeaderProps {
 
 export default function Header({ userName, userRole, userEmail, onMenuClick }: HeaderProps) {
   const router = useRouter()
+  const { signOut, user } = useAuth()
   const [showNotifications, setShowNotifications] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
@@ -32,18 +34,27 @@ export default function Header({ userName, userRole, userEmail, onMenuClick }: H
 
   const unreadCount = notifications.filter((n) => n.unread).length
 
-  // Load user data from localStorage on mount
+  // Load user data from auth context or localStorage on mount
   useEffect(() => {
-    const userData = localStorage.getItem('user')
-    if (userData) {
-      const user = JSON.parse(userData)
+    if (user) {
       setProfileData({
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || ''
       })
+    } else {
+      // Fallback to localStorage
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        const parsedUser = JSON.parse(userData)
+        setProfileData({
+          name: parsedUser.name || '',
+          email: parsedUser.email || '',
+          phone: parsedUser.phone || ''
+        })
+      }
     }
-  }, [])
+  }, [user])
 
   const handleNotificationClick = (id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)))
@@ -55,15 +66,8 @@ export default function Header({ userName, userRole, userEmail, onMenuClick }: H
 
   const handleLogout = async () => {
     try {
-      // Call logout API endpoint for proper session cleanup
-      await fetch('/api/auth/logout', { method: 'POST' })
-      
-      // Clear localStorage
-      localStorage.removeItem('user')
-      localStorage.clear()
-      
-      // Force redirect to login
-      window.location.href = '/login'
+      // Use the signOut from AuthProvider - it handles everything
+      await signOut()
     } catch (error) {
       console.error('Logout error:', error)
       // Fallback: still clear storage and redirect

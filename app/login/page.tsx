@@ -3,16 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import Footer from '@/components/Footer'
-import { 
-  Wrench, 
-  Mail, 
-  Lock, 
-  LogIn, 
-  Eye, 
-  EyeOff, 
-  UserPlus, 
+import {
+  Mail,
+  Lock,
+  LogIn,
+  Eye,
+  EyeOff,
   Loader2,
   Navigation,
   Calendar,
@@ -23,18 +20,27 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/toast'
+import { useAuth } from '@/components/providers/AuthProvider'
 
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { showToast } = useToast()
-  
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [attemptCount, setAttemptCount] = useState(0)
+
+  // Redirect to dashboard if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+      router.push('/dashboard')
+    }
+  }, [authLoading, isAuthenticated, user, router])
 
   useEffect(() => {
     try {
@@ -97,21 +103,12 @@ export default function LoginPage() {
         throw new Error('Your account is pending approval. Please contact an administrator.')
       }
 
-      // Store user info in localStorage for legacy compatibility (if needed by other components)
-      // But primarily we rely on cookies now.
-      localStorage.setItem('user', JSON.stringify({
-        id: profile.id,
-        email: profile.email,
-        role: profile.role,
-        name: profile.name || data.user.user_metadata?.name,
-        approval_status: profile.approval_status
-      }))
-
       // Reset attempt counter on success
       setAttemptCount(0)
 
+      // AuthProvider will handle session state and localStorage sync
+      // Just redirect - the auth state change will be picked up automatically
       router.push('/dashboard')
-      // Removed router.refresh() - causes unnecessary Fast Refresh and delays
     } catch (err: any) {
       console.error('Login error:', err)
       setError(err.message || 'Invalid email or password')
