@@ -60,7 +60,7 @@ const dictionary = {
 function TitleScreen({ isExiting }: { isExiting: boolean }) {
   return (
     <div
-      className={`fixed inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 flex items-center justify-center z-50 transition-all duration-400 ${
+      className={`fixed inset-0 bg-white flex items-center justify-center z-50 transition-all duration-400 ${
         isExiting ? 'opacity-0 scale-110' : 'opacity-100 scale-100'
       }`}
     >
@@ -76,18 +76,18 @@ function TitleScreen({ isExiting }: { isExiting: boolean }) {
         </div>
 
         {/* Title */}
-        <h1 className="text-5xl md:text-6xl font-bold text-white opacity-0 animate-fade-in" style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}>
+        <h1 className="text-5xl md:text-6xl font-bold text-gray-900 opacity-0 animate-fade-in" style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}>
           Repair Request
         </h1>
 
         {/* Subtitle */}
-        <p className="text-xl md:text-2xl text-gray-300 opacity-0 animate-fade-in" style={{ animationDelay: '600ms', animationFillMode: 'forwards' }}>
+        <p className="text-xl md:text-2xl text-gray-600 opacity-0 animate-fade-in" style={{ animationDelay: '600ms', animationFillMode: 'forwards' }}>
           Professional Fleet Maintenance
         </p>
 
         {/* Decorative line */}
         <div className="flex justify-center opacity-0 animate-fade-in" style={{ animationDelay: '800ms', animationFillMode: 'forwards' }}>
-          <div className="w-32 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent rounded-full"></div>
+          <div className="w-32 h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent rounded-full"></div>
         </div>
       </div>
     </div>
@@ -255,11 +255,11 @@ export default function RepairRequestPage() {
           setIsLoading(false);
           setShowTitleScreen(true); // Show title screen
 
-          // Stage 2: Show title screen for 800ms, then transition to form
+          // Stage 2: Show title screen for 1300ms, then transition to form
           setTimeout(() => {
             setTitleScreenExiting(true);
             setTimeout(() => setShowTitleScreen(false), 400);
-          }, 800);
+          }, 1300);
         }, 400);
       }, 1500);
     });
