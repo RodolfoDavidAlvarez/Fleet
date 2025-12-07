@@ -37,8 +37,24 @@ export async function GET() {
       advanceBookingUnit: "days",
     };
 
+    // If we have data from database, transform snake_case to camelCase
+    if (data) {
+      return NextResponse.json({
+        settings: {
+          maxBookingsPerWeek: data.max_bookings_per_week ?? defaults.maxBookingsPerWeek,
+          startTime: data.start_time ?? defaults.startTime,
+          endTime: data.end_time ?? defaults.endTime,
+          slotDuration: data.slot_duration ?? defaults.slotDuration,
+          slotBufferTime: data.slot_buffer_time ?? defaults.slotBufferTime,
+          workingDays: data.working_days ?? defaults.workingDays,
+          advanceBookingWindow: data.advance_booking_window ?? defaults.advanceBookingWindow,
+          advanceBookingUnit: data.advance_booking_unit ?? defaults.advanceBookingUnit,
+        },
+      });
+    }
+
     return NextResponse.json({
-      settings: data || defaults,
+      settings: defaults,
     });
   } catch (error) {
     console.error("Error fetching calendar settings:", error);

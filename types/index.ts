@@ -188,6 +188,7 @@ export type RepairRequestStatus = "submitted" | "triaged" | "waiting_booking" | 
 
 export interface RepairRequest {
   id: string;
+  ticketNumber?: string; // Human-friendly ticket number (e.g., RQ-001234)
   driverId?: string;
   driverName: string;
   driverPhone?: string;

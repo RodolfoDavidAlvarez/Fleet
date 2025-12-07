@@ -108,6 +108,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       try {
         smsSuccess = await sendRepairBookingLink(phoneToUse, {
           requestId: existing.id,
+          ticketNumber: existing.ticketNumber,
           link: bookingLink,
           issueSummary: existing.description.slice(0, 120),
           language: existing.preferredLanguage,

@@ -62,6 +62,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       try {
         await sendRepairCompletion(existing.driverPhone, {
           requestId: existing.id,
+          ticketNumber: existing.ticketNumber,
           summary: parsed.data.summary.slice(0, 100),
           language: existing.preferredLanguage,
         });

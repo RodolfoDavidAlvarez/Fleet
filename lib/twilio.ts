@@ -127,20 +127,24 @@ export async function sendRepairSubmissionNotice(
   phone: string,
   details: {
     requestId: string;
+    ticketNumber?: string; // Human-friendly ticket number (e.g., RQ-001234)
     summary: string;
     language?: "en" | "es";
   }
 ): Promise<boolean> {
+  // Use ticketNumber if available, otherwise fall back to requestId
+  const displayId = details.ticketNumber || details.requestId.slice(0, 8).toUpperCase();
   const message =
     details.language === "es"
-      ? `Solicitud de reparación recibida (#${details.requestId}). Su solicitud ha sido enviada y será revisada pronto.`
-      : `Repair request received (#${details.requestId}). Your request has been submitted and will be reviewed soon.`;
+      ? `Solicitud de reparación recibida (${displayId}). Su solicitud ha sido enviada y será revisada pronto.`
+      : `Repair request received (${displayId}). Your request has been submitted and will be reviewed soon.`;
   return sendSMS(phone, message);
 }
 
 export async function notifyAdminOfRepair(
   details: {
     requestId: string;
+    ticketNumber?: string;
     driverName?: string;
     driverPhone?: string;
     urgency?: string;
@@ -152,7 +156,8 @@ export async function notifyAdminOfRepair(
   if (!targetPhone) {
     return false;
   }
-  const message = `New repair request #${details.requestId}\nDriver: ${details.driverName || "Unknown"} (${details.driverPhone || "n/a"})\nUrgency: ${details.urgency || "unspecified"}.`;
+  const displayId = details.ticketNumber || details.requestId.slice(0, 8).toUpperCase();
+  const message = `New repair request ${displayId}\nDriver: ${details.driverName || "Unknown"} (${details.driverPhone || "n/a"})\nUrgency: ${details.urgency || "unspecified"}.`;
   return sendSMS(targetPhone, message);
 }
 
@@ -160,27 +165,30 @@ export async function sendRepairBookingLink(
   phone: string,
   details: {
     requestId: string;
+    ticketNumber?: string;
     link: string;
     issueSummary: string;
     language?: "en" | "es";
     suggestedSlot?: string;
   }
 ) {
+  const displayId = details.ticketNumber || details.requestId.slice(0, 8).toUpperCase();
   const message =
     details.language === "es"
-      ? `Agenda tu reparación (#${details.requestId}): ${details.link}\nMotivo: ${details.issueSummary}${details.suggestedSlot ? `\nSugerencia: ${details.suggestedSlot}` : ""}`
-      : `Book your repair (#${details.requestId}): ${details.link}\nIssue: ${details.issueSummary}${details.suggestedSlot ? `\nSuggested: ${details.suggestedSlot}` : ""}`;
+      ? `Agenda tu reparación (${displayId}): ${details.link}\nMotivo: ${details.issueSummary}${details.suggestedSlot ? `\nSugerencia: ${details.suggestedSlot}` : ""}`
+      : `Book your repair (${displayId}): ${details.link}\nIssue: ${details.issueSummary}${details.suggestedSlot ? `\nSuggested: ${details.suggestedSlot}` : ""}`;
   return sendSMS(phone, message);
 }
 
 export async function sendRepairCompletion(
   phone: string,
-  details: { requestId: string; summary: string; totalCost?: number; language?: "en" | "es" }
+  details: { requestId: string; ticketNumber?: string; summary: string; totalCost?: number; language?: "en" | "es" }
 ) {
+  const displayId = details.ticketNumber || details.requestId.slice(0, 8).toUpperCase();
   const costLine = details.totalCost ? `\nTotal: $${details.totalCost.toFixed(2)}` : "";
   const message =
     details.language === "es"
-      ? `Reparación completada (#${details.requestId}). ${details.summary}${costLine}`
-      : `Repair completed (#${details.requestId}). ${details.summary}${costLine}`;
+      ? `Reparación completada (${displayId}). ${details.summary}${costLine}`
+      : `Repair completed (${displayId}). ${details.summary}${costLine}`;
   return sendSMS(phone, message);
 }

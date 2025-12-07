@@ -106,6 +106,7 @@ function bookingToRow(booking: Partial<Booking>): any {
 function rowToRepairRequest(row: any): RepairRequest {
   return {
     id: row.id,
+    ticketNumber: row.ticket_number, // Human-friendly ticket number (e.g., RQ-001234)
     driverId: row.driver_id,
     driverName: row.driver_name,
     driverPhone: row.driver_phone,
