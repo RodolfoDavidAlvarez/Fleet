@@ -56,6 +56,44 @@ const dictionary = {
   },
 };
 
+// Title Screen Component - shows after loading
+function TitleScreen({ isExiting }: { isExiting: boolean }) {
+  return (
+    <div
+      className={`fixed inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900 flex items-center justify-center z-50 transition-all duration-400 ${
+        isExiting ? 'opacity-0 scale-110' : 'opacity-100 scale-100'
+      }`}
+    >
+      <div className="text-center space-y-6 max-w-4xl px-8 animate-fade-in-up">
+        {/* Agave Logo */}
+        <div className="flex justify-center mb-8">
+          <img
+            src="/images/AEC-Horizontal-Official-Logo-2020.png"
+            alt="Agave Fleet"
+            className="h-24 object-contain opacity-0 animate-fade-in"
+            style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}
+          />
+        </div>
+
+        {/* Title */}
+        <h1 className="text-5xl md:text-6xl font-bold text-white opacity-0 animate-fade-in" style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}>
+          Repair Request
+        </h1>
+
+        {/* Subtitle */}
+        <p className="text-xl md:text-2xl text-gray-300 opacity-0 animate-fade-in" style={{ animationDelay: '600ms', animationFillMode: 'forwards' }}>
+          Professional Fleet Maintenance
+        </p>
+
+        {/* Decorative line */}
+        <div className="flex justify-center opacity-0 animate-fade-in" style={{ animationDelay: '800ms', animationFillMode: 'forwards' }}>
+          <div className="w-32 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent rounded-full"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Loading Screen Component with smooth fade transition
 function LoadingScreen({ isExiting }: { isExiting: boolean }) {
   return (
@@ -180,6 +218,8 @@ const vehicleTypeOptions = [
 export default function RepairRequestPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
+  const [showTitleScreen, setShowTitleScreen] = useState(false);
+  const [titleScreenExiting, setTitleScreenExiting] = useState(false);
   const [language, setLanguage] = useState<"en" | "es">("en");
   const t = useMemo(() => dictionary[language], [language]);
 
@@ -202,16 +242,25 @@ export default function RepairRequestPage() {
   const [submitted, setSubmitted] = useState<RepairRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fast loading optimization with smooth fade-out transition
+  // Multi-stage loading: Loading → Title Screen → Form
   useEffect(() => {
     // Use requestAnimationFrame for optimal performance
     const timer = requestAnimationFrame(() => {
-      // Show loading screen for 1500ms - enough to see acceleration, then fast transition
+      // Stage 1: Show loading screen for 1500ms
       setTimeout(() => {
         // Trigger exit animation
         setIsExiting(true);
-        // Quick fade-out (400ms) for snappy transition
-        setTimeout(() => setIsLoading(false), 400);
+        // Quick fade-out (400ms)
+        setTimeout(() => {
+          setIsLoading(false);
+          setShowTitleScreen(true); // Show title screen
+
+          // Stage 2: Show title screen for 800ms, then transition to form
+          setTimeout(() => {
+            setTitleScreenExiting(true);
+            setTimeout(() => setShowTitleScreen(false), 400);
+          }, 800);
+        }, 400);
       }, 1500);
     });
     return () => cancelAnimationFrame(timer);
@@ -274,6 +323,11 @@ export default function RepairRequestPage() {
   // Show loading screen first
   if (isLoading) {
     return <LoadingScreen isExiting={isExiting} />;
+  }
+
+  // Show title screen after loading
+  if (showTitleScreen) {
+    return <TitleScreen isExiting={titleScreenExiting} />;
   }
 
   if (submitted) {
