@@ -22,6 +22,16 @@ function getTwilioClient(): twilio.Twilio | null {
   return null;
 }
 
+/**
+ * Wraps URLs in angle brackets to prevent SMS clients from breaking long links
+ * This is especially important when URLs contain phone numbers or other patterns
+ */
+function wrapUrlsInAngleBrackets(message: string): string {
+  // Match http:// or https:// URLs (not already wrapped in angle brackets)
+  const urlPattern = /(?<!<)(https?:\/\/[^\s<>]+)(?!>)/gi;
+  return message.replace(urlPattern, '<$1>');
+}
+
 export async function sendSMS(to: string, message: string): Promise<boolean> {
   // Check SMS enabled at runtime, not module load time
   const smsEnabled = isSmsEnabled();
@@ -56,9 +66,12 @@ export async function sendSMS(to: string, message: string): Promise<boolean> {
     return false;
   }
 
+  // Wrap any URLs in the message with angle brackets to prevent SMS client link breaking
+  const processedMessage = wrapUrlsInAngleBrackets(message);
+
   try {
     await client.messages.create({
-      body: message,
+      body: processedMessage,
       from: phoneNumber,
       to: to,
     });
@@ -174,10 +187,11 @@ export async function sendRepairBookingLink(
   // Use requestNumber if available (shorter), otherwise fall back to last 8 chars of UUID
   const displayId = details.requestNumber ? `#${details.requestNumber}` : `#${details.requestId.slice(-8)}`;
 
+  // Wrap URL in angle brackets to prevent SMS clients from breaking the link
   const message =
     details.language === "es"
-      ? `Agenda tu reparación (${displayId}): ${details.link}\nMotivo: ${details.issueSummary}${details.suggestedSlot ? `\nSugerencia: ${details.suggestedSlot}` : ""}`
-      : `Book your repair (${displayId}): ${details.link}\nIssue: ${details.issueSummary}${details.suggestedSlot ? `\nSuggested: ${details.suggestedSlot}` : ""}`;
+      ? `Agenda tu reparación (${displayId}): <${details.link}>\nMotivo: ${details.issueSummary}${details.suggestedSlot ? `\nSugerencia: ${details.suggestedSlot}` : ""}`
+      : `Book your repair (${displayId}): <${details.link}>\nIssue: ${details.issueSummary}${details.suggestedSlot ? `\nSuggested: ${details.suggestedSlot}` : ""}`;
   return sendSMS(phone, message);
 }
 
