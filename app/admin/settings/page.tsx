@@ -21,6 +21,8 @@ interface User {
   isOnline?: boolean;
   created_at: string;
   notify_on_repair?: boolean;
+  admin_invited?: boolean;
+  hasAuthAccount?: boolean;
 }
 
 function AdminSettingsPageContent() {
@@ -748,15 +750,38 @@ function AdminSettingsPageContent() {
     }
   };
 
-  const getApprovalBadge = (status: string) => {
-    if (status === "approved") {
+  const getAccountStatusBadge = (user: User) => {
+    // Check if user has an auth account
+    if (!user.hasAuthAccount) {
+      // User doesn't have an account yet - show "Invitation Sent" if invited
+      if (user.admin_invited) {
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+            <Send className="w-3 h-3 mr-1" />
+            Invitation Sent
+          </span>
+        );
+      }
+      // Not invited yet - show "No Account"
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-          <CheckCircle className="w-3 h-3 mr-1" />
-          Approved
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+          <Clock className="w-3 h-3 mr-1" />
+          No Account
         </span>
       );
     }
+
+    // User has an auth account - check approval status
+    if (user.approval_status === "approved") {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+          <CheckCircle className="w-3 h-3 mr-1" />
+          Active
+        </span>
+      );
+    }
+
+    // Has account but pending approval
     return (
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
         <Clock className="w-3 h-3 mr-1" />
@@ -902,10 +927,14 @@ function AdminSettingsPageContent() {
                       ) : (
                         [...adminUsers]
                           .sort((a, b) => {
-                            // Sort pending users first
-                            if (a.approval_status === "pending_approval" && b.approval_status !== "pending_approval") return -1;
-                            if (a.approval_status !== "pending_approval" && b.approval_status === "pending_approval") return 1;
-                            return 0;
+                            // Priority: 1. Invitation Sent (no account), 2. Pending Approval, 3. Active
+                            const getPriority = (user: User) => {
+                              if (!user.hasAuthAccount && user.admin_invited) return 0; // Invitation Sent
+                              if (!user.hasAuthAccount) return 1; // No Account
+                              if (user.approval_status === "pending_approval") return 2; // Pending Approval
+                              return 3; // Active
+                            };
+                            return getPriority(a) - getPriority(b);
                           })
                           .map((u) => (
                             <tr key={u.id} className="hover:bg-gray-50">
@@ -916,7 +945,7 @@ function AdminSettingsPageContent() {
                                   {u.phone && <div className="text-sm text-gray-400 mt-1">{u.phone}</div>}
                                 </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">{getApprovalBadge(u.approval_status)}</td>
+                              <td className="px-6 py-4 whitespace-nowrap">{getAccountStatusBadge(u)}</td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 {editingRoleId === u.id ? (
                                   <select

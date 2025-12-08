@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const roleFilter = searchParams.get("role");
 
     // Build query - only select needed fields for better performance
-    let query = supabase.from("users").select("id, email, name, role, phone, approval_status, last_seen_at, created_at, notify_on_repair");
+    let query = supabase.from("users").select("id, email, name, role, phone, approval_status, last_seen_at, created_at, notify_on_repair, admin_invited");
 
     // If role filter is specified, apply it
     if (roleFilter) {
@@ -71,14 +71,35 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
 
-    const usersWithOnlineStatus =
-      users?.map((user) => ({
-        ...user,
-        notify_on_repair: user.notify_on_repair ?? false, // Default to false if column doesn't exist
-        isOnline: user.last_seen_at ? new Date(user.last_seen_at) > fiveMinutesAgo : false,
-      })) || [];
+    // Check auth status for each user (only for admin users to minimize API calls)
+    const usersWithStatus = await Promise.all(
+      (users || []).map(async (user) => {
+        let hasAuthAccount = false;
 
-    return NextResponse.json({ users: usersWithOnlineStatus });
+        // Only check auth status for admin users (to minimize API calls)
+        if (user.role === 'admin') {
+          try {
+            const { data: authUser } = await supabase.auth.admin.getUserById(user.id);
+            hasAuthAccount = !!authUser?.user;
+          } catch {
+            hasAuthAccount = false;
+          }
+        } else {
+          // For non-admin users, assume they have auth if they've been seen recently
+          hasAuthAccount = !!user.last_seen_at;
+        }
+
+        return {
+          ...user,
+          notify_on_repair: user.notify_on_repair ?? false,
+          admin_invited: user.admin_invited ?? false,
+          hasAuthAccount,
+          isOnline: user.last_seen_at ? new Date(user.last_seen_at) > fiveMinutesAgo : false,
+        };
+      })
+    );
+
+    return NextResponse.json({ users: usersWithStatus });
   } catch (error: any) {
     if (process.env.NODE_ENV === 'development') {
       console.error("Error in GET /api/admin/users:", error);
