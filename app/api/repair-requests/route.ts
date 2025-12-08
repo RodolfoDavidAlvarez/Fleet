@@ -47,23 +47,30 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
+
+    // Helper function to convert empty strings to undefined for optional fields
+    const getStringOrUndefined = (key: string) => {
+      const value = formData.get(key)?.toString();
+      return value && value.trim() !== "" ? value : undefined;
+    };
+
     const odometerRaw = formData.get("odometer");
     const payload = {
-      driverId: formData.get("driverId")?.toString(),
+      driverId: getStringOrUndefined("driverId"),
       driverName: formData.get("driverName")?.toString() || "",
-      driverPhone: formData.get("driverPhone")?.toString(),
-      driverEmail: formData.get("driverEmail")?.toString(),
+      driverPhone: getStringOrUndefined("driverPhone"),
+      driverEmail: getStringOrUndefined("driverEmail"),
       preferredLanguage: (formData.get("preferredLanguage")?.toString() as "en" | "es" | undefined) || "en",
-      vehicleId: formData.get("vehicleId")?.toString(),
-      vehicleIdentifier: formData.get("vehicleIdentifier")?.toString(),
+      vehicleId: getStringOrUndefined("vehicleId"),
+      vehicleIdentifier: getStringOrUndefined("vehicleIdentifier"),
       odometer: odometerRaw && odometerRaw.toString().trim() !== "" ? odometerRaw.toString() : undefined,
-      location: formData.get("location")?.toString(),
+      location: getStringOrUndefined("location"),
       description: formData.get("description")?.toString() || "",
       urgency: (formData.get("urgency")?.toString() as "low" | "medium" | "high" | "critical" | undefined) || "medium",
-      division: formData.get("division")?.toString(),
-      vehicleType: formData.get("vehicleType")?.toString(),
-      makeModel: formData.get("makeModel")?.toString(),
-      incidentDate: formData.get("incidentDate")?.toString(),
+      division: getStringOrUndefined("division"),
+      vehicleType: getStringOrUndefined("vehicleType"),
+      makeModel: getStringOrUndefined("makeModel"),
+      incidentDate: getStringOrUndefined("incidentDate"),
       isImmediate: formData.get("isImmediate") === "true",
       smsConsent: formData.get("smsConsent") === "true",
     };
