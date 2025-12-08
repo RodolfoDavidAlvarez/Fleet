@@ -409,12 +409,16 @@ export async function POST(request: NextRequest) {
         `;
 
         // Send email asynchronously (don't await to avoid blocking)
+        // Note: Using onboarding@resend.dev until agavefleet.com domain is verified
+        // Sending to ralvarez@bettersystems.ai (account owner) - Resend test mode restriction
+        // To send to any email: verify agavefleet.com at https://resend.com/domains
         resend.emails
           .send({
-            from: "AgaveFleet Bug Reports <noreply@agavefleet.com>",
-            to: "developer@bettersystems.ai",
+            from: "AgaveFleet Bug Reports <onboarding@resend.dev>",
+            to: "ralvarez@bettersystems.ai",
             subject: `🐛 New Bug Report: ${sanitizedTitle.substring(0, 50)}${sanitizedTitle.length > 50 ? "..." : ""}`,
             html: emailHtml,
+            reply_to: userEmail, // Allow developer to reply directly to the user
           })
           .catch((emailError) => {
             console.error("Error sending email (non-critical):", emailError);

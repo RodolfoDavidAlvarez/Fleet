@@ -372,16 +372,11 @@ export default function VehicleDetailPage() {
         updates.driverId = formData.driverId ?? null;
       }
 
-      console.log("Saving vehicle with updates:", updates);
-      console.log("DriverId being sent:", updates.driverId);
-
       // Send the update - the mutation will update the cache automatically
       const result = await updateVehicle.mutateAsync({
         id: vehicle.id,
         updates,
       });
-
-      console.log("Save result:", result);
 
       // Invalidate and refetch to ensure we have the latest data
       await queryClient.invalidateQueries({ queryKey: [...queryKeys.vehicles, vehicleId] });
@@ -389,8 +384,6 @@ export default function VehicleDetailPage() {
 
       // Get the updated vehicle data from the mutation result
       const updatedVehicle = result?.vehicle;
-
-      console.log("Updated vehicle:", updatedVehicle);
 
       // Update formData with the fresh vehicle data
       if (updatedVehicle) {

@@ -91,6 +91,11 @@ function vehicleToRow(vehicle: Partial<Vehicle>): any {
     photo_url: vehicle.photoUrl,
     last_used_date: vehicle.lastUsedDate,
     department: vehicle.department,
+    supervisor: vehicle.supervisor,
+    tag_expiry: vehicle.tagExpiry,
+    loan_lender: vehicle.loanLender,
+    first_aid_fire: vehicle.firstAidFire,
+    title: vehicle.title,
   };
 }
 
