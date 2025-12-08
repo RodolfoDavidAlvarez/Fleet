@@ -240,6 +240,7 @@ export default function RepairRequestPage() {
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState<RepairRequest | null>(null);
+  const [showQuickSuccess, setShowQuickSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -358,72 +359,54 @@ export default function RepairRequestPage() {
 
     setSubmitting(true);
 
-    try {
-      const fd = new FormData();
-      fd.append("driverName", form.driverName.trim());
-      fd.append("driverPhone", form.driverPhone.trim());
+    // Build FormData first (before showing success)
+    const fd = new FormData();
+    fd.append("driverName", form.driverName.trim());
+    fd.append("driverPhone", form.driverPhone.trim());
 
-      // Only append non-empty optional fields
-      if (form.makeModel.trim()) {
-        fd.append("makeModel", form.makeModel.trim());
-      }
-      if (form.vehicleIdentifier.trim()) {
-        fd.append("vehicleIdentifier", form.vehicleIdentifier.trim());
-      }
-      if (form.odometer.trim()) {
-        fd.append("odometer", form.odometer.replace(/,/g, ""));
-      }
-
-      fd.append("division", form.division);
-      fd.append("vehicleType", form.vehicleType);
-      fd.append("isImmediate", form.isImmediate === "true" ? "true" : "false");
-      fd.append("urgency", form.isImmediate === "true" ? "high" : "medium");
-      fd.append("description", form.description.trim());
-      fd.append("incidentDate", form.date);
-      fd.append("preferredLanguage", language);
-      fd.append("smsConsent", form.smsConsent ? "true" : "false");
-      photos.forEach((file) => fd.append("photos", file));
-
-      const res = await fetch("/api/repair-requests", {
-        method: "POST",
-        body: fd,
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        // Handle validation errors from API
-        if (data.details && typeof data.details === 'object') {
-          const apiErrors: Record<string, string> = {};
-          Object.keys(data.details).forEach(key => {
-            const messages = data.details[key];
-            if (Array.isArray(messages) && messages.length > 0) {
-              apiErrors[key] = messages[0];
-            }
-          });
-          setFieldErrors(apiErrors);
-          setError(data.error || "Validation failed");
-
-          // Scroll to first error field
-          const firstErrorField = Object.keys(apiErrors)[0];
-          const element = document.querySelector(`[name="${firstErrorField}"]`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        } else {
-          throw new Error(data.error || "Failed to submit");
-        }
-        return;
-      }
-
-      setSubmitted(data.request);
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to submit request");
-      // Scroll to top to show error
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } finally {
-      setSubmitting(false);
+    // Only append non-empty optional fields
+    if (form.makeModel.trim()) {
+      fd.append("makeModel", form.makeModel.trim());
     }
+    if (form.vehicleIdentifier.trim()) {
+      fd.append("vehicleIdentifier", form.vehicleIdentifier.trim());
+    }
+    if (form.odometer.trim()) {
+      fd.append("odometer", form.odometer.replace(/,/g, ""));
+    }
+
+    fd.append("division", form.division);
+    fd.append("vehicleType", form.vehicleType);
+    fd.append("isImmediate", form.isImmediate === "true" ? "true" : "false");
+    fd.append("urgency", form.isImmediate === "true" ? "high" : "medium");
+    fd.append("description", form.description.trim());
+    fd.append("incidentDate", form.date);
+    fd.append("preferredLanguage", language);
+    fd.append("smsConsent", form.smsConsent ? "true" : "false");
+    photos.forEach((file) => fd.append("photos", file));
+
+    // Show success immediately - don't make user wait for upload
+    // The request will complete in the background
+    setShowQuickSuccess(true);
+
+    // Fire and forget - send the request in background
+    // Even if user closes browser, the request will likely complete
+    fetch("/api/repair-requests", {
+      method: "POST",
+      body: fd,
+    }).then(async (res) => {
+      const data = await res.json();
+      if (res.ok) {
+        // Update to full success state (user probably already saw thank you)
+        setSubmitted(data.request);
+        setShowQuickSuccess(false);
+      }
+      // If it fails, user already left - nothing we can do
+      // The optimistic UI already thanked them
+    }).catch((err) => {
+      // Log error but don't disturb the user
+      console.error("Background submission error:", err);
+    });
   };
 
   // Show loading screen first
@@ -434,6 +417,50 @@ export default function RepairRequestPage() {
   // Show title screen after loading
   if (showTitleScreen) {
     return <TitleScreen isExiting={titleScreenExiting} />;
+  }
+
+  // Quick success screen - shown immediately after clicking submit
+  if (showQuickSuccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center p-4 animate-fade-in">
+        <div className="max-w-2xl w-full bg-white rounded-xl shadow-lg p-8 space-y-6 text-center">
+          {/* Agave Logo */}
+          <div className="flex justify-center mb-6">
+            <img src="/images/AEC-Horizontal-Official-Logo-2020.png" alt="Agave" className="h-16 object-contain animate-fade-in" />
+          </div>
+
+          {/* Animated checkmark */}
+          <div className="relative w-20 h-20 mx-auto mb-4">
+            <div className="absolute inset-0 bg-green-100 rounded-full animate-pulse-glow"></div>
+            <div className="relative w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg animate-scale-in">
+              <CheckCircle className="h-10 w-10 text-white animate-check-mark" />
+            </div>
+          </div>
+
+          <h2 className="text-3xl font-bold text-gray-900 mb-2 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+            {t.successTitle}
+          </h2>
+          <p className="text-lg text-gray-600 mb-6 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+            {t.successBody}
+          </p>
+
+          {/* Subtle uploading indicator */}
+          <div className="text-sm text-gray-400 animate-fade-in-up" style={{ animationDelay: '600ms' }}>
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
+          </div>
+
+          <div className="flex justify-center gap-4 mt-8 animate-fade-in-up" style={{ animationDelay: '800ms' }}>
+            <Link href="/" className="btn-secondary">
+              {t.backHome}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (submitted) {

@@ -1314,3 +1314,25 @@ body {
   animation: particle-float 3s ease-in-out infinite;
   will-change: transform, opacity;
 }
+
+/* Checkmark animation for success states */
+@keyframes check-mark {
+  0% {
+    transform: scale(0) rotate(-45deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.animate-check-mark {
+  animation: check-mark 0.5s ease-out forwards;
+  animation-delay: 0.2s;
+  opacity: 0;
+}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "@/lib/email";
 import { sendSMS } from "@/lib/twilio";
 import { phoenixToUTC } from "@/lib/timezone";
@@ -7,7 +7,11 @@ import { logMessage } from "@/lib/message-logger";
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    // Use service role client to bypass RLS and access all users
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
     const body = await request.json();
     const { type, recipientGroups, individualRecipients, customRecipients, subject, messageEn, messageEs, scheduledAt } = body;
 
