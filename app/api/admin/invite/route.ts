@@ -49,20 +49,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If user exists but doesn't have auth account, we can send them an onboarding link
-    // Mark them as admin_invited so they get auto-approved when they register
-    if (existingUser && !hasAuthAccount) {
-      // Update the user record to mark them as invited by admin
-      await supabase
-        .from("users")
-        .update({
-          role: normalizedRole, // Update role if different
-          admin_invited: true, // Mark as admin invited for auto-approval
-        })
-        .eq("id", existingUser.id);
-    }
-
-    // Send invitation email
+    // Send invitation email FIRST before updating database
     const emailSent = await sendInvitationEmail(normalizedEmail, normalizedRole);
 
     if (!emailSent) {
@@ -70,6 +57,18 @@ export async function POST(request: NextRequest) {
         { error: "Unable to send invitation email. Check RESEND_API_KEY and RESEND_FROM_EMAIL configuration." },
         { status: 500 }
       );
+    }
+
+    // Email sent successfully - now update the database
+    // If user exists but doesn't have auth account, mark them as admin_invited
+    if (existingUser && !hasAuthAccount) {
+      await supabase
+        .from("users")
+        .update({
+          role: normalizedRole, // Update role if different
+          admin_invited: true, // Mark as admin invited for auto-approval
+        })
+        .eq("id", existingUser.id);
     }
 
     return NextResponse.json({

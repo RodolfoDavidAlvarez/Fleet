@@ -1,8 +1,8 @@
 import { Resend } from "resend";
 
 const resendApiKey = process.env.RESEND_API_KEY;
-const fromEmail = process.env.RESEND_FROM_EMAIL || "ralvarez@soilseedandwater.com";
-const fromName = process.env.RESEND_FROM_NAME || "Soil Seed and Water";
+const fromEmail = process.env.RESEND_FROM_EMAIL || "ralvarez@bettersystems.ai";
+const fromName = process.env.RESEND_FROM_NAME || "AgaveFleet";
 const emailEnabled = process.env.ENABLE_EMAIL !== "false"; // Enabled by default if API key exists
 
 let resend: Resend | null = null;
