@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email";
 import { sendSMS } from "@/lib/twilio";
 import { phoenixToUTC } from "@/lib/timezone";
+import { logMessage } from "@/lib/message-logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -126,6 +127,11 @@ export async function POST(request: NextRequest) {
     // Remove duplicates based on email
     const uniqueRecipients = Array.from(new Map(allRecipients.map((r) => [r.email, r])).values());
 
+    // Get current user for logging
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+
     // Send to unique recipients
     for (const recipient of uniqueRecipients) {
       try {
@@ -141,14 +147,52 @@ export async function POST(request: NextRequest) {
               );
               if (emailSuccess) {
                 sentCount++;
+                // Log successful email send
+                await logMessage({
+                  type: type === "both" ? "both" : "email",
+                  subject: subject,
+                  messageContent: messageEn,
+                  recipientType: "individual",
+                  recipientIdentifier: recipient.email,
+                  recipientName: recipient.name,
+                  status: "sent",
+                  wasScheduled: false,
+                  sentBy: authUser?.id,
+                });
               } else {
                 failedCount++;
                 errors.push(`Email to ${recipient.email} failed`);
+                // Log failed email send
+                await logMessage({
+                  type: type === "both" ? "both" : "email",
+                  subject: subject,
+                  messageContent: messageEn,
+                  recipientType: "individual",
+                  recipientIdentifier: recipient.email,
+                  recipientName: recipient.name,
+                  status: "failed",
+                  errorMessage: "Email delivery failed",
+                  wasScheduled: false,
+                  sentBy: authUser?.id,
+                });
               }
             } catch (emailError: any) {
               failedCount++;
               errors.push(`Email to ${recipient.email}: ${emailError?.message || "Unknown error"}`);
               console.error(`Failed to send email to ${recipient.email}:`, emailError);
+              // Log failed email send
+              await logMessage({
+                type: type === "both" ? "both" : "email",
+                subject: subject,
+                messageContent: messageEn,
+                recipientType: "individual",
+                recipientIdentifier: recipient.email,
+                recipientName: recipient.name,
+                status: "failed",
+                errorMessage: emailError?.message || "Unknown error",
+                wasScheduled: false,
+                sentBy: authUser?.id,
+              });
             }
           }
         }
@@ -160,14 +204,52 @@ export async function POST(request: NextRequest) {
               const smsSuccess = await sendSMS(recipient.phone, messageEn);
               if (smsSuccess) {
                 sentCount++;
+                // Log successful SMS send
+                await logMessage({
+                  type: type === "both" ? "both" : "sms",
+                  subject: subject,
+                  messageContent: messageEn,
+                  recipientType: "individual",
+                  recipientIdentifier: recipient.phone,
+                  recipientName: recipient.name,
+                  status: "sent",
+                  wasScheduled: false,
+                  sentBy: authUser?.id,
+                });
               } else {
                 failedCount++;
                 errors.push(`SMS to ${recipient.phone} failed - Check Twilio credentials`);
+                // Log failed SMS send
+                await logMessage({
+                  type: type === "both" ? "both" : "sms",
+                  subject: subject,
+                  messageContent: messageEn,
+                  recipientType: "individual",
+                  recipientIdentifier: recipient.phone,
+                  recipientName: recipient.name,
+                  status: "failed",
+                  errorMessage: "SMS delivery failed - Check Twilio credentials",
+                  wasScheduled: false,
+                  sentBy: authUser?.id,
+                });
               }
             } catch (smsError: any) {
               failedCount++;
               errors.push(`SMS to ${recipient.phone}: ${smsError?.message || "Unknown error"}`);
               console.error(`Failed to send SMS to ${recipient.phone}:`, smsError?.message || smsError);
+              // Log failed SMS send
+              await logMessage({
+                type: type === "both" ? "both" : "sms",
+                subject: subject,
+                messageContent: messageEn,
+                recipientType: "individual",
+                recipientIdentifier: recipient.phone,
+                recipientName: recipient.name,
+                status: "failed",
+                errorMessage: smsError?.message || "Unknown error",
+                wasScheduled: false,
+                sentBy: authUser?.id,
+              });
             }
           }
         }
@@ -196,14 +278,49 @@ export async function POST(request: NextRequest) {
                 );
                 if (emailSuccess) {
                   sentCount++;
+                  // Log successful email send
+                  await logMessage({
+                    type: type === "both" ? "both" : "email",
+                    subject: subject,
+                    messageContent: messageEn,
+                    recipientType: "custom",
+                    recipientIdentifier: cleanRecipient,
+                    status: "sent",
+                    wasScheduled: false,
+                    sentBy: authUser?.id,
+                  });
                 } else {
                   failedCount++;
                   errors.push(`Email to ${cleanRecipient} failed`);
+                  // Log failed email send
+                  await logMessage({
+                    type: type === "both" ? "both" : "email",
+                    subject: subject,
+                    messageContent: messageEn,
+                    recipientType: "custom",
+                    recipientIdentifier: cleanRecipient,
+                    status: "failed",
+                    errorMessage: "Email delivery failed",
+                    wasScheduled: false,
+                    sentBy: authUser?.id,
+                  });
                 }
               } catch (emailError: any) {
                 failedCount++;
                 errors.push(`Email to ${cleanRecipient}: ${emailError?.message || "Unknown error"}`);
                 console.error(`Failed to send email to ${cleanRecipient}:`, emailError);
+                // Log failed email send
+                await logMessage({
+                  type: type === "both" ? "both" : "email",
+                  subject: subject,
+                  messageContent: messageEn,
+                  recipientType: "custom",
+                  recipientIdentifier: cleanRecipient,
+                  status: "failed",
+                  errorMessage: emailError?.message || "Unknown error",
+                  wasScheduled: false,
+                  sentBy: authUser?.id,
+                });
               }
             }
           } else {
@@ -213,14 +330,49 @@ export async function POST(request: NextRequest) {
                 const smsSuccess = await sendSMS(cleanRecipient, messageEn);
                 if (smsSuccess) {
                   sentCount++;
+                  // Log successful SMS send
+                  await logMessage({
+                    type: type === "both" ? "both" : "sms",
+                    subject: subject,
+                    messageContent: messageEn,
+                    recipientType: "custom",
+                    recipientIdentifier: cleanRecipient,
+                    status: "sent",
+                    wasScheduled: false,
+                    sentBy: authUser?.id,
+                  });
                 } else {
                   failedCount++;
                   errors.push(`SMS to ${cleanRecipient} failed - Check Twilio credentials`);
+                  // Log failed SMS send
+                  await logMessage({
+                    type: type === "both" ? "both" : "sms",
+                    subject: subject,
+                    messageContent: messageEn,
+                    recipientType: "custom",
+                    recipientIdentifier: cleanRecipient,
+                    status: "failed",
+                    errorMessage: "SMS delivery failed - Check Twilio credentials",
+                    wasScheduled: false,
+                    sentBy: authUser?.id,
+                  });
                 }
               } catch (smsError: any) {
                 failedCount++;
                 errors.push(`SMS to ${cleanRecipient}: ${smsError?.message || "Unknown error"}`);
                 console.error(`Failed to send SMS to ${cleanRecipient}:`, smsError?.message || smsError);
+                // Log failed SMS send
+                await logMessage({
+                  type: type === "both" ? "both" : "sms",
+                  subject: subject,
+                  messageContent: messageEn,
+                  recipientType: "custom",
+                  recipientIdentifier: cleanRecipient,
+                  status: "failed",
+                  errorMessage: smsError?.message || "Unknown error",
+                  wasScheduled: false,
+                  sentBy: authUser?.id,
+                });
               }
             }
           }

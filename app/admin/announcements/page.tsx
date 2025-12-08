@@ -58,10 +58,24 @@ interface ScheduledMessage {
   created_at: string;
 }
 
+interface MessageLog {
+  id: string;
+  type: "email" | "sms" | "both";
+  subject?: string;
+  message_content: string;
+  recipient_type: "individual" | "group" | "custom";
+  recipient_identifier: string;
+  recipient_name?: string;
+  status: "sent" | "failed" | "bounced";
+  error_message?: string;
+  sent_at: string;
+  was_scheduled: boolean;
+}
+
 export default function AnnouncementsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [activeView, setActiveView] = useState<"compose" | "templates" | "scheduled">("compose");
+  const [activeView, setActiveView] = useState<"compose" | "templates" | "scheduled" | "logs">("compose");
   const [messageType, setMessageType] = useState<"email" | "sms" | "both">("email");
   const [sendType, setSendType] = useState<"onetime" | "template" | "scheduled">("onetime");
   const [recipients, setRecipients] = useState<string[]>([]);
@@ -78,6 +92,7 @@ export default function AnnouncementsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showMemberSearch, setShowMemberSearch] = useState(false);
   const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessage[]>([]);
+  const [messageLogs, setMessageLogs] = useState<MessageLog[]>([]);
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
 
@@ -107,6 +122,7 @@ export default function AnnouncementsPage() {
     loadTemplates();
     loadMembers();
     loadScheduledMessages();
+    loadMessageLogs();
   }, [router]);
 
   const loadTemplates = async () => {
@@ -142,6 +158,18 @@ export default function AnnouncementsPage() {
       }
     } catch (err) {
       console.error("Error loading scheduled messages:", err);
+    }
+  };
+
+  const loadMessageLogs = async () => {
+    try {
+      const res = await fetch("/api/admin/message-logs?limit=50");
+      if (res.ok) {
+        const data = await res.json();
+        setMessageLogs(data.logs || []);
+      }
+    } catch (err) {
+      console.error("Error loading message logs:", err);
     }
   };
 
@@ -401,6 +429,22 @@ export default function AnnouncementsPage() {
                   <div className="flex items-center space-x-2">
                     <Clock className="w-5 h-5" />
                     <span>Scheduled Messages ({scheduledMessages.filter((m) => m.status === "pending").length})</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveView("logs");
+                    loadMessageLogs();
+                  }}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeView === "logs"
+                      ? "border-primary-500 text-primary-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <Mail className="w-5 h-5" />
+                    <span>Message History ({messageLogs.length})</span>
                   </div>
                 </button>
               </nav>
@@ -1053,6 +1097,131 @@ export default function AnnouncementsPage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Message Logs View */}
+            {activeView === "logs" && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                {messageLogs.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <Mail className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No Message History</h3>
+                    <p className="text-gray-600 mb-4">Messages sent will appear here</p>
+                    <p className="text-sm text-gray-500">
+                      Note: The message_logs table may need to be created in your database.
+                      <br />
+                      See SETUP_ANNOUNCEMENT_SYSTEM.md for instructions.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="p-6 border-b border-gray-200">
+                      <h3 className="text-lg font-semibold text-gray-900">Message Delivery History</h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Complete log of all messages sent, including delivery status and recipient information
+                      </p>
+                    </div>
+                    <div className="divide-y divide-gray-200">
+                      {messageLogs.map((log) => (
+                        <div key={log.id} className="p-6 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                {/* Status Icon */}
+                                {log.status === "sent" ? (
+                                  <CheckCircle className="w-5 h-5 text-green-600" />
+                                ) : log.status === "failed" ? (
+                                  <XCircle className="w-5 h-5 text-red-600" />
+                                ) : (
+                                  <AlertCircle className="w-5 h-5 text-orange-600" />
+                                )}
+
+                                {/* Message Subject or Preview */}
+                                <h4 className="text-base font-semibold text-gray-900">
+                                  {log.subject || log.message_content.substring(0, 50) + "..."}
+                                </h4>
+
+                                {/* Status Badge */}
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    log.status === "sent"
+                                      ? "bg-green-100 text-green-800"
+                                      : log.status === "failed"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-orange-100 text-orange-800"
+                                  }`}
+                                >
+                                  {log.status.charAt(0).toUpperCase() + log.status.slice(1)}
+                                </span>
+
+                                {/* Type Badge */}
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    log.type === "email"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : log.type === "sms"
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-purple-100 text-purple-800"
+                                  }`}
+                                >
+                                  {log.type === "both" ? "Email & SMS" : log.type.toUpperCase()}
+                                </span>
+
+                                {/* Scheduled Badge */}
+                                {log.was_scheduled && (
+                                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    Scheduled
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Recipient Info */}
+                              <div className="mb-2">
+                                <span className="text-sm font-medium text-gray-700">To: </span>
+                                <span className="text-sm text-gray-900">
+                                  {log.recipient_name ? `${log.recipient_name} (${log.recipient_identifier})` : log.recipient_identifier}
+                                </span>
+                                <span
+                                  className={`ml-2 px-1.5 py-0.5 rounded text-xs font-medium ${
+                                    log.recipient_type === "individual"
+                                      ? "bg-blue-100 text-blue-700"
+                                      : log.recipient_type === "group"
+                                        ? "bg-green-100 text-green-700"
+                                        : "bg-gray-100 text-gray-700"
+                                  }`}
+                                >
+                                  {log.recipient_type}
+                                </span>
+                              </div>
+
+                              {/* Message Preview */}
+                              <p className="text-sm text-gray-700 line-clamp-2 mb-2">{log.message_content}</p>
+
+                              {/* Metadata */}
+                              <div className="flex items-center gap-4 text-xs text-gray-500">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>Sent: {new Date(log.sent_at).toLocaleString()}</span>
+                                </div>
+                              </div>
+
+                              {/* Error Message */}
+                              {log.error_message && (
+                                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                                  <p className="text-xs text-red-800">
+                                    <span className="font-semibold">Error: </span>
+                                    {log.error_message}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
