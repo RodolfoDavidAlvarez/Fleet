@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Camera, CheckCircle, Languages, Phone, ShieldCheck, Upload, Wrench } from "lucide-react";
+import { ArrowLeft, Camera, CheckCircle, Languages, Phone, ShieldCheck, Upload, Wrench, X } from "lucide-react";
 import { RepairRequest } from "@/types";
 
 const dictionary = {
@@ -241,6 +241,7 @@ export default function RepairRequestPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState<RepairRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Multi-stage loading: Loading → Title Screen → Form
   useEffect(() => {
@@ -266,38 +267,118 @@ export default function RepairRequestPage() {
     return () => cancelAnimationFrame(timer);
   }, []);
 
+  // Cleanup preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      previews.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, []);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []).slice(0, 3);
-    setPhotos(files);
-    setPreviews(files.map((file) => URL.createObjectURL(file)));
+    const newFiles = Array.from(e.target.files || []);
+    const combinedFiles = [...photos, ...newFiles].slice(0, 3);
+    setPhotos(combinedFiles);
+
+    // Clean up old previews
+    previews.forEach(url => URL.revokeObjectURL(url));
+    setPreviews(combinedFiles.map((file) => URL.createObjectURL(file)));
+
+    // Clear the input so the same file can be selected again
+    e.target.value = '';
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    // Clean up the preview URL
+    URL.revokeObjectURL(previews[index]);
+
+    const newPhotos = photos.filter((_, i) => i !== index);
+    const newPreviews = previews.filter((_, i) => i !== index);
+
+    setPhotos(newPhotos);
+    setPreviews(newPreviews);
+  };
+
+  // Helper to get input class with error state
+  const getInputClass = (fieldName: string) => {
+    return fieldErrors[fieldName]
+      ? "input border-red-300 focus:border-red-500 focus:ring-red-500"
+      : "input";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Reset errors
+    setError(null);
+    setFieldErrors({});
+
+    // Validate required fields
+    const errors: Record<string, string> = {};
+
+    if (!form.driverName.trim()) {
+      errors.driverName = "Name is required";
+    }
+    if (!form.driverPhone.trim()) {
+      errors.driverPhone = "Phone number is required";
+    }
+    if (!form.division) {
+      errors.division = "Division is required";
+    }
+    if (!form.vehicleType) {
+      errors.vehicleType = "Vehicle type is required";
+    }
+    if (!form.description.trim()) {
+      errors.description = "Description is required";
+    }
+
     // Require SMS consent if phone is provided
     if (form.driverPhone && !form.smsConsent) {
-      setError(t.smsConsentRequired);
+      errors.smsConsent = t.smsConsentRequired;
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setError(language === "es" ? "Por favor complete todos los campos requeridos" : "Please complete all required fields");
+
+      // Scroll to first error
+      const firstErrorField = Object.keys(errors)[0];
+      const element = document.querySelector(`[name="${firstErrorField}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Focus the field after scroll
+        setTimeout(() => {
+          if (element instanceof HTMLElement) {
+            element.focus();
+          }
+        }, 500);
+      }
+
       return;
     }
 
     setSubmitting(true);
-    setError(null);
 
     try {
       const fd = new FormData();
-      fd.append("driverName", form.driverName);
-      fd.append("driverPhone", form.driverPhone);
-      fd.append("makeModel", form.makeModel);
-      fd.append("vehicleIdentifier", form.vehicleIdentifier);
+      fd.append("driverName", form.driverName.trim());
+      fd.append("driverPhone", form.driverPhone.trim());
+
+      // Only append non-empty optional fields
+      if (form.makeModel.trim()) {
+        fd.append("makeModel", form.makeModel.trim());
+      }
+      if (form.vehicleIdentifier.trim()) {
+        fd.append("vehicleIdentifier", form.vehicleIdentifier.trim());
+      }
       if (form.odometer.trim()) {
         fd.append("odometer", form.odometer.replace(/,/g, ""));
       }
+
       fd.append("division", form.division);
       fd.append("vehicleType", form.vehicleType);
       fd.append("isImmediate", form.isImmediate === "true" ? "true" : "false");
-      fd.append("urgency", form.isImmediate === "true" ? "high" : "medium"); // Map to legacy urgency
-      fd.append("description", form.description);
+      fd.append("urgency", form.isImmediate === "true" ? "high" : "medium");
+      fd.append("description", form.description.trim());
       fd.append("incidentDate", form.date);
       fd.append("preferredLanguage", language);
       fd.append("smsConsent", form.smsConsent ? "true" : "false");
@@ -308,13 +389,38 @@ export default function RepairRequestPage() {
         body: fd,
       });
       const data = await res.json();
+
       if (!res.ok) {
-        throw new Error(data.error || "Failed to submit");
+        // Handle validation errors from API
+        if (data.details && typeof data.details === 'object') {
+          const apiErrors: Record<string, string> = {};
+          Object.keys(data.details).forEach(key => {
+            const messages = data.details[key];
+            if (Array.isArray(messages) && messages.length > 0) {
+              apiErrors[key] = messages[0];
+            }
+          });
+          setFieldErrors(apiErrors);
+          setError(data.error || "Validation failed");
+
+          // Scroll to first error field
+          const firstErrorField = Object.keys(apiErrors)[0];
+          const element = document.querySelector(`[name="${firstErrorField}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        } else {
+          throw new Error(data.error || "Failed to submit");
+        }
+        return;
       }
+
       setSubmitted(data.request);
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to submit request");
+      // Scroll to top to show error
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
     }
@@ -401,23 +507,39 @@ export default function RepairRequestPage() {
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-gray-700">{t.driverName}</span>
                 <input
-                  className="input"
+                  className={getInputClass("driverName")}
                   name="driverName"
                   value={form.driverName}
-                  onChange={(e) => setForm({ ...form, driverName: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, driverName: e.target.value });
+                    if (fieldErrors.driverName) {
+                      setFieldErrors({ ...fieldErrors, driverName: "" });
+                    }
+                  }}
                   required
                 />
+                {fieldErrors.driverName && (
+                  <span className="text-sm text-red-600">{fieldErrors.driverName}</span>
+                )}
               </label>
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-gray-700">{t.driverPhone}</span>
                 <input
-                  className="input"
+                  className={getInputClass("driverPhone")}
                   name="driverPhone"
                   value={form.driverPhone}
-                  onChange={(e) => setForm({ ...form, driverPhone: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, driverPhone: e.target.value });
+                    if (fieldErrors.driverPhone) {
+                      setFieldErrors({ ...fieldErrors, driverPhone: "" });
+                    }
+                  }}
                   required
                   placeholder="(000) 000-0000"
                 />
+                {fieldErrors.driverPhone && (
+                  <span className="text-sm text-red-600">{fieldErrors.driverPhone}</span>
+                )}
               </label>
             </div>
 
@@ -467,10 +589,15 @@ export default function RepairRequestPage() {
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-gray-700">{t.vehicleType}</span>
                 <select
-                  className="input select"
+                  className={getInputClass("vehicleType")}
                   name="vehicleType"
                   value={form.vehicleType}
-                  onChange={(e) => setForm({ ...form, vehicleType: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, vehicleType: e.target.value });
+                    if (fieldErrors.vehicleType) {
+                      setFieldErrors({ ...fieldErrors, vehicleType: "" });
+                    }
+                  }}
                   required
                 >
                   <option value="">{t.selectOne}</option>
@@ -480,14 +607,22 @@ export default function RepairRequestPage() {
                     </option>
                   ))}
                 </select>
+                {fieldErrors.vehicleType && (
+                  <span className="text-sm text-red-600">{fieldErrors.vehicleType}</span>
+                )}
               </label>
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-gray-700">{t.division}</span>
                 <select
-                  className="input select"
+                  className={getInputClass("division")}
                   name="division"
                   value={form.division}
-                  onChange={(e) => setForm({ ...form, division: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, division: e.target.value });
+                    if (fieldErrors.division) {
+                      setFieldErrors({ ...fieldErrors, division: "" });
+                    }
+                  }}
                   required
                 >
                   <option value="">{t.selectOne}</option>
@@ -497,6 +632,9 @@ export default function RepairRequestPage() {
                     </option>
                   ))}
                 </select>
+                {fieldErrors.division && (
+                  <span className="text-sm text-red-600">{fieldErrors.division}</span>
+                )}
               </label>
             </div>
 
@@ -525,13 +663,21 @@ export default function RepairRequestPage() {
             <label className="space-y-2 block">
               <span className="text-sm font-semibold text-gray-700">{t.description}</span>
               <textarea
-                className="input textarea"
+                className={getInputClass("description")}
                 rows={4}
                 name="description"
                 value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, description: e.target.value });
+                  if (fieldErrors.description) {
+                    setFieldErrors({ ...fieldErrors, description: "" });
+                  }
+                }}
                 required
               />
+              {fieldErrors.description && (
+                <span className="text-sm text-red-600">{fieldErrors.description}</span>
+              )}
             </label>
 
             {/* Photos */}
@@ -553,23 +699,57 @@ export default function RepairRequestPage() {
               </div>
               {previews.length > 0 && (
                 <div className="flex gap-2 flex-wrap mt-4">
-                  {previews.map((src) => (
-                    <img key={src} src={src} alt="Preview" className="h-20 w-20 rounded-lg object-cover border" />
+                  {previews.map((src, index) => (
+                    <div key={src} className="relative group">
+                      <img src={src} alt="Preview" className="h-20 w-20 rounded-lg object-cover border" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                        title={language === "es" ? "Eliminar foto" : "Remove photo"}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
                   ))}
                 </div>
+              )}
+              {photos.length < 3 && photos.length > 0 && (
+                <p className="text-xs text-gray-500 mt-2">
+                  {language === "es"
+                    ? `${photos.length} de 3 fotos seleccionadas. Puede agregar ${3 - photos.length} más.`
+                    : `${photos.length} of 3 photos selected. You can add ${3 - photos.length} more.`}
+                </p>
               )}
             </label>
 
             {/* SMS Consent */}
-            <label className="flex items-start gap-3 cursor-pointer p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <input
-                type="checkbox"
-                checked={form.smsConsent}
-                onChange={(e) => setForm({ ...form, smsConsent: e.target.checked })}
-                className="mt-1 h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-              />
-              <span className="text-sm text-gray-700">{t.smsConsent}</span>
-            </label>
+            <div className="space-y-2">
+              <label
+                className={`flex items-start gap-3 cursor-pointer p-4 rounded-lg border transition-colors ${
+                  fieldErrors.smsConsent
+                    ? 'bg-red-50 border-red-300'
+                    : 'bg-gray-50 border-gray-200'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  name="smsConsent"
+                  checked={form.smsConsent}
+                  onChange={(e) => {
+                    setForm({ ...form, smsConsent: e.target.checked });
+                    if (fieldErrors.smsConsent) {
+                      setFieldErrors({ ...fieldErrors, smsConsent: "" });
+                    }
+                  }}
+                  className="mt-1 h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">{t.smsConsent}</span>
+              </label>
+              {fieldErrors.smsConsent && (
+                <span className="text-sm text-red-600 block">{fieldErrors.smsConsent}</span>
+              )}
+            </div>
 
             <button type="submit" disabled={submitting} className="btn btn-primary w-full btn-lg">
               {submitting ? t.submitting : t.submit}
