@@ -1,4 +1,4 @@
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { createServerClient } from "@/lib/supabase";
 
 export interface MessageLogEntry {
   type: "email" | "sms" | "both";
@@ -10,7 +10,6 @@ export interface MessageLogEntry {
   status: "sent" | "failed" | "bounced";
   errorMessage?: string;
   scheduledMessageId?: string;
-  templateId?: string;
   wasScheduled?: boolean;
   sentBy?: string;
 }
@@ -20,7 +19,7 @@ export interface MessageLogEntry {
  */
 export async function logMessage(entry: MessageLogEntry): Promise<boolean> {
   try {
-    const supabase = await createServerClient();
+    const supabase = createServerClient();
 
     const { error } = await supabase.from("message_logs").insert({
       type: entry.type,
@@ -32,7 +31,6 @@ export async function logMessage(entry: MessageLogEntry): Promise<boolean> {
       status: entry.status,
       error_message: entry.errorMessage,
       scheduled_message_id: entry.scheduledMessageId,
-      template_id: entry.templateId,
       was_scheduled: entry.wasScheduled || false,
       sent_by: entry.sentBy,
       sent_at: new Date().toISOString(),

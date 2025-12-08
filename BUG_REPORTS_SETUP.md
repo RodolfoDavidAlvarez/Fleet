@@ -98,3 +98,4 @@ If migrations fail:
 1. Check the error message in Supabase SQL Editor
 2. Verify your database connection
 3. Ensure you have admin access to the Supabase project
+

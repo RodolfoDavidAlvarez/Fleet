@@ -85,3 +85,4 @@ COMMENT ON COLUMN vehicles.last_used_date IS 'Date when vehicle was last used. U
 COMMENT ON COLUMN vehicles.status IS 'Comprehensive vehicle status: operational, active, in_service, broken_down, for_sale, idle, upcoming, retired, maintenance, reserved, out_of_service';
 COMMENT ON FUNCTION calculate_days_since_last_use IS 'Calculates the number of days since a vehicle was last used';
 
+

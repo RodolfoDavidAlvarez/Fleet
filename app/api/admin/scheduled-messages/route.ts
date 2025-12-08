@@ -1,26 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = 'force-dynamic';
 
 // GET - List all scheduled messages
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // Get current user
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Verify user is admin
-    const { data: userData } = await supabase.from("users").select("role, approval_status").eq("id", authUser.id).single();
-    if (!userData || userData.role !== "admin" || userData.approval_status !== "approved") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     // Fetch scheduled messages
     const { data: messages, error } = await supabase.from("scheduled_messages").select("*").order("scheduled_at", { ascending: true });

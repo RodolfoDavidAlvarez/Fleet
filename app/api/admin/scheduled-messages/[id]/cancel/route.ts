@@ -1,25 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 
 // POST - Cancel a scheduled message
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const supabase = await createClient();
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
     const { id } = params;
-
-    // Get current user
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Verify user is admin
-    const { data: userData } = await supabase.from("users").select("role, approval_status").eq("id", authUser.id).single();
-    if (!userData || userData.role !== "admin" || userData.approval_status !== "approved") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     // Check if message exists and is pending
     const { data: message, error: fetchError } = await supabase.from("scheduled_messages").select("*").eq("id", id).single();

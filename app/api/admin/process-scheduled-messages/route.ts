@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "@/lib/email";
 import { sendSMS } from "@/lib/twilio";
+import { logMessage } from "@/lib/message-logger";
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabase = await createClient();
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     // Get all pending messages that are due (scheduled_at <= now)
     // scheduled_at is stored in UTC, so we compare with UTC time
@@ -121,14 +125,53 @@ export async function GET(request: NextRequest) {
                   );
                   if (emailSuccess) {
                     sentCount++;
+                    // Log successful email
+                    await logMessage({
+                      type: scheduledMessage.type === "both" ? "both" : "email",
+                      subject: scheduledMessage.subject,
+                      messageContent: scheduledMessage.message_en,
+                      recipientType: "individual",
+                      recipientIdentifier: recipient.email,
+                      recipientName: recipient.name,
+                      status: "sent",
+                      wasScheduled: true,
+                      scheduledMessageId: scheduledMessage.id,
+                      sentBy: scheduledMessage.created_by,
+                    });
                   } else {
                     failedCountForMessage++;
                     messageErrors.push(`Email to ${recipient.email} failed`);
+                    await logMessage({
+                      type: scheduledMessage.type === "both" ? "both" : "email",
+                      subject: scheduledMessage.subject,
+                      messageContent: scheduledMessage.message_en,
+                      recipientType: "individual",
+                      recipientIdentifier: recipient.email,
+                      recipientName: recipient.name,
+                      status: "failed",
+                      errorMessage: "Email delivery failed",
+                      wasScheduled: true,
+                      scheduledMessageId: scheduledMessage.id,
+                      sentBy: scheduledMessage.created_by,
+                    });
                   }
                 } catch (emailError: any) {
                   failedCountForMessage++;
                   messageErrors.push(`Email to ${recipient.email}: ${emailError?.message || "Unknown error"}`);
                   console.error(`Failed to send email to ${recipient.email}:`, emailError);
+                  await logMessage({
+                    type: scheduledMessage.type === "both" ? "both" : "email",
+                    subject: scheduledMessage.subject,
+                    messageContent: scheduledMessage.message_en,
+                    recipientType: "individual",
+                    recipientIdentifier: recipient.email,
+                    recipientName: recipient.name,
+                    status: "failed",
+                    errorMessage: emailError?.message || "Unknown error",
+                    wasScheduled: true,
+                    scheduledMessageId: scheduledMessage.id,
+                    sentBy: scheduledMessage.created_by,
+                  });
                 }
               }
             }
@@ -140,14 +183,53 @@ export async function GET(request: NextRequest) {
                   const smsSuccess = await sendSMS(recipient.phone, scheduledMessage.message_en);
                   if (smsSuccess) {
                     sentCount++;
+                    // Log successful SMS
+                    await logMessage({
+                      type: scheduledMessage.type === "both" ? "both" : "sms",
+                      subject: scheduledMessage.subject,
+                      messageContent: scheduledMessage.message_en,
+                      recipientType: "individual",
+                      recipientIdentifier: recipient.phone,
+                      recipientName: recipient.name,
+                      status: "sent",
+                      wasScheduled: true,
+                      scheduledMessageId: scheduledMessage.id,
+                      sentBy: scheduledMessage.created_by,
+                    });
                   } else {
                     failedCountForMessage++;
                     messageErrors.push(`SMS to ${recipient.phone} failed`);
+                    await logMessage({
+                      type: scheduledMessage.type === "both" ? "both" : "sms",
+                      subject: scheduledMessage.subject,
+                      messageContent: scheduledMessage.message_en,
+                      recipientType: "individual",
+                      recipientIdentifier: recipient.phone,
+                      recipientName: recipient.name,
+                      status: "failed",
+                      errorMessage: "SMS delivery failed",
+                      wasScheduled: true,
+                      scheduledMessageId: scheduledMessage.id,
+                      sentBy: scheduledMessage.created_by,
+                    });
                   }
                 } catch (smsError: any) {
                   failedCountForMessage++;
                   messageErrors.push(`SMS to ${recipient.phone}: ${smsError?.message || "Unknown error"}`);
                   console.error(`Failed to send SMS to ${recipient.phone}:`, smsError);
+                  await logMessage({
+                    type: scheduledMessage.type === "both" ? "both" : "sms",
+                    subject: scheduledMessage.subject,
+                    messageContent: scheduledMessage.message_en,
+                    recipientType: "individual",
+                    recipientIdentifier: recipient.phone,
+                    recipientName: recipient.name,
+                    status: "failed",
+                    errorMessage: smsError?.message || "Unknown error",
+                    wasScheduled: true,
+                    scheduledMessageId: scheduledMessage.id,
+                    sentBy: scheduledMessage.created_by,
+                  });
                 }
               }
             }
@@ -176,14 +258,49 @@ export async function GET(request: NextRequest) {
                     );
                     if (emailSuccess) {
                       sentCount++;
+                      await logMessage({
+                        type: scheduledMessage.type === "both" ? "both" : "email",
+                        subject: scheduledMessage.subject,
+                        messageContent: scheduledMessage.message_en,
+                        recipientType: "custom",
+                        recipientIdentifier: cleanRecipient,
+                        status: "sent",
+                        wasScheduled: true,
+                        scheduledMessageId: scheduledMessage.id,
+                        sentBy: scheduledMessage.created_by,
+                      });
                     } else {
                       failedCountForMessage++;
                       messageErrors.push(`Email to ${cleanRecipient} failed`);
+                      await logMessage({
+                        type: scheduledMessage.type === "both" ? "both" : "email",
+                        subject: scheduledMessage.subject,
+                        messageContent: scheduledMessage.message_en,
+                        recipientType: "custom",
+                        recipientIdentifier: cleanRecipient,
+                        status: "failed",
+                        errorMessage: "Email delivery failed",
+                        wasScheduled: true,
+                        scheduledMessageId: scheduledMessage.id,
+                        sentBy: scheduledMessage.created_by,
+                      });
                     }
                   } catch (emailError: any) {
                     failedCountForMessage++;
                     messageErrors.push(`Email to ${cleanRecipient}: ${emailError?.message || "Unknown error"}`);
                     console.error(`Failed to send email to ${cleanRecipient}:`, emailError);
+                    await logMessage({
+                      type: scheduledMessage.type === "both" ? "both" : "email",
+                      subject: scheduledMessage.subject,
+                      messageContent: scheduledMessage.message_en,
+                      recipientType: "custom",
+                      recipientIdentifier: cleanRecipient,
+                      status: "failed",
+                      errorMessage: emailError?.message || "Unknown error",
+                      wasScheduled: true,
+                      scheduledMessageId: scheduledMessage.id,
+                      sentBy: scheduledMessage.created_by,
+                    });
                   }
                 }
               } else {
@@ -193,14 +310,49 @@ export async function GET(request: NextRequest) {
                     const smsSuccess = await sendSMS(cleanRecipient, scheduledMessage.message_en);
                     if (smsSuccess) {
                       sentCount++;
+                      await logMessage({
+                        type: scheduledMessage.type === "both" ? "both" : "sms",
+                        subject: scheduledMessage.subject,
+                        messageContent: scheduledMessage.message_en,
+                        recipientType: "custom",
+                        recipientIdentifier: cleanRecipient,
+                        status: "sent",
+                        wasScheduled: true,
+                        scheduledMessageId: scheduledMessage.id,
+                        sentBy: scheduledMessage.created_by,
+                      });
                     } else {
                       failedCountForMessage++;
                       messageErrors.push(`SMS to ${cleanRecipient} failed`);
+                      await logMessage({
+                        type: scheduledMessage.type === "both" ? "both" : "sms",
+                        subject: scheduledMessage.subject,
+                        messageContent: scheduledMessage.message_en,
+                        recipientType: "custom",
+                        recipientIdentifier: cleanRecipient,
+                        status: "failed",
+                        errorMessage: "SMS delivery failed",
+                        wasScheduled: true,
+                        scheduledMessageId: scheduledMessage.id,
+                        sentBy: scheduledMessage.created_by,
+                      });
                     }
                   } catch (smsError: any) {
                     failedCountForMessage++;
                     messageErrors.push(`SMS to ${cleanRecipient}: ${smsError?.message || "Unknown error"}`);
                     console.error(`Failed to send SMS to ${cleanRecipient}:`, smsError);
+                    await logMessage({
+                      type: scheduledMessage.type === "both" ? "both" : "sms",
+                      subject: scheduledMessage.subject,
+                      messageContent: scheduledMessage.message_en,
+                      recipientType: "custom",
+                      recipientIdentifier: cleanRecipient,
+                      status: "failed",
+                      errorMessage: smsError?.message || "Unknown error",
+                      wasScheduled: true,
+                      scheduledMessageId: scheduledMessage.id,
+                      sentBy: scheduledMessage.created_by,
+                    });
                   }
                 }
               }

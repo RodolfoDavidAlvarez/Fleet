@@ -127,13 +127,52 @@ export async function POST(request: NextRequest) {
     // Remove duplicates based on email
     const uniqueRecipients = Array.from(new Map(allRecipients.map((r) => [r.email, r])).values());
 
+    // For SMS-only messages, filter out recipients without phone numbers upfront
+    let validRecipients = uniqueRecipients;
+    const recipientsWithoutPhone: string[] = [];
+
+    if (type === "sms") {
+      validRecipients = uniqueRecipients.filter((r) => {
+        const hasPhone = r.phone && r.phone.trim().length > 0;
+        if (!hasPhone) {
+          recipientsWithoutPhone.push(r.name || r.email || "Unknown");
+        }
+        return hasPhone;
+      });
+
+      // If no valid recipients after filtering, return error
+      if (validRecipients.length === 0 && uniqueRecipients.length > 0) {
+        return NextResponse.json(
+          {
+            error: `None of the selected recipients have phone numbers. ${recipientsWithoutPhone.length} recipient(s) were skipped: ${recipientsWithoutPhone.join(", ")}`,
+            recipientsWithoutPhone,
+            skippedCount: recipientsWithoutPhone.length,
+          },
+          { status: 400 }
+        );
+      }
+
+      // If all recipients were filtered out and no custom recipients, return error
+      if (validRecipients.length === 0 && (!customRecipients || customRecipients.length === 0)) {
+        return NextResponse.json(
+          {
+            error: "No recipients with valid phone numbers found. Please select recipients with phone numbers or add custom phone numbers.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // For "both" type, we still want to send SMS to those with phones and email to those with emails
+    // But for SMS-only, we've already filtered above
+
     // Get current user for logging
     const {
       data: { user: authUser },
     } = await supabase.auth.getUser();
 
-    // Send to unique recipients
-    for (const recipient of uniqueRecipients) {
+    // Send to valid recipients
+    for (const recipient of validRecipients) {
       try {
         // Send email
         if (type === "email" || type === "both") {
@@ -199,9 +238,11 @@ export async function POST(request: NextRequest) {
 
         // Send SMS
         if (type === "sms" || type === "both") {
-          if (recipient.phone) {
+          // For SMS-only type, we've already filtered, but for "both" we still need to check
+          const phone = recipient.phone?.trim();
+          if (phone && phone.length > 0) {
             try {
-              const smsSuccess = await sendSMS(recipient.phone, messageEn);
+              const smsSuccess = await sendSMS(phone, messageEn);
               if (smsSuccess) {
                 sentCount++;
                 // Log successful SMS send
@@ -210,7 +251,7 @@ export async function POST(request: NextRequest) {
                   subject: subject,
                   messageContent: messageEn,
                   recipientType: "individual",
-                  recipientIdentifier: recipient.phone,
+                  recipientIdentifier: phone,
                   recipientName: recipient.name,
                   status: "sent",
                   wasScheduled: false,
@@ -218,14 +259,14 @@ export async function POST(request: NextRequest) {
                 });
               } else {
                 failedCount++;
-                errors.push(`SMS to ${recipient.phone} failed - Check Twilio credentials`);
+                errors.push(`SMS to ${phone} failed - Check Twilio credentials`);
                 // Log failed SMS send
                 await logMessage({
                   type: type === "both" ? "both" : "sms",
                   subject: subject,
                   messageContent: messageEn,
                   recipientType: "individual",
-                  recipientIdentifier: recipient.phone,
+                  recipientIdentifier: phone,
                   recipientName: recipient.name,
                   status: "failed",
                   errorMessage: "SMS delivery failed - Check Twilio credentials",
@@ -235,8 +276,8 @@ export async function POST(request: NextRequest) {
               }
             } catch (smsError: any) {
               failedCount++;
-              errors.push(`SMS to ${recipient.phone}: ${smsError?.message || "Unknown error"}`);
-              console.error(`Failed to send SMS to ${recipient.phone}:`, smsError?.message || smsError);
+              errors.push(`SMS to ${phone}: ${smsError?.message || "Unknown error"}`);
+              console.error(`Failed to send SMS to ${phone}:`, smsError?.message || smsError);
               // Log failed SMS send
               await logMessage({
                 type: type === "both" ? "both" : "sms",

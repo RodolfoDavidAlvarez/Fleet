@@ -95,11 +95,23 @@ export default function AnnouncementsPage() {
   const [messageLogs, setMessageLogs] = useState<MessageLog[]>([]);
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const [formData, setFormData] = useState({
     templateName: "",
     subject: "",
     message: "",
+    category: "announcement",
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    id: "",
+    name: "",
+    subject: "",
+    message_en: "",
+    message_es: "",
+    type: "sms" as "email" | "sms" | "both",
     category: "announcement",
   });
 
@@ -204,6 +216,21 @@ export default function AnnouncementsPage() {
         throw new Error("Email subject is required");
       }
 
+      // For SMS-only messages, validate that selected members have phone numbers
+      if (messageType === "sms") {
+        const membersWithoutPhone = selectedMembers.filter((m) => !m.phone || !m.phone.trim());
+        if (membersWithoutPhone.length > 0) {
+          throw new Error(
+            `The following selected members don't have phone numbers: ${membersWithoutPhone.map((m) => m.name || m.email).join(", ")}. Please remove them or add phone numbers.`
+          );
+        }
+
+        // If no group recipients, no individual recipients with phones, and no custom recipients
+        if (recipients.length === 0 && selectedMembers.length === 0 && !customRecipients.trim()) {
+          throw new Error("Please select at least one recipient with a phone number");
+        }
+      }
+
       // Validate scheduled date/time if scheduling
       if (sendType === "scheduled") {
         if (!scheduledDate || !scheduledTime) {
@@ -246,14 +273,31 @@ export default function AnnouncementsPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send message");
+      if (!res.ok) {
+        // Handle specific error cases
+        if (data.error && data.recipientsWithoutPhone) {
+          throw new Error(`${data.error}\n\nSkipped recipients: ${data.recipientsWithoutPhone.join(", ")}`);
+        }
+        throw new Error(data.error || "Failed to send message");
+      }
 
       if (sendType === "scheduled") {
         setSuccess(`Message scheduled successfully for ${formatPhoenixTime(new Date(phoenixToUTC(scheduledDate, scheduledTime)).toISOString())}`);
         loadScheduledMessages();
         setActiveView("scheduled");
       } else {
-        setSuccess(`Message sent successfully to ${data.sentCount} recipient(s)`);
+        if (data.sentCount === 0) {
+          throw new Error(
+            "No messages were sent. This may be because:\n" +
+              "- Selected recipients don't have phone numbers (for SMS)\n" +
+              "- SMS is disabled or Twilio credentials are missing\n" +
+              "- Email service is not configured\n" +
+              (data.warnings ? `\nWarnings: ${data.warnings.join(", ")}` : "")
+          );
+        }
+        setSuccess(`Message sent successfully to ${data.sentCount} recipient(s)${data.failedCount > 0 ? ` (${data.failedCount} failed)` : ""}`);
+        // Reload message logs to show the sent message
+        loadMessageLogs();
       }
 
       // Reset form if one-time send
@@ -270,6 +314,10 @@ export default function AnnouncementsPage() {
         setScheduledDate("");
         setScheduledTime("");
       }
+
+      // Always reload all data to keep tabs in sync
+      loadScheduledMessages();
+      loadMessageLogs();
 
       setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
@@ -343,6 +391,61 @@ export default function AnnouncementsPage() {
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete template");
+    }
+  };
+
+  const handleEditTemplate = (template: Template) => {
+    setEditFormData({
+      id: template.id,
+      name: template.name,
+      subject: template.subject || "",
+      message_en: template.message_en,
+      message_es: template.message_es || "",
+      type: template.type,
+      category: template.category,
+    });
+    setEditingTemplate(template);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateTemplate = async () => {
+    setSaving(true);
+    setError(null);
+
+    try {
+      if (!editFormData.name.trim()) {
+        throw new Error("Template name is required");
+      }
+      if (!editFormData.message_en.trim()) {
+        throw new Error("Message content is required");
+      }
+
+      const res = await fetch("/api/admin/message-templates", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editFormData.id,
+          name: editFormData.name,
+          subject: editFormData.subject,
+          messageEn: editFormData.message_en,
+          messageEs: editFormData.message_es,
+          type: editFormData.type,
+          category: editFormData.category,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update template");
+
+      setSuccess("Template updated successfully");
+      setShowEditModal(false);
+      setEditingTemplate(null);
+      loadTemplates();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update template");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -485,7 +588,21 @@ export default function AnnouncementsPage() {
                         <input
                           type="radio"
                           checked={messageType === "sms"}
-                          onChange={() => setMessageType("sms")}
+                          onChange={() => {
+                            setMessageType("sms");
+                            // Remove selected members without phone numbers when switching to SMS
+                            const membersWithPhones = selectedMembers.filter((m) => m.phone && m.phone.trim());
+                            if (membersWithPhones.length !== selectedMembers.length) {
+                              const removedCount = selectedMembers.length - membersWithPhones.length;
+                              setSelectedMembers(membersWithPhones);
+                              if (removedCount > 0) {
+                                setError(
+                                  `${removedCount} selected member(s) without phone numbers were removed. Only members with phone numbers can receive SMS.`
+                                );
+                                setTimeout(() => setError(null), 5000);
+                              }
+                            }
+                          }}
                           className="w-4 h-4 text-primary-600"
                         />
                         <MessageSquare className="w-5 h-5 ml-3 mr-2 text-green-600" />
@@ -1080,6 +1197,13 @@ export default function AnnouncementsPage() {
                           </div>
                           <div className="flex items-center gap-2 ml-4">
                             <button
+                              onClick={() => handleEditTemplate(template)}
+                              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                              title="Edit template"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
+                            <button
                               onClick={() => handleLoadTemplate(template)}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               title="Use template"
@@ -1129,33 +1253,33 @@ export default function AnnouncementsPage() {
                         <div key={log.id} className="p-6 hover:bg-gray-50 transition-colors">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                {/* Status Icon */}
-                                {log.status === "sent" ? (
-                                  <CheckCircle className="w-5 h-5 text-green-600" />
-                                ) : log.status === "failed" ? (
-                                  <XCircle className="w-5 h-5 text-red-600" />
-                                ) : (
-                                  <AlertCircle className="w-5 h-5 text-orange-600" />
-                                )}
-
-                                {/* Message Subject or Preview */}
-                                <h4 className="text-base font-semibold text-gray-900">
-                                  {log.subject || log.message_content.substring(0, 50) + "..."}
-                                </h4>
-
-                                {/* Status Badge */}
-                                <span
-                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              {/* Header Row with Status */}
+                              <div className="flex items-center gap-3 mb-3">
+                                {/* Large Status Badge */}
+                                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${
+                                  log.status === "sent"
+                                    ? "bg-green-100"
+                                    : log.status === "failed"
+                                      ? "bg-red-100"
+                                      : "bg-orange-100"
+                                }`}>
+                                  {log.status === "sent" ? (
+                                    <CheckCircle className="w-4 h-4 text-green-600" />
+                                  ) : log.status === "failed" ? (
+                                    <XCircle className="w-4 h-4 text-red-600" />
+                                  ) : (
+                                    <AlertCircle className="w-4 h-4 text-orange-600" />
+                                  )}
+                                  <span className={`text-sm font-semibold ${
                                     log.status === "sent"
-                                      ? "bg-green-100 text-green-800"
+                                      ? "text-green-800"
                                       : log.status === "failed"
-                                        ? "bg-red-100 text-red-800"
-                                        : "bg-orange-100 text-orange-800"
-                                  }`}
-                                >
-                                  {log.status.charAt(0).toUpperCase() + log.status.slice(1)}
-                                </span>
+                                        ? "text-red-800"
+                                        : "text-orange-800"
+                                  }`}>
+                                    {log.status === "sent" ? "Delivered" : log.status === "failed" ? "Failed" : "Bounced"}
+                                  </span>
+                                </div>
 
                                 {/* Type Badge */}
                                 <span
@@ -1172,30 +1296,41 @@ export default function AnnouncementsPage() {
 
                                 {/* Scheduled Badge */}
                                 {log.was_scheduled && (
-                                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
                                     Scheduled
                                   </span>
                                 )}
                               </div>
 
-                              {/* Recipient Info */}
-                              <div className="mb-2">
-                                <span className="text-sm font-medium text-gray-700">To: </span>
-                                <span className="text-sm text-gray-900">
-                                  {log.recipient_name ? `${log.recipient_name} (${log.recipient_identifier})` : log.recipient_identifier}
-                                </span>
-                                <span
-                                  className={`ml-2 px-1.5 py-0.5 rounded text-xs font-medium ${
-                                    log.recipient_type === "individual"
-                                      ? "bg-blue-100 text-blue-700"
-                                      : log.recipient_type === "group"
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-gray-100 text-gray-700"
-                                  }`}
-                                >
-                                  {log.recipient_type}
-                                </span>
+                              {/* Recipient Info - Clear Display */}
+                              <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Recipient</span>
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                                      log.recipient_type === "individual"
+                                        ? "bg-blue-100 text-blue-700"
+                                        : log.recipient_type === "group"
+                                          ? "bg-green-100 text-green-700"
+                                          : "bg-gray-200 text-gray-700"
+                                    }`}
+                                  >
+                                    {log.recipient_type === "individual" ? "Team Member" : log.recipient_type === "group" ? "Group" : "Custom"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {log.recipient_name && (
+                                    <span className="text-sm font-semibold text-gray-900">{log.recipient_name}</span>
+                                  )}
+                                  <span className="text-sm text-gray-600">{log.recipient_identifier}</span>
+                                </div>
                               </div>
+
+                              {/* Subject if exists */}
+                              {log.subject && (
+                                <p className="text-sm font-medium text-gray-800 mb-2">Subject: {log.subject}</p>
+                              )}
 
                               {/* Message Preview */}
                               <p className="text-sm text-gray-700 line-clamp-2 mb-2">{log.message_content}</p>
@@ -1274,6 +1409,149 @@ export default function AnnouncementsPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Template Modal */}
+      {showEditModal && editingTemplate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-gray-900">Edit Template</h3>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingTemplate(null);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="space-y-4">
+                {/* Template Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Template Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Enter template name"
+                  />
+                </div>
+
+                {/* Type and Category Row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                    <select
+                      value={editFormData.type}
+                      onChange={(e) => setEditFormData({ ...editFormData, type: e.target.value as "email" | "sms" | "both" })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="email">Email Only</option>
+                      <option value="sms">SMS Only</option>
+                      <option value="both">Email & SMS</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <select
+                      value={editFormData.category}
+                      onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="announcement">Announcement</option>
+                      <option value="maintenance">Maintenance</option>
+                      <option value="urgent">Urgent</option>
+                      <option value="reminder">Reminder</option>
+                      <option value="update">Update</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Subject (for email types) */}
+                {(editFormData.type === "email" || editFormData.type === "both") && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Subject</label>
+                    <input
+                      type="text"
+                      value={editFormData.subject}
+                      onChange={(e) => setEditFormData({ ...editFormData, subject: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Enter email subject"
+                    />
+                  </div>
+                )}
+
+                {/* Message (English) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Message (English) <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={editFormData.message_en}
+                    onChange={(e) => setEditFormData({ ...editFormData, message_en: e.target.value })}
+                    rows={8}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+                    placeholder="Enter message content..."
+                  />
+                  <p className="text-xs text-gray-500 mt-1">{editFormData.message_en.length} characters</p>
+                </div>
+
+                {/* Message (Spanish) - Optional */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Message (Spanish) <span className="text-gray-400 font-normal">- Optional</span>
+                  </label>
+                  <textarea
+                    value={editFormData.message_es}
+                    onChange={(e) => setEditFormData({ ...editFormData, message_es: e.target.value })}
+                    rows={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+                    placeholder="Enter Spanish translation (optional)..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingTemplate(null);
+                }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateTemplate}
+                disabled={saving || !editFormData.name.trim() || !editFormData.message_en.trim()}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Save Changes
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
