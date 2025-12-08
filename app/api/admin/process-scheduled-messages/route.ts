@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email";
 import { sendSMS } from "@/lib/twilio";
 
+export const dynamic = 'force-dynamic';
+
 // This endpoint should be called by a cron job to process scheduled messages
 export async function GET(request: NextRequest) {
   try {
