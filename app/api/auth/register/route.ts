@@ -33,8 +33,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "User with this email already has an account" }, { status: 400 });
       }
 
-      // User exists but doesn't have auth account - create auth account and link
+      // User exists but doesn't have auth account - create auth account with SAME ID
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        id: existingUser.id, // Use the existing user's ID to link them
         email: normalizedEmail,
         password: password,
         email_confirm: true,
@@ -57,17 +58,16 @@ export async function POST(request: NextRequest) {
         ? 'approved'
         : (existingUser.approval_status || 'pending_approval');
 
-      // Update existing user record to link with auth ID
+      // Update existing user record (ID already matches, just update other fields)
       const { data: updatedUser, error: updateError } = await supabase
         .from("users")
         .update({
-          id: authData.user.id, // Link to Auth ID
           name,
           phone: phone || null,
           approval_status: newApprovalStatus,
           admin_invited: false, // Clear the flag after use
         })
-        .eq("email", normalizedEmail)
+        .eq("id", existingUser.id)
         .select("id, email, name, role, approval_status")
         .single();
 
