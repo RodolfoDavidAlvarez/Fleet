@@ -252,10 +252,10 @@ ${hasImages ? "Focus on visual analysis - what can you see in the photos?" : "An
       },
     ];
 
-    // Add images if provided (limit to first 3 for efficiency and cost)
+    // Add images if provided (ONLY process first photo to optimize resource usage)
     // CRITICAL: Images are added BEFORE the text prompt so Claude sees them first
     if (input.photoUrls && input.photoUrls.length > 0) {
-      const imagesToProcess = input.photoUrls.slice(0, 3); // Claude supports multiple images, limit for efficiency
+      const imagesToProcess = input.photoUrls.slice(0, 1); // Only analyze first photo to save resources
       const imagePromises = imagesToProcess.map((url) => fetchImageAsBase64(url));
       const imageData = await Promise.all(imagePromises);
 

@@ -86,16 +86,44 @@ export async function POST(request: NextRequest) {
       validPhotos.push(file);
     }
 
-    const stored = await optimizeAndStoreImages(validPhotos);
+    let stored: Array<{ url: string; thumbUrl?: string }> = [];
+    try {
+      stored = await optimizeAndStoreImages(validPhotos);
+    } catch (imageError) {
+      console.error("Error storing images:", imageError);
+      return NextResponse.json(
+        {
+          error: "Failed to process uploaded images",
+          details: process.env.NODE_ENV === "development" ? (imageError instanceof Error ? imageError.message : String(imageError)) : undefined,
+        },
+        { status: 500 }
+      );
+    }
 
-    // Analyze with AI - include photo URLs for vision analysis
-    const ai = await analyzeRepairRequest({
-      description: parsed.data.description,
-      vehicleIdentifier: parsed.data.vehicleIdentifier,
-      urgency: parsed.data.urgency,
-      preferredLanguage: parsed.data.preferredLanguage,
-      photoUrls: stored.map((s) => s.url), // Pass photo URLs for vision analysis
-    });
+    // Analyze with AI - include photo URLs for vision analysis (only first photo is analyzed)
+    let ai;
+    try {
+      ai = await analyzeRepairRequest({
+        description: parsed.data.description,
+        vehicleIdentifier: parsed.data.vehicleIdentifier,
+        urgency: parsed.data.urgency,
+        preferredLanguage: parsed.data.preferredLanguage,
+        photoUrls: stored.map((s) => s.url), // Pass photo URLs (only first is analyzed to save resources)
+      });
+    } catch (aiError) {
+      console.error("Error during AI analysis:", aiError);
+      // Use fallback classification if AI fails
+      ai = {
+        category: "Other / Misc",
+        tags: ["other", "General inspection"],
+        summary: parsed.data.preferredLanguage === "es"
+          ? "Clasificación manual requerida"
+          : "Manual classification required",
+        confidence: 0.5,
+        serviceType: "General inspection",
+        incidentType: "Other" as const,
+      };
+    }
 
     const record = await repairRequestDB.create({
       ...parsed.data,
