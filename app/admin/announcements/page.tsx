@@ -23,6 +23,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { phoenixToUTC, utcToPhoenix, formatPhoenixTime, getMinScheduleTime } from "@/lib/timezone";
 
@@ -70,6 +72,19 @@ interface MessageLog {
   error_message?: string;
   sent_at: string;
   was_scheduled: boolean;
+  batch_id?: string;
+  batch_subject?: string;
+}
+
+interface MessageBatch {
+  batch_id: string;
+  batch_subject: string;
+  messages: MessageLog[];
+  sent_at: string;
+  type: "email" | "sms" | "both";
+  total_count: number;
+  sent_count: number;
+  failed_count: number;
 }
 
 export default function AnnouncementsPage() {
@@ -114,6 +129,55 @@ export default function AnnouncementsPage() {
     type: "sms" as "email" | "sms" | "both",
     category: "announcement",
   });
+
+  const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
+
+  // Group messages by batch_id for collapsible display
+  const groupedMessages = (() => {
+    const batches: MessageBatch[] = [];
+    const individualLogs: MessageLog[] = [];
+    const batchMap = new Map<string, MessageLog[]>();
+
+    for (const log of messageLogs) {
+      if (log.batch_id) {
+        const existing = batchMap.get(log.batch_id) || [];
+        existing.push(log);
+        batchMap.set(log.batch_id, existing);
+      } else {
+        individualLogs.push(log);
+      }
+    }
+
+    // Convert batch map to MessageBatch objects
+    for (const [batchId, messages] of batchMap) {
+      const sentCount = messages.filter(m => m.status === "sent").length;
+      const failedCount = messages.filter(m => m.status === "failed").length;
+      batches.push({
+        batch_id: batchId,
+        batch_subject: messages[0]?.batch_subject || messages[0]?.subject || "Group Message",
+        messages: messages.sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime()),
+        sent_at: messages[0]?.sent_at || "",
+        type: messages[0]?.type || "sms",
+        total_count: messages.length,
+        sent_count: sentCount,
+        failed_count: failedCount,
+      });
+    }
+
+    return { batches, individualLogs };
+  })();
+
+  const toggleBatchExpanded = (batchId: string) => {
+    setExpandedBatches(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(batchId)) {
+        newSet.delete(batchId);
+      } else {
+        newSet.add(batchId);
+      }
+      return newSet;
+    });
+  };
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -1245,11 +1309,162 @@ export default function AnnouncementsPage() {
                     <div className="p-6 border-b border-gray-200">
                       <h3 className="text-lg font-semibold text-gray-900">Message Delivery History</h3>
                       <p className="text-sm text-gray-600 mt-1">
-                        Complete log of all messages sent, including delivery status and recipient information
+                        Complete log of all messages sent, including delivery status and recipient information.
+                        {groupedMessages.batches.length > 0 && (
+                          <span className="ml-1 text-primary-600">
+                            Click on group messages to expand and see all recipients.
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="divide-y divide-gray-200">
-                      {messageLogs.map((log) => (
+                      {/* Render batched messages first */}
+                      {groupedMessages.batches
+                        .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime())
+                        .map((batch) => {
+                          const isExpanded = expandedBatches.has(batch.batch_id);
+                          return (
+                            <div key={batch.batch_id} className="border-l-4 border-primary-500">
+                              {/* Batch Header - Clickable */}
+                              <button
+                                onClick={() => toggleBatchExpanded(batch.batch_id)}
+                                className="w-full p-6 hover:bg-gray-50 transition-colors text-left"
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    {/* Header Row with Expand Icon and Stats */}
+                                    <div className="flex items-center gap-3 mb-3">
+                                      {/* Expand/Collapse Icon */}
+                                      {isExpanded ? (
+                                        <ChevronDown className="w-5 h-5 text-gray-600" />
+                                      ) : (
+                                        <ChevronRight className="w-5 h-5 text-gray-600" />
+                                      )}
+
+                                      {/* Group Badge */}
+                                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-100">
+                                        <Users className="w-4 h-4 text-primary-600" />
+                                        <span className="text-sm font-semibold text-primary-800">
+                                          Group Message ({batch.total_count} recipients)
+                                        </span>
+                                      </div>
+
+                                      {/* Success/Fail Stats */}
+                                      <div className="flex items-center gap-2">
+                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center gap-1">
+                                          <CheckCircle className="w-3 h-3" />
+                                          {batch.sent_count} sent
+                                        </span>
+                                        {batch.failed_count > 0 && (
+                                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 flex items-center gap-1">
+                                            <XCircle className="w-3 h-3" />
+                                            {batch.failed_count} failed
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* Type Badge */}
+                                      <span
+                                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                          batch.type === "email"
+                                            ? "bg-blue-100 text-blue-800"
+                                            : batch.type === "sms"
+                                              ? "bg-green-100 text-green-800"
+                                              : "bg-purple-100 text-purple-800"
+                                        }`}
+                                      >
+                                        {batch.type === "both" ? "Email & SMS" : batch.type.toUpperCase()}
+                                      </span>
+                                    </div>
+
+                                    {/* Batch Subject/Title */}
+                                    <p className="text-sm font-medium text-gray-900 mb-2 ml-8">
+                                      {batch.batch_subject}
+                                    </p>
+
+                                    {/* Message Preview */}
+                                    <p className="text-sm text-gray-700 line-clamp-2 mb-2 ml-8">
+                                      {batch.messages[0]?.message_content}
+                                    </p>
+
+                                    {/* Metadata */}
+                                    <div className="flex items-center gap-4 text-xs text-gray-500 ml-8">
+                                      <div className="flex items-center gap-1">
+                                        <Calendar className="w-4 h-4" />
+                                        <span>Sent: {new Date(batch.sent_at).toLocaleString()}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+
+                              {/* Expanded Message List */}
+                              {isExpanded && (
+                                <div className="border-t border-gray-200 bg-gray-50">
+                                  <div className="px-6 py-3 bg-gray-100 border-b border-gray-200">
+                                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+                                      Individual Recipients ({batch.messages.length})
+                                    </p>
+                                  </div>
+                                  <div className="divide-y divide-gray-200">
+                                    {batch.messages.map((log) => (
+                                      <div key={log.id} className="p-4 pl-12 hover:bg-gray-100 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                          {/* Status Icon */}
+                                          {log.status === "sent" ? (
+                                            <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                          ) : log.status === "failed" ? (
+                                            <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                                          ) : (
+                                            <AlertCircle className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                                          )}
+
+                                          {/* Recipient Info */}
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                              {log.recipient_name && (
+                                                <span className="text-sm font-medium text-gray-900">{log.recipient_name}</span>
+                                              )}
+                                              <span className="text-sm text-gray-600">{log.recipient_identifier}</span>
+                                            </div>
+                                          </div>
+
+                                          {/* Status Badge */}
+                                          <span
+                                            className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+                                              log.status === "sent"
+                                                ? "bg-green-100 text-green-800"
+                                                : log.status === "failed"
+                                                  ? "bg-red-100 text-red-800"
+                                                  : "bg-orange-100 text-orange-800"
+                                            }`}
+                                          >
+                                            {log.status === "sent" ? "Delivered" : log.status === "failed" ? "Failed" : "Bounced"}
+                                          </span>
+                                        </div>
+
+                                        {/* Error Message */}
+                                        {log.error_message && (
+                                          <div className="mt-2 ml-7 p-2 bg-red-50 border border-red-200 rounded">
+                                            <p className="text-xs text-red-800">
+                                              <span className="font-semibold">Error: </span>
+                                              {log.error_message}
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                      {/* Render individual (non-batched) messages */}
+                      {groupedMessages.individualLogs
+                        .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime())
+                        .map((log) => (
                         <div key={log.id} className="p-6 hover:bg-gray-50 transition-colors">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">

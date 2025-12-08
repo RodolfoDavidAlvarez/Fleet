@@ -12,6 +12,8 @@ export interface MessageLogEntry {
   scheduledMessageId?: string;
   wasScheduled?: boolean;
   sentBy?: string;
+  batchId?: string;
+  batchSubject?: string;
 }
 
 /**
@@ -34,6 +36,8 @@ export async function logMessage(entry: MessageLogEntry): Promise<boolean> {
       was_scheduled: entry.wasScheduled || false,
       sent_by: entry.sentBy,
       sent_at: new Date().toISOString(),
+      batch_id: entry.batchId,
+      batch_subject: entry.batchSubject,
     });
 
     if (error) {

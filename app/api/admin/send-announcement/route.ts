@@ -4,6 +4,7 @@ import { sendEmail } from "@/lib/email";
 import { sendSMS } from "@/lib/twilio";
 import { phoenixToUTC } from "@/lib/timezone";
 import { logMessage } from "@/lib/message-logger";
+import { randomUUID } from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
@@ -175,6 +176,11 @@ export async function POST(request: NextRequest) {
       data: { user: authUser },
     } = await supabase.auth.getUser();
 
+    // Generate batch ID for group sends (more than 1 recipient or using groups)
+    const isGroupSend = (recipientGroups && recipientGroups.length > 0) || validRecipients.length > 1 || (customRecipients && customRecipients.length > 1);
+    const batchId = isGroupSend ? randomUUID() : undefined;
+    const batchSubject = isGroupSend ? (subject || `${type.toUpperCase()} to ${validRecipients.length + (customRecipients?.length || 0)} recipients`) : undefined;
+
     // Send to valid recipients
     for (const recipient of validRecipients) {
       try {
@@ -195,12 +201,14 @@ export async function POST(request: NextRequest) {
                   type: type === "both" ? "both" : "email",
                   subject: subject,
                   messageContent: messageEn,
-                  recipientType: "individual",
+                  recipientType: isGroupSend ? "group" : "individual",
                   recipientIdentifier: recipient.email,
                   recipientName: recipient.name,
                   status: "sent",
                   wasScheduled: false,
                   sentBy: authUser?.id,
+                  batchId,
+                  batchSubject,
                 });
               } else {
                 failedCount++;
@@ -210,13 +218,15 @@ export async function POST(request: NextRequest) {
                   type: type === "both" ? "both" : "email",
                   subject: subject,
                   messageContent: messageEn,
-                  recipientType: "individual",
+                  recipientType: isGroupSend ? "group" : "individual",
                   recipientIdentifier: recipient.email,
                   recipientName: recipient.name,
                   status: "failed",
                   errorMessage: "Email delivery failed",
                   wasScheduled: false,
                   sentBy: authUser?.id,
+                  batchId,
+                  batchSubject,
                 });
               }
             } catch (emailError: any) {
@@ -228,13 +238,15 @@ export async function POST(request: NextRequest) {
                 type: type === "both" ? "both" : "email",
                 subject: subject,
                 messageContent: messageEn,
-                recipientType: "individual",
+                recipientType: isGroupSend ? "group" : "individual",
                 recipientIdentifier: recipient.email,
                 recipientName: recipient.name,
                 status: "failed",
                 errorMessage: emailError?.message || "Unknown error",
                 wasScheduled: false,
                 sentBy: authUser?.id,
+                batchId,
+                batchSubject,
               });
             }
           }
@@ -254,12 +266,14 @@ export async function POST(request: NextRequest) {
                   type: type === "both" ? "both" : "sms",
                   subject: subject,
                   messageContent: messageEn,
-                  recipientType: "individual",
+                  recipientType: isGroupSend ? "group" : "individual",
                   recipientIdentifier: phone,
                   recipientName: recipient.name,
                   status: "sent",
                   wasScheduled: false,
                   sentBy: authUser?.id,
+                  batchId,
+                  batchSubject,
                 });
               } else {
                 failedCount++;
@@ -269,13 +283,15 @@ export async function POST(request: NextRequest) {
                   type: type === "both" ? "both" : "sms",
                   subject: subject,
                   messageContent: messageEn,
-                  recipientType: "individual",
+                  recipientType: isGroupSend ? "group" : "individual",
                   recipientIdentifier: phone,
                   recipientName: recipient.name,
                   status: "failed",
                   errorMessage: "SMS delivery failed - Check Twilio credentials",
                   wasScheduled: false,
                   sentBy: authUser?.id,
+                  batchId,
+                  batchSubject,
                 });
               }
             } catch (smsError: any) {
@@ -287,13 +303,15 @@ export async function POST(request: NextRequest) {
                 type: type === "both" ? "both" : "sms",
                 subject: subject,
                 messageContent: messageEn,
-                recipientType: "individual",
+                recipientType: isGroupSend ? "group" : "individual",
                 recipientIdentifier: recipient.phone,
                 recipientName: recipient.name,
                 status: "failed",
                 errorMessage: smsError?.message || "Unknown error",
                 wasScheduled: false,
                 sentBy: authUser?.id,
+                batchId,
+                batchSubject,
               });
             }
           }
@@ -333,6 +351,8 @@ export async function POST(request: NextRequest) {
                     status: "sent",
                     wasScheduled: false,
                     sentBy: authUser?.id,
+                    batchId,
+                    batchSubject,
                   });
                 } else {
                   failedCount++;
@@ -348,6 +368,8 @@ export async function POST(request: NextRequest) {
                     errorMessage: "Email delivery failed",
                     wasScheduled: false,
                     sentBy: authUser?.id,
+                    batchId,
+                    batchSubject,
                   });
                 }
               } catch (emailError: any) {
@@ -365,6 +387,8 @@ export async function POST(request: NextRequest) {
                   errorMessage: emailError?.message || "Unknown error",
                   wasScheduled: false,
                   sentBy: authUser?.id,
+                  batchId,
+                  batchSubject,
                 });
               }
             }
@@ -385,6 +409,8 @@ export async function POST(request: NextRequest) {
                     status: "sent",
                     wasScheduled: false,
                     sentBy: authUser?.id,
+                    batchId,
+                    batchSubject,
                   });
                 } else {
                   failedCount++;
@@ -400,6 +426,8 @@ export async function POST(request: NextRequest) {
                     errorMessage: "SMS delivery failed - Check Twilio credentials",
                     wasScheduled: false,
                     sentBy: authUser?.id,
+                    batchId,
+                    batchSubject,
                   });
                 }
               } catch (smsError: any) {
@@ -417,6 +445,8 @@ export async function POST(request: NextRequest) {
                   errorMessage: smsError?.message || "Unknown error",
                   wasScheduled: false,
                   sentBy: authUser?.id,
+                  batchId,
+                  batchSubject,
                 });
               }
             }
