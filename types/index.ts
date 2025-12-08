@@ -9,6 +9,9 @@ export interface User {
   approval_status?: "pending_approval" | "approved";
   last_seen_at?: string;
   isOnline?: boolean;
+  // Auth account status
+  hasAuthAccount?: boolean;
+  admin_invited?: boolean;
   // Airtable migration fields
   airtable_id?: string;
   member_legacy_id?: string;

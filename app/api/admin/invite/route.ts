@@ -6,7 +6,7 @@ const ALLOWED_ROLES = ["admin", "mechanic", "customer", "driver"] as const;
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, role } = await request.json();
+    const { email, role, userId } = await request.json();
 
     if (!email || !role) {
       return NextResponse.json({ error: "Email and role are required" }, { status: 400 });
@@ -21,25 +21,48 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = email.trim().toLowerCase();
     const supabase = createServerClient();
 
-    // Prevent duplicate invitations/accounts
+    // Check if user exists in users table
     const { data: existingUser } = await supabase
       .from("users")
-      .select("id, approval_status, role")
+      .select("id, approval_status, role, name")
       .eq("email", normalizedEmail)
       .maybeSingle();
 
+    // Check if user has an auth account
+    let hasAuthAccount = false;
     if (existingUser) {
+      // Check if their ID exists in auth.users
+      const { data: authUser } = await supabase.auth.admin.getUserById(existingUser.id);
+      hasAuthAccount = !!authUser?.user;
+    }
+
+    if (existingUser && hasAuthAccount) {
+      // User already has an account - cannot send onboarding link
       return NextResponse.json(
         {
           error:
             existingUser.approval_status === "approved"
-              ? "A user with this email is already approved."
-              : "A user with this email is already pending approval.",
+              ? "This user already has an account and is approved."
+              : "This user already has an account and is pending approval.",
         },
         { status: 400 }
       );
     }
 
+    // If user exists but doesn't have auth account, we can send them an onboarding link
+    // Mark them as admin_invited so they get auto-approved when they register
+    if (existingUser && !hasAuthAccount) {
+      // Update the user record to mark them as invited by admin
+      await supabase
+        .from("users")
+        .update({
+          role: normalizedRole, // Update role if different
+          admin_invited: true, // Mark as admin invited for auto-approval
+        })
+        .eq("id", existingUser.id);
+    }
+
+    // Send invitation email
     const emailSent = await sendInvitationEmail(normalizedEmail, normalizedRole);
 
     if (!emailSent) {
@@ -49,7 +72,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: existingUser
+        ? `Onboarding link sent to ${existingUser.name || normalizedEmail}. They will have access once they create their account.`
+        : `Invitation sent to ${normalizedEmail}.`,
+      isExistingUser: !!existingUser,
+    });
   } catch (error) {
     console.error("Invite error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

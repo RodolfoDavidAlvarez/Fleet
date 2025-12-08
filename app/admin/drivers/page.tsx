@@ -25,6 +25,7 @@ import {
   ArrowUpDown,
   Layers,
   Settings,
+  AlertCircle,
 } from "lucide-react";
 import { User, Vehicle } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1686,6 +1687,58 @@ export default function DriversPage() {
                   </h3>
                   {!editing ? (
                     <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-5 grid grid-cols-2 gap-4">
+                      {/* Login Account Status */}
+                      <div className="space-y-1 col-span-2">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Login Account</p>
+                        <div className="flex items-center gap-3">
+                          {selectedDriver.hasAuthAccount ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                              <Check className="h-3.5 w-3.5" />
+                              Has Account
+                            </span>
+                          ) : (
+                            <>
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                                <AlertCircle className="h-3.5 w-3.5" />
+                                No Account
+                              </span>
+                              {selectedDriver.email && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      const res = await fetch("/api/admin/invite", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                          email: selectedDriver.email,
+                                          role: selectedDriver.role || "driver",
+                                          userId: selectedDriver.id,
+                                        }),
+                                      });
+                                      const data = await res.json();
+                                      if (res.ok) {
+                                        showToast(data.message || "Onboarding link sent!", "success");
+                                      } else {
+                                        showToast(data.error || "Failed to send onboarding link", "error");
+                                      }
+                                    } catch (err) {
+                                      showToast("Failed to send onboarding link", "error");
+                                    }
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary-100 text-primary-700 hover:bg-primary-200 transition-colors"
+                                >
+                                  <Mail className="h-3.5 w-3.5" />
+                                  Send Onboarding Link
+                                </button>
+                              )}
+                              {!selectedDriver.email && (
+                                <span className="text-xs text-gray-500 italic">Add email to send onboarding link</span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
                       <div className="space-y-1">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</p>
                         <div className="flex items-center gap-2">
