@@ -7,7 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { NotificationsSection } from "./notifications-section";
-import { Users, Bell, CheckCircle, Clock, Send, Edit, Calendar, UserPlus, Trash2, Mail, ChevronDown, X, Plus } from "lucide-react";
+import { Users, Bell, CheckCircle, Clock, Send, Edit, Calendar, UserPlus, Trash2, Mail, ChevronDown, X, Plus, Search } from "lucide-react";
 import { queryKeys } from "@/lib/query-client";
 
 interface User {
@@ -50,6 +50,10 @@ function AdminSettingsPageContent() {
     email: "",
     role: "admin", // Default to admin for admin onboarding
   });
+  const [contactSearch, setContactSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [selectedContact, setSelectedContact] = useState<User | null>(null);
+  const [searching, setSearching] = useState(false);
 
   // Load users with React Query for caching
   const {
@@ -558,6 +562,38 @@ function AdminSettingsPageContent() {
     }
   };
 
+  // Search for existing contacts
+  const handleContactSearch = useCallback(async (query: string) => {
+    setContactSearch(query);
+    if (query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearching(true);
+    try {
+      // Search through all users (not just admins)
+      const allUsers = usersData || [];
+      const results = allUsers.filter((u: User) =>
+        u.role !== 'admin' && // Exclude existing admins
+        (u.name?.toLowerCase().includes(query.toLowerCase()) ||
+         u.email?.toLowerCase().includes(query.toLowerCase()))
+      ).slice(0, 5); // Limit to 5 results
+      setSearchResults(results);
+    } catch (err) {
+      console.error('Search error:', err);
+    } finally {
+      setSearching(false);
+    }
+  }, [usersData]);
+
+  const handleSelectContact = (contact: User) => {
+    setSelectedContact(contact);
+    setInviteForm({ ...inviteForm, email: contact.email });
+    setContactSearch("");
+    setSearchResults([]);
+  };
+
   const handleInviteUser = () => {
     // Show confirmation dialog first
     if (!inviteForm.email.trim()) {
@@ -574,6 +610,20 @@ function AdminSettingsPageContent() {
     setShowConfirmDialog(false);
 
     try {
+      // If promoting an existing user, update their role first
+      if (selectedContact) {
+        const updateRes = await fetch("/api/admin/users", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: selectedContact.id, role: "admin" }),
+        });
+        if (!updateRes.ok) {
+          const updateData = await updateRes.json();
+          throw new Error(updateData.error || "Failed to update user role");
+        }
+      }
+
+      // Send invitation email
       const res = await fetch("/api/admin/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -583,9 +633,17 @@ function AdminSettingsPageContent() {
       if (!res.ok) {
         throw new Error(data.error || "Failed to send onboarding email");
       }
-      setSuccess(`Onboarding email sent to ${inviteForm.email}. They'll appear here for approval after they register.`);
+
+      const successMsg = selectedContact
+        ? `${selectedContact.name} has been promoted to Admin. Onboarding email sent to ${inviteForm.email}.`
+        : `Onboarding email sent to ${inviteForm.email}. They'll appear here for approval after they register.`;
+
+      setSuccess(successMsg);
       setShowInviteModal(false);
       setInviteForm({ email: "", role: "admin" });
+      setSelectedContact(null);
+      setContactSearch("");
+      setSearchResults([]);
       refetchUsers(); // Refresh the list
       setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
@@ -1235,26 +1293,103 @@ function AdminSettingsPageContent() {
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Send Onboarding Email to New Admin</h3>
-              <p className="text-sm text-gray-600 mt-1">Send an invitation email to onboard a new administrator</p>
+              <p className="text-sm text-gray-600 mt-1">Search for an existing contact or enter a new email address</p>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                <input
-                  type="email"
-                  value={inviteForm.email}
-                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
-                  placeholder="admin@example.com"
-                />
-                <p className="text-xs text-gray-500 mt-1">They will receive an email with a link to register as an admin</p>
+              {/* Search existing contacts */}
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Search Existing Contacts</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={contactSearch}
+                    onChange={(e) => handleContactSearch(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 bg-white border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
+                    placeholder="Search by name or email..."
+                  />
+                </div>
+                {/* Search Results Dropdown */}
+                {searchResults.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {searchResults.map((contact) => (
+                      <button
+                        key={contact.id}
+                        onClick={() => handleSelectContact(contact)}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-gray-900">{contact.name}</p>
+                            <p className="text-sm text-gray-500">{contact.email}</p>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(contact.role)}`}>
+                            {contact.role}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {searching && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                    Searching...
+                  </div>
+                )}
+                {contactSearch.length >= 2 && searchResults.length === 0 && !searching && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                    No contacts found
+                  </div>
+                )}
               </div>
+
+              {/* Selected Contact Info */}
+              {selectedContact && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">{selectedContact.name}</p>
+                      <p className="text-sm text-gray-600">{selectedContact.email}</p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        Current role: <span className="font-medium">{selectedContact.role}</span> → Will be promoted to <span className="font-medium">Admin</span>
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedContact(null);
+                        setInviteForm({ ...inviteForm, email: "" });
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Manual Email Entry */}
+              {!selectedContact && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Or Enter Email Manually</label>
+                  <input
+                    type="email"
+                    value={inviteForm.email}
+                    onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium"
+                    placeholder="admin@example.com"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">They will receive an email with a link to register as an admin</p>
+                </div>
+              )}
             </div>
             <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
               <button
                 onClick={() => {
                   setShowInviteModal(false);
                   setInviteForm({ email: "", role: "admin" });
+                  setSelectedContact(null);
+                  setContactSearch("");
+                  setSearchResults([]);
                 }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
                 disabled={saving}
@@ -1266,7 +1401,7 @@ function AdminSettingsPageContent() {
                 className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
                 disabled={saving || !inviteForm.email}
               >
-                {saving ? "Sending..." : "Send Onboarding Email"}
+                {saving ? "Sending..." : selectedContact ? "Send & Promote to Admin" : "Send Onboarding Email"}
               </button>
             </div>
           </div>
@@ -1278,15 +1413,37 @@ function AdminSettingsPageContent() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[101]">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Confirm Send Onboarding Email</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {selectedContact ? "Confirm Promotion to Admin" : "Confirm Send Onboarding Email"}
+              </h3>
             </div>
             <div className="p-6">
-              <p className="text-sm text-gray-700 mb-4">Are you sure you want to send an onboarding email to:</p>
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <p className="font-medium text-gray-900">{inviteForm.email}</p>
-                <p className="text-xs text-gray-500 mt-1">They will receive an email with a registration link</p>
+              <p className="text-sm text-gray-700 mb-4">
+                {selectedContact
+                  ? "Are you sure you want to promote this user to admin and send them an onboarding email?"
+                  : "Are you sure you want to send an onboarding email to:"}
+              </p>
+              <div className={`rounded-lg p-4 mb-4 ${selectedContact ? "bg-blue-50 border border-blue-200" : "bg-gray-50"}`}>
+                {selectedContact ? (
+                  <>
+                    <p className="font-medium text-gray-900">{selectedContact.name}</p>
+                    <p className="text-sm text-gray-600">{selectedContact.email}</p>
+                    <p className="text-xs text-blue-600 mt-2 font-medium">
+                      {selectedContact.role.charAt(0).toUpperCase() + selectedContact.role.slice(1)} → Admin
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-medium text-gray-900">{inviteForm.email}</p>
+                    <p className="text-xs text-gray-500 mt-1">They will receive an email with a registration link</p>
+                  </>
+                )}
               </div>
-              <p className="text-sm text-gray-600">After they register, they will appear in the admin section for approval.</p>
+              <p className="text-sm text-gray-600">
+                {selectedContact
+                  ? "Their role will be changed to Admin and they will receive an onboarding email to create their login."
+                  : "After they register, they will appear in the admin section for approval."}
+              </p>
             </div>
             <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
               <button
@@ -1301,7 +1458,7 @@ function AdminSettingsPageContent() {
                 className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
                 disabled={saving}
               >
-                {saving ? "Sending..." : "Yes, Send Email"}
+                {saving ? "Sending..." : selectedContact ? "Yes, Promote & Send" : "Yes, Send Email"}
               </button>
             </div>
           </div>
