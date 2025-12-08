@@ -309,7 +309,7 @@ export const driverDB = {
   },
 
   create: async (
-    user: Pick<User, "name" | "email"> & { phone?: string; role?: User["role"]; approval_status?: User["approval_status"] }
+    user: Pick<User, "name"> & { email?: string; phone?: string; role?: User["role"]; approval_status?: User["approval_status"] }
   ): Promise<User> => {
     const supabase = createServerClient();
     const { data, error } = await supabase

@@ -2,7 +2,7 @@ export type UserRole = "admin" | "mechanic" | "customer" | "driver";
 
 export interface User {
   id: string;
-  email: string;
+  email?: string;
   name: string;
   role: UserRole;
   phone?: string;

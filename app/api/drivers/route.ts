@@ -4,7 +4,7 @@ import { driverDB } from "@/lib/db";
 
 const driverSchema = z.object({
   name: z.string().min(1),
-  email: z.string().email(),
+  email: z.string().email().optional().or(z.literal("")),
   phone: z.string().min(6).optional(),
   role: z.enum(["driver", "mechanic"]).optional(),
   approval_status: z.enum(["pending_approval", "approved"]).optional(),
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     const driver = await driverDB.create({
       name: parsed.data.name,
-      email: parsed.data.email,
+      email: parsed.data.email || undefined,
       phone: parsed.data.phone,
       role: parsed.data.role || "driver",
       approval_status: parsed.data.approval_status || "approved",

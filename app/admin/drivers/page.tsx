@@ -1354,16 +1354,16 @@ export default function DriversPage() {
                         />
                       </label>
                       <label className="space-y-1.5 block">
-                        <span className="text-sm font-semibold text-gray-700">Email Address *</span>
+                        <span className="text-sm font-semibold text-gray-700">Email Address</span>
                         <input
                           type="email"
-                          required
                           className="input-field w-full"
                           value={memberFormData.email}
                           onChange={(e) => setMemberFormData({ ...memberFormData, email: e.target.value })}
                           placeholder="e.g., john@example.com"
                           disabled={creatingMember}
                         />
+                        <p className="text-xs text-gray-500 mt-1">Optional - Email address for notifications</p>
                       </label>
                       <label className="space-y-1.5 block">
                         <span className="text-sm font-semibold text-gray-700">Phone Number</span>
