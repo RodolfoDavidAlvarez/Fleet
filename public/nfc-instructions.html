@@ -6,8 +6,13 @@
     <title>NFC Card Instructions - Agave Fleet</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        @page {
+            size: letter;
+            margin: 0;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -16,340 +21,404 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            background: #f5f5f5;
             min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
             padding: 20px;
             color: #333;
         }
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
+        .page {
+            width: 8.5in;
+            height: 11in;
             background: white;
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(123, 63, 126, 0.15);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            padding: 0.4in 0.5in;
             overflow: hidden;
         }
 
         /* Header */
         .header {
-            background: linear-gradient(135deg, #7B3F7E 0%, #5a2d5c 100%);
-            padding: 30px 40px;
-            text-align: center;
-            position: relative;
-        }
-
-        .header::after {
-            content: '';
-            position: absolute;
-            bottom: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 60px;
-            height: 40px;
-            background: white;
-            border-radius: 50% 50% 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #7B3F7E;
+            margin-bottom: 20px;
         }
 
         .logo {
-            max-width: 280px;
-            height: auto;
-            margin-bottom: 15px;
-            filter: brightness(0) invert(1);
+            height: 50px;
+            width: auto;
+        }
+
+        .header-text {
+            text-align: right;
         }
 
         .header h1 {
-            color: white;
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-top: 10px;
+            color: #7B3F7E;
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
         }
 
         .header p {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1rem;
-            margin-top: 8px;
+            color: #666;
+            font-size: 0.95rem;
+            margin-top: 2px;
         }
 
-        /* Main Content */
-        .content {
-            padding: 50px 40px 40px;
-        }
-
-        /* NFC Card Visual */
-        .nfc-visual {
+        /* Visual Section */
+        .visual-section {
             display: flex;
-            justify-content: center;
             align-items: center;
-            gap: 30px;
-            margin-bottom: 40px;
-            flex-wrap: wrap;
+            justify-content: center;
+            gap: 40px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            margin-bottom: 20px;
         }
 
         .lanyard {
-            position: relative;
-            width: 120px;
-            height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .lanyard-clip {
+            width: 24px;
+            height: 8px;
+            background: #999;
+            border-radius: 2px 2px 0 0;
         }
 
         .lanyard-strap {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 20px;
-            height: 40px;
-            background: linear-gradient(180deg, #7B3F7E, #9B5F9E);
-            border-radius: 0 0 10px 10px;
+            width: 6px;
+            height: 20px;
+            background: #7B3F7E;
         }
 
         .card {
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100px;
-            height: 140px;
-            background: linear-gradient(145deg, #ffffff, #f0f0f0);
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            width: 60px;
+            height: 85px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #333;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            border: 2px solid #e0e0e0;
+            gap: 5px;
+            position: relative;
+        }
+
+        .card::before {
+            content: 'NFC';
+            position: absolute;
+            top: 6px;
+            font-size: 0.55rem;
+            font-weight: 700;
+            color: #7B3F7E;
+            letter-spacing: 1px;
         }
 
         .card-chip {
-            width: 40px;
-            height: 30px;
-            background: linear-gradient(135deg, #ffd700, #ffb800);
-            border-radius: 6px;
-            margin-bottom: 10px;
+            width: 28px;
+            height: 20px;
+            border: 2px solid #333;
+            border-radius: 3px;
+            margin-top: 8px;
         }
 
-        .nfc-icon {
+        .nfc-waves {
+            color: #333;
+        }
+
+        .visual-arrow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .visual-arrow svg {
             color: #7B3F7E;
         }
 
-        .arrow-icon {
-            font-size: 3rem;
+        .visual-arrow span {
+            font-size: 0.75rem;
+            font-weight: 700;
             color: #7B3F7E;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 0.5; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.1); }
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .phone {
-            width: 80px;
-            height: 160px;
-            background: linear-gradient(145deg, #333, #1a1a1a);
-            border-radius: 20px;
+            width: 50px;
+            height: 85px;
+            background: white;
+            border-radius: 10px;
+            border: 2px solid #333;
             position: relative;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .phone-notch {
+            position: absolute;
+            top: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
         }
 
         .phone-screen {
             position: absolute;
-            top: 10px;
-            left: 5px;
-            right: 5px;
-            bottom: 10px;
-            background: linear-gradient(180deg, #7B3F7E, #9B5F9E);
-            border-radius: 14px;
+            top: 12px;
+            left: 4px;
+            right: 4px;
+            bottom: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            gap: 3px;
         }
 
         .phone-screen svg {
-            color: white;
-            width: 40px;
-            height: 40px;
+            color: #7B3F7E;
+            width: 18px;
+            height: 18px;
         }
 
-        /* Steps Section */
-        .steps-title {
-            text-align: center;
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #7B3F7E;
-            margin-bottom: 30px;
+        .phone-screen span {
+            color: #333;
+            font-size: 0.4rem;
+            font-weight: 600;
+        }
+
+        .phone-button {
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 16px;
+            height: 3px;
+            background: #ccc;
+            border-radius: 2px;
+        }
+
+        /* Section Title */
+        .section-title {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 10px;
+            gap: 12px;
+            margin-bottom: 15px;
         }
 
-        .steps {
+        .section-title h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #333;
+            border-bottom: 2px solid #7B3F7E;
+            padding-bottom: 3px;
+        }
+
+        /* Steps Grid */
+        .steps-grid {
             display: grid;
-            gap: 20px;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
         .step {
             display: flex;
             align-items: flex-start;
-            gap: 20px;
-            padding: 25px;
-            background: linear-gradient(135deg, #faf8fa 0%, #f5f0f5 100%);
-            border-radius: 16px;
-            border-left: 4px solid #7B3F7E;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .step:hover {
-            transform: translateX(5px);
-            box-shadow: 0 5px 20px rgba(123, 63, 126, 0.1);
+            gap: 12px;
+            padding: 14px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 10px;
         }
 
         .step-number {
-            width: 50px;
-            height: 50px;
-            min-width: 50px;
-            background: linear-gradient(135deg, #7B3F7E, #5a2d5c);
-            color: white;
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            background: white;
+            color: #7B3F7E;
+            border: 2.5px solid #7B3F7E;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.4rem;
-            font-weight: 700;
-            box-shadow: 0 4px 15px rgba(123, 63, 126, 0.3);
-        }
-
-        .step-content {
-            flex: 1;
+            font-size: 1rem;
+            font-weight: 800;
         }
 
         .step-content h3 {
-            font-size: 1.1rem;
-            font-weight: 600;
+            font-size: 0.9rem;
+            font-weight: 700;
             color: #333;
-            margin-bottom: 6px;
+            margin-bottom: 3px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 6px;
         }
 
         .step-content h3 svg {
             color: #7B3F7E;
-            width: 24px;
-            height: 24px;
+            width: 16px;
+            height: 16px;
         }
 
         .step-content p {
-            color: #666;
-            font-size: 0.95rem;
-            line-height: 1.5;
+            color: #555;
+            font-size: 0.8rem;
+            line-height: 1.45;
+        }
+
+        /* Bottom Sections */
+        .bottom-sections {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
         }
 
         /* Tips Section */
         .tips {
-            margin-top: 35px;
-            padding: 25px;
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-            border-radius: 16px;
-            border: 2px solid #81c784;
+            padding: 14px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 10px;
         }
 
         .tips h3 {
-            color: #2e7d32;
-            font-size: 1.1rem;
-            margin-bottom: 15px;
+            color: #333;
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 10px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 6px;
+        }
+
+        .tips h3 svg {
+            width: 16px;
+            height: 16px;
+            color: #7B3F7E;
         }
 
         .tips ul {
             list-style: none;
             display: grid;
-            gap: 10px;
+            gap: 6px;
         }
 
         .tips li {
             display: flex;
             align-items: flex-start;
-            gap: 10px;
-            color: #1b5e20;
-            font-size: 0.9rem;
+            gap: 6px;
+            color: #444;
+            font-size: 0.75rem;
+            line-height: 1.4;
         }
 
         .tips li svg {
-            color: #43a047;
-            min-width: 20px;
+            color: #7B3F7E;
+            min-width: 14px;
+            width: 14px;
+            height: 14px;
             margin-top: 2px;
         }
 
         /* Help Section */
         .help {
-            margin-top: 30px;
-            padding: 20px;
-            background: #fff3e0;
-            border-radius: 12px;
-            text-align: center;
-            border: 2px solid #ffb74d;
+            padding: 14px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .help h3 {
+            color: #333;
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 6px;
+        }
+
+        .help h3 svg {
+            width: 16px;
+            height: 16px;
+            color: #7B3F7E;
         }
 
         .help p {
-            color: #e65100;
-            font-size: 0.95rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
+            color: #555;
+            font-size: 0.75rem;
+            line-height: 1.45;
         }
 
-        .help strong {
-            color: #bf360c;
+        .help .contact {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #ccc;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #333;
+        }
+
+        /* URL Callout */
+        .url-callout {
+            margin-top: 18px;
+            padding: 14px 20px;
+            background: #7B3F7E;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .url-callout p {
+            color: white;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .url-callout a {
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-decoration: none;
+            letter-spacing: 0.5px;
         }
 
         /* Footer */
         .footer {
+            margin-top: 15px;
             text-align: center;
-            padding: 20px;
-            background: #f5f5f5;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
             color: #888;
-            font-size: 0.85rem;
+            font-size: 0.7rem;
         }
 
-        /* Responsive */
-        @media (max-width: 600px) {
-            .container {
-                border-radius: 16px;
-            }
-
-            .header {
-                padding: 25px 20px;
-            }
-
-            .logo {
-                max-width: 200px;
-            }
-
-            .header h1 {
-                font-size: 1.4rem;
-            }
-
-            .content {
-                padding: 40px 20px 30px;
-            }
-
-            .step {
-                padding: 20px 15px;
-            }
-
-            .nfc-visual {
-                gap: 20px;
-            }
-
-            .arrow-icon {
-                font-size: 2rem;
-            }
+        .footer strong {
+            color: #7B3F7E;
         }
 
         /* Print Styles */
@@ -357,184 +426,217 @@
             body {
                 background: white;
                 padding: 0;
+                display: block;
             }
 
-            .container {
+            .page {
                 box-shadow: none;
+                width: 100%;
+                height: 100%;
+            }
+        }
+
+        /* Screen responsive */
+        @media screen and (max-width: 900px) {
+            body {
+                padding: 10px;
             }
 
-            .step:hover {
-                transform: none;
+            .page {
+                width: 100%;
+                min-height: auto;
+                padding: 20px;
+            }
+
+            .steps-grid,
+            .bottom-sections {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+
+            .header-text {
+                text-align: center;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="page">
         <!-- Header -->
         <div class="header">
             <img src="images/AEC-Horizontal-Official-Logo-2020.png" alt="Agave Environmental Contracting" class="logo">
-            <h1>NFC Card Quick Guide</h1>
-            <p>Report vehicle repairs in seconds</p>
+            <div class="header-text">
+                <h1>NFC Card Quick Guide</h1>
+                <p>Report vehicle repairs in seconds</p>
+            </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="content">
-            <!-- Visual Demo -->
-            <div class="nfc-visual">
-                <div class="lanyard">
-                    <div class="lanyard-strap"></div>
-                    <div class="card">
-                        <div class="card-chip"></div>
-                        <svg class="nfc-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M6 8.32a7.43 7.43 0 0 1 0 7.36"/>
-                            <path d="M9.46 6.21a11.76 11.76 0 0 1 0 11.58"/>
-                            <path d="M12.91 4.1a15.91 15.91 0 0 1 .01 15.8"/>
-                            <path d="M16.37 2a20.16 20.16 0 0 1 0 20"/>
-                        </svg>
-                    </div>
-                </div>
-
-                <div class="arrow-icon">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
+        <!-- Visual Demo -->
+        <div class="visual-section">
+            <div class="lanyard">
+                <div class="lanyard-clip"></div>
+                <div class="lanyard-strap"></div>
+                <div class="card">
+                    <div class="card-chip"></div>
+                    <svg class="nfc-waves" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M6 8.32a7.43 7.43 0 0 1 0 7.36"/>
+                        <path d="M9.46 6.21a11.76 11.76 0 0 1 0 11.58"/>
+                        <path d="M12.91 4.1a15.91 15.91 0 0 1 .01 15.8"/>
                     </svg>
                 </div>
-
-                <div class="phone">
-                    <div class="phone-screen">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-                        </svg>
-                    </div>
-                </div>
             </div>
 
-            <!-- Steps -->
-            <h2 class="steps-title">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 20h9"/>
-                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+            <div class="visual-arrow">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
                 </svg>
-                How to Submit a Repair Request
-            </h2>
+                <span>Tap</span>
+            </div>
 
-            <div class="steps">
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <div class="step-content">
-                        <h3>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect width="18" height="18" x="3" y="3" rx="2"/>
-                                <path d="M7 7h.01"/>
-                                <path d="M17 7h.01"/>
-                                <path d="M7 17h.01"/>
-                                <path d="M17 17h.01"/>
-                            </svg>
-                            Tap Your NFC Card
-                        </h3>
-                        <p>Hold your lanyard card against the back of your phone for 2-3 seconds until a notification appears.</p>
-                    </div>
+            <div class="phone">
+                <div class="phone-notch"></div>
+                <div class="phone-screen">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                    </svg>
+                    <span>Repair Form</span>
                 </div>
+                <div class="phone-button"></div>
+            </div>
+        </div>
 
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <div class="step-content">
-                        <h3>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                <polyline points="15 3 21 3 21 9"/>
-                                <line x1="10" x2="21" y1="14" y2="3"/>
-                            </svg>
-                            Open the Link
-                        </h3>
-                        <p>Tap the notification or pop-up to open the Repair Request form in your browser.</p>
-                    </div>
-                </div>
+        <!-- Section Title -->
+        <div class="section-title">
+            <h2>How to Submit a Repair Request</h2>
+        </div>
 
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <div class="step-content">
-                        <h3>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                            </svg>
-                            Fill Out the Form
-                        </h3>
-                        <p>Enter your name, phone number, vehicle/equipment, and describe the issue. Be specific!</p>
-                    </div>
-                </div>
-
-                <div class="step">
-                    <div class="step-number">4</div>
-                    <div class="step-content">
-                        <h3>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                <polyline points="22 4 12 14.01 9 11.01"/>
-                            </svg>
-                            Submit & Done!
-                        </h3>
-                        <p>Tap "Submit Request" and you'll receive a confirmation. The maintenance team will be notified immediately.</p>
-                    </div>
+        <!-- Steps Grid -->
+        <div class="steps-grid">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect width="18" height="18" x="3" y="3" rx="2"/>
+                            <path d="M7 7h.01M17 7h.01M7 17h.01M17 17h.01"/>
+                        </svg>
+                        Tap Your NFC Card
+                    </h3>
+                    <p>Hold your lanyard card against the <strong>back of your phone</strong> for 2-3 seconds until a notification appears.</p>
                 </div>
             </div>
 
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                            <polyline points="15 3 21 3 21 9"/>
+                            <line x1="10" x2="21" y1="14" y2="3"/>
+                        </svg>
+                        Open the Link
+                    </h3>
+                    <p>Tap the notification or pop-up to open the <strong>Repair Request form</strong> in your browser.</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        Fill Out the Form
+                    </h3>
+                    <p>Enter your <strong>name, phone, vehicle</strong>, and describe the issue. Be specific!</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h3>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        Submit & Done!
+                    </h3>
+                    <p>Tap <strong>"Submit Request"</strong> and the maintenance team will be notified immediately.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Sections -->
+        <div class="bottom-sections">
             <!-- Tips -->
             <div class="tips">
                 <h3>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
-                        <path d="M12 16v-4"/>
-                        <path d="M12 8h.01"/>
+                        <path d="M12 16v-4M12 8h.01"/>
                     </svg>
                     Quick Tips
                 </h3>
                 <ul>
                     <li>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <polyline points="20 6 9 17 4 12"/>
                         </svg>
-                        Make sure NFC is enabled on your phone (usually on by default)
+                        NFC is usually enabled by default on your phone
                     </li>
                     <li>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <polyline points="20 6 9 17 4 12"/>
                         </svg>
-                        Remove thick phone cases if the card doesn't read
+                        Remove thick phone cases if card doesn't read
                     </li>
                     <li>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <polyline points="20 6 9 17 4 12"/>
                         </svg>
-                        The NFC reader is usually near the camera on the back
+                        NFC reader is near the camera on back of phone
                     </li>
                     <li>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <polyline points="20 6 9 17 4 12"/>
                         </svg>
-                        Take photos of the issue before submitting if possible
+                        Take photos of the issue if possible
                     </li>
                 </ul>
             </div>
 
             <!-- Help -->
             <div class="help">
-                <p>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                        <path d="M12 17h.01"/>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>
                     </svg>
-                    <span>Need help? Contact your supervisor or call the office</span>
-                </p>
+                    Need Help?
+                </h3>
+                <p>If your phone doesn't detect the card, make sure NFC is enabled in your phone settings.</p>
+                <p class="contact">Contact your supervisor or call the office for assistance.</p>
             </div>
+        </div>
+
+        <!-- URL Callout -->
+        <div class="url-callout">
+            <p>Or visit directly:</p>
+            <a href="https://agavefleet.com/repair">agavefleet.com/repair</a>
         </div>
 
         <!-- Footer -->
         <div class="footer">
-            Agave Environmental Contracting, Inc. • Fleet Management System
+            <strong>Agave Environmental Contracting, Inc.</strong> &bull; Fleet Management System
         </div>
     </div>
 </body>

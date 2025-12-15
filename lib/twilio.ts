@@ -188,6 +188,7 @@ export async function sendRepairBookingLink(
   const displayId = details.requestNumber ? `#${details.requestNumber}` : `#${details.requestId.slice(-8)}`;
 
   // Wrap URL in angle brackets to prevent SMS clients from breaking the link
+  // This uses BOTH manual wrapping AND the wrapUrlsInAngleBrackets function for redundancy
   const message =
     details.language === "es"
       ? `Agenda tu reparación (${displayId}): <${details.link}>\nMotivo: ${details.issueSummary}${details.suggestedSlot ? `\nSugerencia: ${details.suggestedSlot}` : ""}`
