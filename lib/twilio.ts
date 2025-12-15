@@ -187,12 +187,13 @@ export async function sendRepairBookingLink(
   // Use requestNumber if available (shorter), otherwise fall back to last 8 chars of UUID
   const displayId = details.requestNumber ? `#${details.requestNumber}` : `#${details.requestId.slice(-8)}`;
 
-  // Wrap URL in angle brackets to prevent SMS clients from breaking the link
-  // This uses BOTH manual wrapping AND the wrapUrlsInAngleBrackets function for redundancy
+  // Put URL on its own line with angle brackets for maximum compatibility across SMS clients
+  // The angle brackets prevent SMS clients from breaking URLs at special characters
+  // Putting it on a separate line ensures it's recognized as a link
   const message =
     details.language === "es"
-      ? `Agenda tu reparación (${displayId}): <${details.link}>\nMotivo: ${details.issueSummary}${details.suggestedSlot ? `\nSugerencia: ${details.suggestedSlot}` : ""}`
-      : `Book your repair (${displayId}): <${details.link}>\nIssue: ${details.issueSummary}${details.suggestedSlot ? `\nSuggested: ${details.suggestedSlot}` : ""}`;
+      ? `Agenda tu reparación (${displayId}):\n<${details.link}>\n\nMotivo: ${details.issueSummary}${details.suggestedSlot ? `\nSugerencia: ${details.suggestedSlot}` : ""}`
+      : `Book your repair (${displayId}):\n<${details.link}>\n\nIssue: ${details.issueSummary}${details.suggestedSlot ? `\nSuggested: ${details.suggestedSlot}` : ""}`;
   return sendSMS(phone, message);
 }
 
