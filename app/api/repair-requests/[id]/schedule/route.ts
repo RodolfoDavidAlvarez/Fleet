@@ -70,7 +70,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const phoneToUse = (parsed.data as any).customPhone || existing.driverPhone;
 
     // Use the specialized booking link page - use finalBaseUrl
-    const bookingLink = `${finalBaseUrl}/booking-link/${existing.id}?name=${encodeURIComponent(existing.driverName)}&phone=${encodeURIComponent(phoneToUse || "")}`;
+    // NOTE: Do NOT include phone number in URL - iOS detects phone numbers and breaks the link
+    // The booking page will fetch the phone from the repair request instead
+    const bookingLink = `${finalBaseUrl}/booking-link/${existing.id}?name=${encodeURIComponent(existing.driverName)}`;
 
     const suggestedSlot =
       parsed.data.suggestedDate && parsed.data.suggestedTime ? `${parsed.data.suggestedDate} • ${parsed.data.suggestedTime}` : undefined;

@@ -24,11 +24,12 @@ export async function POST(
     }
 
     // Generate booking link with pre-filled data
+    // NOTE: Do NOT include phone number in URL - iOS detects phone numbers and breaks the link
     const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const bookingLink = `${baseUrl}/booking-link/${booking.id}?name=${encodeURIComponent(booking.customerName)}&phone=${encodeURIComponent(booking.customerPhone)}`
+    const bookingLink = `${baseUrl}/booking-link/${booking.id}?name=${encodeURIComponent(booking.customerName)}`
 
-    // Send SMS with booking link - wrap URL in angle brackets to prevent SMS clients from breaking the link
-    const message = `Hi ${booking.customerName}! Please schedule your ${booking.serviceType} appointment: <${bookingLink}>\n\nClick the link to choose your preferred time slot.`
+    // Send SMS with booking link - put URL on its own line for maximum compatibility
+    const message = `Hi ${booking.customerName}! Please schedule your ${booking.serviceType} appointment:\n<${bookingLink}>\n\nClick the link to choose your preferred time slot.`
     
     try {
       const sent = await sendSMS(booking.customerPhone, message)
