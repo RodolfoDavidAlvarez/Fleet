@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { bookingDB } from '@/lib/db'
 import { sendSMS } from '@/lib/twilio'
+import { getBaseUrl } from '@/lib/url'
 
 export async function POST(
   request: NextRequest,
@@ -25,7 +26,19 @@ export async function POST(
 
     // Generate booking link with pre-filled data
     // NOTE: Do NOT include phone number in URL - iOS detects phone numbers and breaks the link
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const baseUrl = getBaseUrl(request)
+
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production'
+    if (isProduction && baseUrl.includes('localhost')) {
+      console.error('CRITICAL: No production base URL configured. Set NEXT_PUBLIC_APP_URL environment variable.')
+      return NextResponse.json(
+        { error: 'Booking link cannot be generated. Please contact support.' },
+        { status: 500 }
+      )
+    } else if (!isProduction && baseUrl.includes('localhost')) {
+      console.warn('Using localhost for booking link - this is only acceptable in development')
+    }
+
     const bookingLink = `${baseUrl}/booking-link/${booking.id}?name=${encodeURIComponent(booking.customerName)}`
 
     // Send SMS with booking link - put URL on its own line for maximum compatibility
@@ -67,7 +80,6 @@ export async function POST(
     )
   }
 }
-
 
 
 

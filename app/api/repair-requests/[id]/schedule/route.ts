@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { repairRequestDB } from "@/lib/db";
-import { notifyAdminOfRepair, sendRepairBookingLink } from "@/lib/twilio";
+import { sendRepairBookingLink } from "@/lib/twilio";
 import { sendRepairBookingLinkEmail } from "@/lib/email";
+import { getBaseUrl } from "@/lib/url";
 
 const scheduleSchema = z.object({
   serviceType: z.string().optional(),
@@ -39,32 +40,24 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }
     }
 
-    // Get base URL - prioritize production URL, warn if falling back to localhost
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXTAUTH_URL ||
-      process.env.BOOKING_BASE_URL ||
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      request.headers.get("origin");
+    // Resolve and normalize base URL so SMS links always include an explicit scheme
+    const baseUrl = getBaseUrl(request);
 
     // In production, we must have a proper base URL
-    if (!baseUrl || baseUrl.includes("localhost")) {
-      const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
-      if (isProduction) {
-        console.error("CRITICAL: No production base URL configured. Set NEXT_PUBLIC_APP_URL environment variable.");
-        return NextResponse.json(
-          {
-            error: "Booking link cannot be generated. Please contact support.",
-            details: "Server configuration error: missing base URL",
-          },
-          { status: 500 }
-        );
-      }
-      // In development, use localhost as fallback
+    const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+    if (isProduction && baseUrl.includes("localhost")) {
+      console.error("CRITICAL: No production base URL configured. Set NEXT_PUBLIC_APP_URL environment variable.");
+      return NextResponse.json(
+        {
+          error: "Booking link cannot be generated. Please contact support.",
+          details: "Server configuration error: missing base URL",
+        },
+        { status: 500 }
+      );
+    } else if (!isProduction && baseUrl.includes("localhost")) {
+      // In development, allow localhost but keep noise in logs for awareness
       console.warn("Using localhost for booking link - this is only acceptable in development");
     }
-
-    const finalBaseUrl = baseUrl || "http://localhost:3000";
 
     // Use custom phone if provided, otherwise use existing phone
     const phoneToUse = (parsed.data as any).customPhone || existing.driverPhone;
@@ -72,7 +65,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // Use the specialized booking link page - use finalBaseUrl
     // NOTE: Do NOT include phone number in URL - iOS detects phone numbers and breaks the link
     // The booking page will fetch the phone from the repair request instead
-    const bookingLink = `${finalBaseUrl}/booking-link/${existing.id}?name=${encodeURIComponent(existing.driverName)}`;
+    const bookingLink = `${baseUrl}/booking-link/${existing.id}?name=${encodeURIComponent(existing.driverName)}`;
 
     const suggestedSlot =
       parsed.data.suggestedDate && parsed.data.suggestedTime ? `${parsed.data.suggestedDate} • ${parsed.data.suggestedTime}` : undefined;
