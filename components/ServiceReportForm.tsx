@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, X, CheckCircle, Wrench, User, Calendar, AlertCircle, Search, Bell, ExternalLink } from "lucide-react";
+import { Loader2, X, CheckCircle, Wrench, User, Calendar, AlertCircle, Search, Bell, ExternalLink, Plus, Mail, Phone } from "lucide-react";
 import { RepairRequest } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDate } from "@/lib/utils";
@@ -56,6 +56,10 @@ export default function ServiceReportForm({
   const [showRepairSelector, setShowRepairSelector] = useState(false);
   const [adminsAndMechanics, setAdminsAndMechanics] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [showAddMechanicModal, setShowAddMechanicModal] = useState(false);
+  const [creatingMechanic, setCreatingMechanic] = useState(false);
+  const [mechanicError, setMechanicError] = useState<string | null>(null);
+  const [newMechanic, setNewMechanic] = useState({ name: "", email: "", phone: "" });
 
   const [form, setForm] = useState<ServiceReportFormData>({
     mechanicName: "",
@@ -74,25 +78,26 @@ export default function ServiceReportForm({
     notificationStatus: "completed_ready_for_pickup",
   });
 
+  const loadAdminsAndMechanics = useCallback(async () => {
+    try {
+      setLoadingUsers(true);
+      // Load both admins and mechanics - mechanics are treated as admins
+      const res = await fetch("/api/admin/users?role=admin,mechanic");
+      if (!res.ok) throw new Error("Failed to load users");
+      const data = await res.json();
+      const approvedUsers = (data.users || []).filter((user: User & { approval_status?: string }) => user.approval_status === "approved");
+      setAdminsAndMechanics(approvedUsers);
+    } catch (err) {
+      console.error("Error loading admins and mechanics:", err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, []);
+
   // Fetch admins and mechanics on component mount
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoadingUsers(true);
-        const res = await fetch("/api/admin/users?role=admin,mechanic");
-        if (!res.ok) throw new Error("Failed to load users");
-        const data = await res.json();
-        // Filter to only approved users
-        const approvedUsers = (data.users || []).filter((user: User & { approval_status?: string }) => user.approval_status === "approved");
-        setAdminsAndMechanics(approvedUsers);
-      } catch (err) {
-        console.error("Error loading admins and mechanics:", err);
-      } finally {
-        setLoadingUsers(false);
-      }
-    };
-    fetchUsers();
-  }, []);
+    loadAdminsAndMechanics();
+  }, [loadAdminsAndMechanics]);
 
   // Update form when repair request is selected
   useEffect(() => {
@@ -127,6 +132,73 @@ export default function ServiceReportForm({
     }
   }, [form.laborCost, form.partsCost]);
 
+  const handleCreateMechanic = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (creatingMechanic) return;
+
+    setMechanicError(null);
+    const name = newMechanic.name.trim();
+    const email = newMechanic.email.trim().toLowerCase();
+    const phone = newMechanic.phone.trim();
+
+    if (!name || !email || !phone) {
+      setMechanicError("Name, email, and phone are required.");
+      return;
+    }
+
+    try {
+      setCreatingMechanic(true);
+
+      const userRes = await fetch("/api/drivers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          role: "mechanic",
+          approval_status: "approved",
+        }),
+      });
+      const userData = await userRes.json().catch(() => ({}));
+      if (!userRes.ok) {
+        throw new Error(userData.error || userData.details || "Failed to create mechanic");
+      }
+
+      try {
+        const mechRes = await fetch("/api/mechanics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            email,
+            phone,
+            availability: "available",
+            specializations: [],
+          }),
+        });
+        if (!mechRes.ok) {
+          const mechErr = await mechRes.json().catch(() => ({}));
+          console.warn("Mechanic created in users table but failed to sync mechanics table:", mechErr.error || mechErr.details);
+        }
+      } catch (syncErr) {
+        console.warn("Mechanic created in users table but sync to mechanics table failed:", syncErr);
+      }
+
+      await loadAdminsAndMechanics();
+      setForm((prev) => ({ ...prev, mechanicName: name }));
+      setShowAddMechanicModal(false);
+      setNewMechanic({ name: "", email: "", phone: "" });
+      showToast("Mechanic added and selected.", "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to add mechanic";
+      setMechanicError(message);
+      showToast(message, "error");
+    } finally {
+      setCreatingMechanic(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.mechanicName.trim()) {
@@ -139,6 +211,16 @@ export default function ServiceReportForm({
     }
     await onSubmit(form);
   };
+
+  const ADD_MECHANIC_OPTION = "__add_mechanic__";
+  // Include both admins and mechanics - mechanics are treated as admins with full permissions
+  const mechanicOptions = adminsAndMechanics
+    .filter((user) => user.role === "admin" || user.role === "mechanic")
+    .map((user) => ({
+      value: user.name,
+      label: `${user.name} (${user.role.charAt(0).toUpperCase() + user.role.slice(1)})`,
+    }));
+  const mechanicSelectOptions = [...mechanicOptions, { value: ADD_MECHANIC_OPTION, label: "Add new mechanic" }];
 
   return (
     <AnimatePresence>
@@ -331,28 +413,49 @@ export default function ServiceReportForm({
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <label className="space-y-1.5 block">
-                    <span className="text-sm font-semibold text-gray-700">
-                      Mechanic name <span className="text-red-500">*</span>
-                    </span>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-gray-700">
+                        Mechanic name <span className="text-red-500">*</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddMechanicModal(true)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add mechanic
+                      </button>
+                    </div>
                     {loadingUsers ? (
                       <div className="input-field w-full flex items-center justify-center py-2.5">
                         <span className="text-sm text-gray-500">Loading users...</span>
                       </div>
-                    ) : adminsAndMechanics.filter((user) => user.role === "mechanic").length === 0 ? (
-                      <div className="input-field w-full flex flex-col items-start py-2.5 px-3 border-2 border-yellow-300 bg-yellow-50 rounded-lg">
-                        <span className="text-sm text-yellow-800 font-medium">No mechanics available</span>
-                        <span className="text-xs text-yellow-600 mt-1">Add mechanics in Admin Settings → Users → Invite User</span>
+                    ) : mechanicOptions.length === 0 ? (
+                      <div className="input-field w-full flex flex-col items-start gap-2 py-2.5 px-3 border-2 border-yellow-300 bg-yellow-50 rounded-lg">
+                        <div className="flex items-center gap-2 text-sm text-yellow-800 font-medium">
+                          <AlertCircle className="h-4 w-4" />
+                          No mechanics available
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddMechanicModal(true)}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-white bg-primary-600 rounded-md hover:bg-primary-700"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Add a mechanic now
+                        </button>
                       </div>
                     ) : (
                       <Select
                         value={form.mechanicName}
-                        onChange={(value) => setForm({ ...form, mechanicName: value })}
-                        options={adminsAndMechanics
-                          .filter((user) => user.role === "mechanic")
-                          .map((user) => ({
-                            value: user.name,
-                            label: `${user.name} (${user.role.charAt(0).toUpperCase() + user.role.slice(1)})`,
-                          }))}
+                        onChange={(value) => {
+                          if (value === ADD_MECHANIC_OPTION) {
+                            setShowAddMechanicModal(true);
+                            return;
+                          }
+                          setForm({ ...form, mechanicName: value });
+                        }}
+                        options={mechanicSelectOptions}
                         placeholder="Who performed the work"
                       />
                     )}
@@ -566,6 +669,124 @@ export default function ServiceReportForm({
             </form>
           </div>
         </motion.div>
+
+        <AnimatePresence>
+          {showAddMechanicModal && (
+            <motion.div
+              className="fixed inset-0 z-[70] flex items-center justify-center px-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div
+                className="absolute inset-0 bg-black/40"
+                onClick={() => {
+                  if (creatingMechanic) return;
+                  setShowAddMechanicModal(false);
+                  setMechanicError(null);
+                  setNewMechanic({ name: "", email: "", phone: "" });
+                }}
+              />
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl p-6 space-y-5"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-primary-600 uppercase tracking-[0.08em]">Mechanic</p>
+                    <h3 className="text-xl font-bold text-gray-900">Add mechanic on the fly</h3>
+                    <p className="text-xs text-gray-500 mt-1">Creates an approved mechanic and makes them selectable immediately.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (creatingMechanic) return;
+                      setShowAddMechanicModal(false);
+                      setMechanicError(null);
+                      setNewMechanic({ name: "", email: "", phone: "" });
+                    }}
+                    className="btn btn-ghost btn-icon"
+                    aria-label="Close add mechanic modal"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {mechanicError && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2">{mechanicError}</div>}
+
+                <form onSubmit={handleCreateMechanic} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="space-y-1.5 block">
+                      <span className="text-sm font-semibold text-gray-700">Full name</span>
+                      <div className="relative">
+                        <input
+                          className="input-field w-full"
+                          value={newMechanic.name}
+                          onChange={(e) => setNewMechanic({ ...newMechanic, name: e.target.value })}
+                          placeholder="Mechanic name"
+                          required
+                        />
+                      </div>
+                    </label>
+
+                    <label className="space-y-1.5 block">
+                      <span className="text-sm font-semibold text-gray-700">Phone</span>
+                      <div className="relative">
+                        <Phone className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          className="input-field w-full pl-10"
+                          value={newMechanic.phone}
+                          onChange={(e) => setNewMechanic({ ...newMechanic, phone: e.target.value })}
+                          placeholder="(555) 123-4567"
+                          required
+                        />
+                      </div>
+                    </label>
+                  </div>
+
+                  <label className="space-y-1.5 block">
+                    <span className="text-sm font-semibold text-gray-700">Email</span>
+                    <div className="relative">
+                      <Mail className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="email"
+                        className="input-field w-full pl-10"
+                        value={newMechanic.email}
+                        onChange={(e) => setNewMechanic({ ...newMechanic, email: e.target.value })}
+                        placeholder="name@company.com"
+                        required
+                      />
+                    </div>
+                  </label>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <p className="text-xs text-gray-500">We mark the new mechanic as approved and sync them to the mechanics list.</p>
+                    <button
+                      type="submit"
+                      className="btn-primary px-4 py-2.5 rounded-xl flex items-center gap-2 font-semibold"
+                      disabled={creatingMechanic}
+                    >
+                      {creatingMechanic ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4" />
+                          Save & select
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </AnimatePresence>
   );

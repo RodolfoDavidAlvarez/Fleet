@@ -35,14 +35,14 @@ export async function PATCH(
       )
     }
 
-    // Check if user is admin
+    // Check if user is admin or mechanic (mechanics are treated as admins)
     const { data: userData } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    if (userData?.role !== 'admin') {
+    if (userData?.role !== 'admin' && userData?.role !== 'mechanic') {
       return NextResponse.json(
         { error: 'Forbidden - Admin access required' },
         { status: 403 }
@@ -123,14 +123,14 @@ export async function GET(
       )
     }
 
-    // Check if user has access (either owner or admin)
+    // Check if user has access (either owner or admin/mechanic)
     const { data: userData } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    const isAdmin = userData?.role === 'admin'
+    const isAdmin = userData?.role === 'admin' || userData?.role === 'mechanic'
     const isOwner = bugReport.user_id === user.id
 
     if (!isAdmin && !isOwner) {

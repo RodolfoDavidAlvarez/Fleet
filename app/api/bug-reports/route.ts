@@ -138,6 +138,7 @@ export async function POST(request: NextRequest) {
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
     const screenshot = formData.get("screenshot") as File | null;
+    const application = (formData.get("application") as string) || "fleet-management";
 
     // Validate and sanitize required fields
     if (!title || typeof title !== "string" || !title.trim()) {
@@ -263,6 +264,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate application source
+    const validApplications = ["fleet-management", "crm-proposal", "other"];
+    const applicationSource = validApplications.includes(application) ? application : "fleet-management";
+
     // Insert bug report into database using admin client
     const { data: bugReport, error: insertError } = await supabaseAdmin
       .from("bug_reports")
@@ -273,7 +278,7 @@ export async function POST(request: NextRequest) {
         title: sanitizedTitle,
         description: sanitizedDescription,
         screenshot_url,
-        application_source: "fleet-management",
+        application_source: applicationSource,
         status: "pending",
       })
       .select()

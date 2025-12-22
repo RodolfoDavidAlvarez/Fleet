@@ -68,7 +68,7 @@ export async function requireAuth(): Promise<
 
 /**
  * Check if the current request is from an admin user
- * Returns the user if admin, or appropriate error response
+ * Returns the user if admin or mechanic (mechanics are treated as admins), or appropriate error response
  */
 export async function requireAdmin(): Promise<
   { user: AuthUser; error?: never } | { user?: never; error: NextResponse }
@@ -79,7 +79,8 @@ export async function requireAdmin(): Promise<
     return authResult;
   }
 
-  if (authResult.user.role !== "admin") {
+  // Treat mechanics as admins - they have the same permissions
+  if (authResult.user.role !== "admin" && authResult.user.role !== "mechanic") {
     return {
       error: NextResponse.json(
         { error: "Admin access required" },
@@ -88,11 +89,11 @@ export async function requireAdmin(): Promise<
     };
   }
 
-  // Check approval status for admins
+  // Check approval status for admins/mechanics
   if (authResult.user.approval_status !== "approved") {
     return {
       error: NextResponse.json(
-        { error: "Your admin account is pending approval" },
+        { error: "Your account is pending approval" },
         { status: 403 }
       ),
     };

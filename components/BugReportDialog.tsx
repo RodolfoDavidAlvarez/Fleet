@@ -14,6 +14,7 @@ interface FormData {
   title: string;
   description: string;
   screenshot: File | null;
+  application: string;
 }
 
 interface BugReport {
@@ -25,11 +26,18 @@ interface BugReport {
   screenshot_url?: string;
 }
 
+const APPLICATION_OPTIONS = [
+  { value: "fleet-management", label: "Fleet Management" },
+  { value: "crm-proposal", label: "CRM Proposal" },
+  { value: "other", label: "Other" },
+];
+
 export default function BugReportDialog({ isOpen, onClose, onSuccess }: BugReportDialogProps) {
   const [formData, setFormData] = useState<FormData>({
     title: "",
     description: "",
     screenshot: null,
+    application: "fleet-management",
   });
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,6 +145,7 @@ export default function BugReportDialog({ isOpen, onClose, onSuccess }: BugRepor
       const submitData = new FormData();
       submitData.append("title", formData.title);
       submitData.append("description", formData.description);
+      submitData.append("application", formData.application);
       if (formData.screenshot) {
         submitData.append("screenshot", formData.screenshot);
       }
@@ -155,7 +164,7 @@ export default function BugReportDialog({ isOpen, onClose, onSuccess }: BugRepor
       // Success
       setSuccess(true);
       setTimeout(() => {
-        setFormData({ title: "", description: "", screenshot: null });
+        setFormData({ title: "", description: "", screenshot: null, application: "fleet-management" });
         setSuccess(false);
         setShowPreview(false);
         onClose();
@@ -170,7 +179,7 @@ export default function BugReportDialog({ isOpen, onClose, onSuccess }: BugRepor
 
   const handleClose = () => {
     if (!isSubmitting) {
-      setFormData({ title: "", description: "", screenshot: null });
+      setFormData({ title: "", description: "", screenshot: null, application: "fleet-management" });
       setError(null);
       setSuccess(false);
       setShowPreview(false);
@@ -267,6 +276,25 @@ export default function BugReportDialog({ isOpen, onClose, onSuccess }: BugRepor
                       </div>
                     </div>
                   )}
+
+                  {/* Application Selection */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Application <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.application}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, application: e.target.value }))}
+                      className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 transition-all"
+                      required
+                    >
+                      {APPLICATION_OPTIONS.map((app) => (
+                        <option key={app.value} value={app.value}>
+                          {app.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
                   {/* Title */}
                   <div>
@@ -399,6 +427,12 @@ export default function BugReportDialog({ isOpen, onClose, onSuccess }: BugRepor
 
                   {/* Preview Card */}
                   <div className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
+                    <div>
+                      <p className="text-xs text-gray-500 font-semibold uppercase mb-1">Application</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {APPLICATION_OPTIONS.find((app) => app.value === formData.application)?.label || formData.application}
+                      </p>
+                    </div>
                     <div>
                       <p className="text-xs text-gray-500 font-semibold uppercase mb-1">Title</p>
                       <h4 className="text-xl font-bold text-gray-900 break-words">{formData.title}</h4>

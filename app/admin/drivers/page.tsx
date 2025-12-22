@@ -247,7 +247,8 @@ export default function DriversPage() {
       return;
     }
     const parsedUser = JSON.parse(userData);
-    if (parsedUser.role !== "admin") {
+    // Mechanics are treated as admins with full permissions
+    if (parsedUser.role !== "admin" && parsedUser.role !== "mechanic") {
       router.push("/login");
       return;
     }

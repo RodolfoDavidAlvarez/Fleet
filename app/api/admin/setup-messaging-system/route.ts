@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
       .eq("id", authUser.id)
       .single();
 
-    if (!userData || userData.role !== "admin" || userData.approval_status !== "approved") {
+    // Mechanics are treated as admins with full permissions
+    if (!userData || (userData.role !== "admin" && userData.role !== "mechanic") || userData.approval_status !== "approved") {
       return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 });
     }
 
