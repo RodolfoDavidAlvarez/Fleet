@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 export default function SchedulePage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid')
@@ -100,9 +101,9 @@ export default function SchedulePage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role={user?.role || 'mechanic'} />
+      <Sidebar role={user?.role || 'mechanic'} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user.name} userRole={user.role} userEmail={user.email} />
+        <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex items-start justify-between">

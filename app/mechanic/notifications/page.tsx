@@ -12,6 +12,7 @@ export default function NotificationsPage() {
   const router = useRouter()
   const { showToast } = useToast()
   const [user, setUser] = useState<any>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [drivers, setDrivers] = useState<User[]>([])
   const [selectedDrivers, setSelectedDrivers] = useState<Set<string>>(new Set())
   const [message, setMessage] = useState('')
@@ -168,9 +169,9 @@ export default function NotificationsPage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role={user?.role || 'mechanic'} />
+      <Sidebar role={user?.role || 'mechanic'} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user.name} userRole={user.role} userEmail={user.email} />
+        <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto bg-slate-50">
           <div className="max-w-7xl mx-auto p-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">

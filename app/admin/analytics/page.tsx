@@ -27,6 +27,7 @@ const statusMix = [
 export default function AnalyticsPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     const userData = localStorage.getItem('user')
@@ -48,9 +49,9 @@ export default function AnalyticsPage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role={user?.role || 'admin'} />
+      <Sidebar role={user?.role || 'admin'} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user.name} userRole={user.role} userEmail={user.email} />
+        <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

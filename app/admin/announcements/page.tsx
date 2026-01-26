@@ -90,6 +90,7 @@ interface MessageBatch {
 export default function AnnouncementsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeView, setActiveView] = useState<"compose" | "templates" | "scheduled" | "logs">("compose");
   const [messageType, setMessageType] = useState<"email" | "sms" | "both">("email");
   const [sendType, setSendType] = useState<"onetime" | "template" | "scheduled">("onetime");
@@ -543,9 +544,9 @@ export default function AnnouncementsPage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role={user.role} />
+      <Sidebar role={user.role} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user.name} userRole={user.role} userEmail={user.email} />
+        <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-6xl mx-auto">
             {/* Header */}

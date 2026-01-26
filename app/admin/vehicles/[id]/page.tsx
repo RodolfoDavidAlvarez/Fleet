@@ -38,6 +38,7 @@ export default function VehicleDetailPage() {
   const queryClient = useQueryClient();
   const { data: drivers = [], isLoading: driversLoading } = useDrivers();
   const [user, setUser] = useState<any>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<Vehicle>>({});
   const [isDriverDropdownOpen, setIsDriverDropdownOpen] = useState(false);
@@ -434,9 +435,9 @@ export default function VehicleDetailPage() {
   if (isLoading) {
     return (
       <div className="flex h-screen bg-gray-50">
-        <Sidebar role={user?.role || "admin"} />
+        <Sidebar role={user?.role || "admin"} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header userName={user.name} userRole={user.role} userEmail={user.email} />
+          <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto p-6">
             <div className="max-w-4xl mx-auto">
               <div className="flex items-center justify-center h-64">
@@ -452,9 +453,9 @@ export default function VehicleDetailPage() {
   if (!vehicle) {
     return (
       <div className="flex h-screen bg-gray-50">
-        <Sidebar role={user?.role || "admin"} />
+        <Sidebar role={user?.role || "admin"} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header userName={user.name} userRole={user.role} userEmail={user.email} />
+          <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto p-6">
             <div className="max-w-4xl mx-auto">
               <div className="text-center py-12">

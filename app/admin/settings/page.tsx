@@ -30,6 +30,7 @@ function AdminSettingsPageContent() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [user, setUser] = useState<any>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // Get active tab from URL, default to 'users'
@@ -855,9 +856,9 @@ function AdminSettingsPageContent() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role={user.role} />
+      <Sidebar role={user.role} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user.name} userRole={user.role} userEmail={user.email} />
+        <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto">
             <div className="mb-6">
