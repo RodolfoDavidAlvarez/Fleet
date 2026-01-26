@@ -10,6 +10,7 @@ import {
   CheckCircle,
   ClipboardList,
   Loader2,
+  Plus,
   Send,
   Wrench,
   Search,
@@ -28,6 +29,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/toast";
 import ServiceReportForm, { ServiceReportFormData } from "@/components/ServiceReportForm";
 import Select from "@/components/ui/Select";
+import PhotoGallery from "@/components/PhotoGallery";
 
 const statusStyles: Record<string, string> = {
   submitted: "bg-yellow-50 text-yellow-700 border-yellow-200",
@@ -44,7 +46,12 @@ export default function RepairsPage() {
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const [user, setUser] = useState<any>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [filter, setFilter] = useState<string>("all");
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
+  const [galleryThumbs, setGalleryThumbs] = useState<string[]>([]);
+  const [galleryStartIndex, setGalleryStartIndex] = useState(0);
   const [search, setSearch] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [showSendLinkConfirm, setShowSendLinkConfirm] = useState<RepairRequest | null>(null);
@@ -352,6 +359,13 @@ export default function RepairsPage() {
     setSelected(req);
   }, []);
 
+  const openPhotoGallery = useCallback((photos: string[], thumbs: string[], startIndex: number = 0) => {
+    setGalleryPhotos(photos);
+    setGalleryThumbs(thumbs);
+    setGalleryStartIndex(startIndex);
+    setGalleryOpen(true);
+  }, []);
+
   const filteredRequests = useMemo(() => {
     if (!Array.isArray(requests)) {
       return [];
@@ -370,7 +384,8 @@ export default function RepairsPage() {
           r.aiCategory?.toLowerCase().includes(s)
       );
     }
-    return list;
+    // Sort by most recent first
+    return [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [filter, requests, search]);
 
   if (!user) {
@@ -379,18 +394,20 @@ export default function RepairsPage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role={user.role} />
+      <Sidebar role={user.role} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user.name} userRole={user.role} userEmail={user.email} />
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 sm:pb-6">
+          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+            {/* Mobile-optimized header */}
+            <div className="flex flex-col gap-3 sm:gap-4">
               <div>
-                <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Repairs</p>
-                <h1 className="text-3xl font-bold text-gray-900">Repair requests</h1>
-                <p className="text-gray-600">Manage repair requests, triage issues, and schedule bookings.</p>
+                <p className="text-xs sm:text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Repairs</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Repair requests</h1>
+                <p className="text-sm text-gray-600 hidden sm:block">Manage repair requests, triage issues, and schedule bookings.</p>
               </div>
-              <div className="flex items-center gap-2">
+              {/* Desktop buttons - hidden on mobile, use FAB instead */}
+              <div className="hidden sm:flex items-center gap-2">
                 <button onClick={copyRepairFormLink} className="btn btn-secondary flex items-center gap-2" title="Copy repair submission form link">
                   <Copy className="h-4 w-4" />
                   Copy Form Link
@@ -583,6 +600,15 @@ export default function RepairsPage() {
         </main>
       </div>
 
+      {/* Mobile FAB - New Repair Request */}
+      <button
+        onClick={openRepairForm}
+        className="sm:hidden fixed bottom-6 right-4 w-14 h-14 rounded-full bg-primary-600 text-white shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform safe-area-inset-bottom"
+        aria-label="New repair request"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
+
       {/* Side Panel */}
       <AnimatePresence>
         {selected && (
@@ -762,25 +788,24 @@ export default function RepairsPage() {
                         </h3>
                         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                           {selected.thumbUrls.map((url, i) => (
-                            <a
+                            <button
                               key={i}
-                              href={selected.photoUrls[i] || url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="group relative flex-shrink-0"
+                              onClick={() => openPhotoGallery(selected.photoUrls || selected.thumbUrls, selected.thumbUrls, i)}
+                              className="group relative flex-shrink-0 touch-manipulation"
                             >
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-xl transition-colors z-10" />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 group-active:bg-black/20 rounded-xl transition-colors z-10" />
                               <img
                                 src={url}
                                 alt={`Evidence ${i + 1}`}
                                 className="h-32 w-32 rounded-xl object-cover border-2 border-gray-200 group-hover:border-primary-300 shadow-md group-hover:shadow-lg transition-all"
                               />
-                              <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                                View Full
+                              <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 sm:transition-opacity">
+                                Tap to view
                               </div>
-                            </a>
+                            </button>
                           ))}
                         </div>
+                        <p className="text-xs text-gray-500 mt-2 sm:hidden">Tap photo to view full size</p>
                       </section>
                     )}
 
@@ -1138,6 +1163,15 @@ export default function RepairsPage() {
           }}
         />
       )}
+
+      {/* Photo Gallery Lightbox */}
+      <PhotoGallery
+        photos={galleryPhotos}
+        thumbnails={galleryThumbs}
+        initialIndex={galleryStartIndex}
+        isOpen={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+      />
     </div>
   );
 }

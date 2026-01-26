@@ -45,6 +45,7 @@ export default function BookingsPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [showNewBookingModal, setShowNewBookingModal] = useState(false)
   const [repairRequests, setRepairRequests] = useState<any[]>([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const loadBookings = async (mechanicId?: string) => {
     try {
@@ -186,32 +187,47 @@ export default function BookingsPage() {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
   }
 
-  const dates = Object.keys(grouped).sort()
+  // Sort dates: upcoming first (soonest), then past (most recent)
+  const today = new Date().toISOString().split('T')[0]
+  const dates = Object.keys(grouped).sort((a, b) => {
+    const aIsFuture = a >= today
+    const bIsFuture = b >= today
+    // Both future: ascending (soonest first)
+    if (aIsFuture && bIsFuture) return a.localeCompare(b)
+    // Both past: descending (most recent first)
+    if (!aIsFuture && !bIsFuture) return b.localeCompare(a)
+    // Future before past
+    return aIsFuture ? -1 : 1
+  })
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   const monthDays = getDaysInMonth(currentMonth)
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role={user?.role || 'admin'} />
+      <Sidebar role={user?.role || 'admin'} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user.name} userRole={user.role} userEmail={user.email} />
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex items-start justify-between">
+        <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 sm:pb-6">
+          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+            {/* Mobile-optimized header */}
+            <div className="flex flex-col gap-4">
               <div>
-                <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Scheduling</p>
-                <h1 className="text-3xl font-bold text-gray-900">Bookings</h1>
-                <p className="text-gray-600">
+                <p className="text-xs sm:text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Scheduling</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Bookings</h1>
+                <p className="text-sm sm:text-base text-gray-600 hidden sm:block">
                   {user.role === 'mechanic'
                     ? 'Your scheduled service appointments and repair bookings.'
                     : 'Manage all service appointments and bookings.'}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1">
+
+              {/* Controls row - stacked on mobile */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                {/* View mode toggle */}
+                <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1 w-fit">
                   <button
                     onClick={() => handleViewModeChange('grid')}
-                    className={`p-2 rounded-md transition-colors ${
+                    className={`p-2.5 sm:p-2 rounded-md transition-colors touch-target ${
                       viewMode === 'grid'
                         ? 'bg-primary-100 text-primary-700'
                         : 'text-gray-600 hover:bg-gray-50'
@@ -222,7 +238,7 @@ export default function BookingsPage() {
                   </button>
                   <button
                     onClick={() => handleViewModeChange('list')}
-                    className={`p-2 rounded-md transition-colors ${
+                    className={`p-2.5 sm:p-2 rounded-md transition-colors touch-target ${
                       viewMode === 'list'
                         ? 'bg-primary-100 text-primary-700'
                         : 'text-gray-600 hover:bg-gray-50'
@@ -233,7 +249,7 @@ export default function BookingsPage() {
                   </button>
                   <button
                     onClick={() => handleViewModeChange('calendar')}
-                    className={`p-2 rounded-md transition-colors ${
+                    className={`p-2.5 sm:p-2 rounded-md transition-colors touch-target ${
                       viewMode === 'calendar'
                         ? 'bg-primary-100 text-primary-700'
                         : 'text-gray-600 hover:bg-gray-50'
@@ -243,8 +259,10 @@ export default function BookingsPage() {
                     <CalendarDays className="h-5 w-5" />
                   </button>
                 </div>
+
+                {/* Admin actions - desktop only, mobile uses FAB */}
                 {user.role === 'admin' && (
-                  <>
+                  <div className="hidden sm:flex items-center gap-2 ml-auto">
                     <button
                       onClick={() => router.push('/admin/settings?tab=calendar')}
                       className="btn btn-ghost btn-icon"
@@ -267,7 +285,7 @@ export default function BookingsPage() {
                       <Plus className="h-5 w-5" />
                       New Booking
                     </button>
-                  </>
+                  </div>
                 )}
               </div>
             </div>
@@ -281,19 +299,20 @@ export default function BookingsPage() {
             {dates.length === 0 ? (
               <div className="text-center py-10 text-gray-500">No bookings scheduled</div>
             ) : viewMode === 'calendar' ? (
-              // Weekly Calendar View
-              <div className="space-y-6">
+              // Weekly Calendar View - responsive for mobile
+              <div className="space-y-4 sm:space-y-6">
                 {Object.keys(calendarData).sort().map((weekKey) => {
                   const weekStart = new Date(weekKey)
                   return (
                     <div key={weekKey} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                      <div className="bg-gradient-to-r from-primary-50 to-primary-100 px-5 py-3 border-b border-primary-200">
-                        <h3 className="text-sm font-bold text-primary-900 uppercase tracking-wider flex items-center gap-2">
+                      <div className="bg-gradient-to-r from-primary-50 to-primary-100 px-4 sm:px-5 py-3 border-b border-primary-200">
+                        <h3 className="text-xs sm:text-sm font-bold text-primary-900 uppercase tracking-wider flex items-center gap-2">
                           <CalendarDays className="h-4 w-4" />
                           Week of {formatDate(weekKey)}
                         </h3>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-7 gap-px bg-gray-200">
+                      {/* Mobile: vertical list | Desktop: 7-column grid */}
+                      <div className="hidden md:grid md:grid-cols-7 gap-px bg-gray-200">
                         {weekDays.map((day, dayIndex) => {
                           const currentDate = new Date(weekStart)
                           currentDate.setDate(weekStart.getDate() + dayIndex)
@@ -329,6 +348,53 @@ export default function BookingsPage() {
                                         <span className="text-[10px] text-primary-700 font-medium">Repair</span>
                                       </div>
                                     )}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      {/* Mobile: vertical list for days with bookings */}
+                      <div className="md:hidden divide-y divide-gray-100">
+                        {weekDays.map((day, dayIndex) => {
+                          const currentDate = new Date(weekStart)
+                          currentDate.setDate(weekStart.getDate() + dayIndex)
+                          const dateKey = currentDate.toISOString().split('T')[0]
+                          const dayBookings = calendarData[weekKey][dateKey] || []
+                          const isTodayDate = dateKey === new Date().toISOString().split('T')[0]
+
+                          if (dayBookings.length === 0) return null
+
+                          return (
+                            <div key={day} className="p-4">
+                              <div className={`text-sm font-semibold mb-3 flex items-center justify-between ${isTodayDate ? 'text-primary-700' : 'text-gray-700'}`}>
+                                <span>{day}, {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                {isTodayDate && (
+                                  <span className="bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full text-xs">Today</span>
+                                )}
+                              </div>
+                              <div className="space-y-2">
+                                {dayBookings.map((booking, idx) => (
+                                  <button
+                                    key={`mobile-${booking.id}-${idx}`}
+                                    onClick={() => setSelectedBooking(booking)}
+                                    className="w-full text-left p-3 rounded-lg bg-primary-50 active:bg-primary-100 border border-primary-200 transition-colors"
+                                  >
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div className="flex items-center gap-2">
+                                        <Clock className="h-4 w-4 text-primary-600" />
+                                        <span className="text-sm font-semibold text-primary-900">{booking.scheduledTime}</span>
+                                      </div>
+                                      {booking.repairRequestId && (
+                                        <div className="flex items-center gap-1 bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                                          <Wrench className="h-3 w-3" />
+                                          <span className="text-xs font-medium">Repair</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <p className="text-sm font-medium text-gray-900">{booking.serviceType}</p>
+                                    <p className="text-xs text-gray-600 mt-1">{booking.customerName}</p>
                                   </button>
                                 ))}
                               </div>
@@ -665,6 +731,17 @@ export default function BookingsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Mobile FAB - Admin Only */}
+      {user.role === 'admin' && (
+        <button
+          onClick={() => setShowNewBookingModal(true)}
+          className="sm:hidden fixed bottom-6 right-4 w-14 h-14 rounded-full bg-primary-600 text-white shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform safe-area-inset-bottom"
+          aria-label="New booking"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
 
       {/* New Booking Modal - Admin Only */}
       {user.role === 'admin' && showNewBookingModal && (

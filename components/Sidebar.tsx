@@ -17,6 +17,7 @@ import {
   ChevronRight,
   MessageSquare,
   Megaphone,
+  Bug,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useMemo, useCallback } from 'react'
@@ -33,7 +34,7 @@ const unifiedLinks = [
   { href: '/repairs', label: 'Repairs', icon: Wrench },
   { href: '/admin/bookings', label: 'Bookings', icon: Calendar },
   { href: '/service-records', label: 'Service Records', icon: FileText },
-  { href: '/admin/drivers', label: 'Drivers', icon: Users },
+  { href: '/admin/drivers', label: 'Members', icon: Users },
 ]
 
 const mechanicOnlyLinks = [
@@ -42,6 +43,7 @@ const mechanicOnlyLinks = [
 
 const adminOnlyLinks = [
   { href: '/admin/announcements', label: 'Announcements', icon: Megaphone },
+  { href: '/admin/bug-reports', label: 'Bug Reports', icon: Bug },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 

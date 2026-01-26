@@ -8,11 +8,15 @@
   "crons": [
     {
       "path": "/api/bookings/reminders",
-      "schedule": "0 9 * * *"
+      "schedule": "0 9 * * 1-5"
     },
     {
       "path": "/api/admin/process-scheduled-messages",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/bookings/daily-brief",
+      "schedule": "0 13 * * 1-5"
     }
   ]
 }

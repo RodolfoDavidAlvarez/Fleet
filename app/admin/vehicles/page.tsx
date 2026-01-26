@@ -47,6 +47,7 @@ export default function VehiclesPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const [user, setUser] = useState<any>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: vehicles = [], isLoading, error: vehiclesError } = useVehicles();
   const createVehicle = useCreateVehicle();
   const updateVehicle = useUpdateVehicle();
@@ -592,44 +593,44 @@ export default function VehiclesPage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role={user?.role || "admin"} />
+      <Sidebar role={user?.role || "admin"} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user.name} userRole={user.role} userEmail={user.email} />
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto space-y-5">
-            {/* Header Section */}
-            <div className="flex flex-col gap-4">
+        <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 sm:pb-6">
+          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-5">
+            {/* Header Section - Mobile optimized */}
+            <div className="flex flex-col gap-3 sm:gap-4">
               {/* Title and Description */}
               <div>
-                <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em] mb-1">Fleet</p>
-                <h1 className="text-3xl font-bold text-gray-900 mb-1">Vehicles</h1>
-                <p className="text-gray-600 text-sm">Manage your fleet vehicles and their status.</p>
+                <p className="text-xs sm:text-sm text-primary-700 font-semibold uppercase tracking-[0.08em] mb-1">Fleet</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Vehicles</h1>
+                <p className="text-gray-600 text-xs sm:text-sm hidden sm:block">Manage your fleet vehicles and their status.</p>
               </div>
 
-              {/* Stats Cards Row - Compact */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-green-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+              {/* Stats Cards Row - Horizontally scrollable on mobile */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible no-scrollbar">
+                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-green-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default flex-shrink-0">
                   <p className="text-xs text-gray-500 font-medium mb-0.5">Operational</p>
                   <p className="text-xl font-bold text-gray-900">{activeCount}</p>
                 </div>
-                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-yellow-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-yellow-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default flex-shrink-0">
                   <p className="text-xs text-gray-500 font-medium mb-0.5">In Service</p>
                   <p className="text-xl font-bold text-gray-900">{inServiceCount}</p>
                 </div>
                 {forSaleCount > 0 && (
-                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-purple-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-purple-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default flex-shrink-0">
                     <p className="text-xs text-gray-500 font-medium mb-0.5">For Sale</p>
                     <p className="text-lg font-semibold text-gray-900">{forSaleCount}</p>
                   </div>
                 )}
                 {idleCount > 0 && (
-                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-orange-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-orange-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default flex-shrink-0">
                     <p className="text-xs text-gray-500 font-medium mb-0.5">Idle</p>
                     <p className="text-lg font-semibold text-gray-900">{idleCount}</p>
                   </div>
                 )}
                 {brokenDownCount > 0 && (
-                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-red-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
+                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-red-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default flex-shrink-0">
                     <p className="text-xs text-gray-500 font-medium mb-0.5">Broken Down</p>
                     <p className="text-xl font-bold text-gray-900">{brokenDownCount}</p>
                   </div>

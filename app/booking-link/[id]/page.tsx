@@ -1,8 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Calendar, Clock, User, MessageSquare, CheckCircle, MapPin, Car } from "lucide-react";
+import { Calendar, Clock, User, MessageSquare, CheckCircle, MapPin, Car, ChevronRight } from "lucide-react";
+
+// Helper to format date strings as local dates (avoids timezone bug where YYYY-MM-DD shows as previous day)
+function formatDateLocal(dateStr: string, options: Intl.DateTimeFormatOptions) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString("en-US", options);
+  }
+  return new Date(dateStr).toLocaleDateString("en-US", options);
+}
 
 export default function BookingLinkPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -41,6 +50,15 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
   // Calendar state - initialize early to prevent reference errors
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showCalendar, setShowCalendar] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile on mount
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Load calendar settings
   useEffect(() => {
@@ -160,6 +178,45 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
     }
     return dates;
   };
+
+  // Get compact date list for mobile (next 10 available days with slot info)
+  const compactDates = useMemo(() => {
+    const dates: { date: string; dayName: string; dayNum: number; month: string; hasSlots: boolean; slotCount: number; isToday: boolean }[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split("T")[0];
+
+    // Calculate minimum booking date based on advance window
+    const minBookingDate = new Date(today);
+    if (calendarSettings.advanceBookingUnit === "hours") {
+      minBookingDate.setHours(today.getHours() + calendarSettings.advanceBookingWindow);
+    } else {
+      minBookingDate.setDate(today.getDate() + calendarSettings.advanceBookingWindow);
+    }
+    minBookingDate.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < 21 && dates.length < 10; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const dayOfWeek = date.getDay();
+      const dateStr = date.toISOString().split("T")[0];
+
+      // Check if working day and within advance booking window
+      if (calendarSettings.workingDays.includes(dayOfWeek) && date >= minBookingDate) {
+        const availability = datesAvailability[dateStr];
+        dates.push({
+          date: dateStr,
+          dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
+          dayNum: date.getDate(),
+          month: date.toLocaleDateString("en-US", { month: "short" }),
+          hasSlots: availability?.hasSlots || false,
+          slotCount: availability?.slotCount || 0,
+          isToday: dateStr === todayStr,
+        });
+      }
+    }
+    return dates;
+  }, [datesAvailability, calendarSettings]);
 
 
   // Get days in month for calendar display
@@ -482,7 +539,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 mb-6 border border-green-200">
               <div className="space-y-2">
                 <p className="text-green-800 font-semibold text-lg">
-                  {new Date(formData.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                  {formatDateLocal(formData.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
                 </p>
                 <p className="text-green-700 text-xl font-bold">{formData.time}</p>
                 <p className="text-green-600 text-sm">30 minute appointment</p>
@@ -661,46 +718,103 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
               )}
 
               {/* Date Selection */}
-              <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 border border-gray-100">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-3">
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <Calendar className="h-4 w-4 text-white" />
                   </div>
                   Select Date
                 </h3>
 
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowCalendar(!showCalendar)}
-                    className="w-full border-2 border-gray-200 rounded-xl p-4 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-blue-50 hover:to-purple-50 text-left focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all duration-200 touch-manipulation group"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        {formData.date ? (
-                          <div>
-                            <p className="text-lg font-semibold text-gray-900 mb-1">
-                              {new Date(formData.date).toLocaleDateString("en-US", {
-                                weekday: "long",
-                                month: "long",
-                                day: "numeric",
-                                year: "numeric",
-                              })}
-                            </p>
-                            <p className="text-sm text-blue-600 font-medium">✓ Date selected</p>
-                          </div>
-                        ) : (
-                          <div>
-                            <p className="text-lg font-semibold text-gray-500 mb-1">Choose your date</p>
-                            <p className="text-sm text-gray-600">Monday - Friday available</p>
-                          </div>
-                        )}
+                {/* Mobile: Compact Date List */}
+                {isMobile ? (
+                  <div className="space-y-2">
+                    {formData.date && (
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-300 rounded-xl p-3 mb-4">
+                        <p className="text-sm text-blue-600 font-medium">✓ Selected</p>
+                        <p className="text-base font-bold text-gray-900">
+                          {formatDateLocal(formData.date, { weekday: "long", month: "long", day: "numeric" })}
+                        </p>
                       </div>
-                      <div className="w-10 h-10 bg-white rounded-lg shadow-sm flex items-center justify-center group-hover:shadow-md transition-shadow">
-                        <Calendar className="h-5 w-5 text-gray-600 group-hover:text-blue-600 transition-colors" />
-                      </div>
+                    )}
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {compactDates.map((d) => (
+                        <button
+                          key={d.date}
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, date: d.date, time: "" });
+                          }}
+                          disabled={!d.hasSlots}
+                          className={`w-full flex items-center justify-between p-3 rounded-xl transition-all touch-manipulation ${
+                            formData.date === d.date
+                              ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
+                              : d.hasSlots
+                                ? "bg-white border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50"
+                                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center ${
+                              formData.date === d.date ? "bg-white/20" : "bg-gray-100"
+                            }`}>
+                              <span className={`text-xs font-medium ${formData.date === d.date ? "text-white/80" : "text-gray-500"}`}>
+                                {d.dayName}
+                              </span>
+                              <span className={`text-lg font-bold ${formData.date === d.date ? "text-white" : "text-gray-900"}`}>
+                                {d.dayNum}
+                              </span>
+                            </div>
+                            <div className="text-left">
+                              <p className={`font-semibold ${formData.date === d.date ? "text-white" : "text-gray-900"}`}>
+                                {d.month} {d.dayNum}{d.isToday ? " (Today)" : ""}
+                              </p>
+                              <p className={`text-sm ${formData.date === d.date ? "text-white/80" : d.hasSlots ? "text-green-600" : "text-gray-400"}`}>
+                                {d.hasSlots ? `${d.slotCount} slot${d.slotCount !== 1 ? "s" : ""} available` : "No slots"}
+                              </p>
+                            </div>
+                          </div>
+                          {d.hasSlots && (
+                            <ChevronRight className={`h-5 w-5 ${formData.date === d.date ? "text-white" : "text-gray-400"}`} />
+                          )}
+                        </button>
+                      ))}
                     </div>
-                  </button>
+                  </div>
+                ) : (
+                  /* Desktop: Calendar Dropdown */
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowCalendar(!showCalendar)}
+                      className="w-full border-2 border-gray-200 rounded-xl p-4 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-blue-50 hover:to-purple-50 text-left focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all duration-200 touch-manipulation group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          {formData.date ? (
+                            <div>
+                              <p className="text-lg font-semibold text-gray-900 mb-1">
+                                {formatDateLocal(formData.date, {
+                                  weekday: "long",
+                                  month: "long",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}
+                              </p>
+                              <p className="text-sm text-blue-600 font-medium">✓ Date selected</p>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-lg font-semibold text-gray-500 mb-1">Choose your date</p>
+                              <p className="text-sm text-gray-600">Monday - Friday available</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="w-10 h-10 bg-white rounded-lg shadow-sm flex items-center justify-center group-hover:shadow-md transition-shadow">
+                          <Calendar className="h-5 w-5 text-gray-600 group-hover:text-blue-600 transition-colors" />
+                        </div>
+                      </div>
+                    </button>
 
                   {/* Calendar Dropdown */}
                   {showCalendar && (
@@ -803,11 +917,14 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
 
                   {/* Hidden input for form validation */}
                   <input type="hidden" required value={formData.date} onChange={() => {}} />
+
+                  {/* Click outside to close calendar */}
+                  {showCalendar && <div className="fixed inset-0 z-40" onClick={() => setShowCalendar(false)} />}
                 </div>
+                )}
 
-                {/* Click outside to close calendar */}
-                {showCalendar && <div className="fixed inset-0 z-40" onClick={() => setShowCalendar(false)} />}
-
+                {/* Hidden input for mobile validation */}
+                {isMobile && <input type="hidden" required value={formData.date} onChange={() => {}} />}
               </div>
 
               {/* Time Selection */}
@@ -841,25 +958,54 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                     <p className="text-sm">Please choose a different date</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                    {getTimeSlots().map((time: string) => (
-                      <button
-                        key={time}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, time })}
-                        className={`py-4 px-6 rounded-xl text-center font-semibold transition-all duration-200 touch-manipulation text-base min-h-[60px] flex items-center justify-center group relative overflow-hidden ${
-                          formData.time === time
-                            ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg transform scale-105 hover:scale-110"
-                            : "bg-white border-2 border-green-200 text-green-800 hover:border-green-400 hover:bg-green-50 shadow-sm hover:shadow-md"
-                        }`}
-                      >
-                        <span className="relative z-10">{time}</span>
-                        {formData.time === time && (
-                          <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"></div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    {/* Mobile: Horizontal scrollable chips */}
+                    <div className="sm:hidden">
+                      {formData.time && (
+                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-3 mb-4">
+                          <p className="text-sm text-green-600 font-medium">✓ Time selected</p>
+                          <p className="text-xl font-bold text-gray-900">{formData.time}</p>
+                        </div>
+                      )}
+                      <div className="flex gap-2 overflow-x-auto pb-3 -mx-4 px-4 snap-x snap-mandatory no-scrollbar">
+                        {getTimeSlots().map((time: string) => (
+                          <button
+                            key={time}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, time })}
+                            className={`flex-shrink-0 py-3 px-5 rounded-full text-center font-semibold transition-all duration-200 touch-manipulation text-base snap-start ${
+                              formData.time === time
+                                ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg"
+                                : "bg-white border-2 border-green-200 text-green-800 active:bg-green-50"
+                            }`}
+                          >
+                            {time}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 text-center mt-2">← Scroll to see more times →</p>
+                    </div>
+                    {/* Desktop: Grid layout */}
+                    <div className="hidden sm:grid grid-cols-2 gap-3 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                      {getTimeSlots().map((time: string) => (
+                        <button
+                          key={time}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, time })}
+                          className={`py-4 px-6 rounded-xl text-center font-semibold transition-all duration-200 touch-manipulation text-base min-h-[60px] flex items-center justify-center group relative overflow-hidden ${
+                            formData.time === time
+                              ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg transform scale-105 hover:scale-110"
+                              : "bg-white border-2 border-green-200 text-green-800 hover:border-green-400 hover:bg-green-50 shadow-sm hover:shadow-md"
+                          }`}
+                        >
+                          <span className="relative z-10">{time}</span>
+                          {formData.time === time && (
+                            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"></div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </>
                 )}
 
               </div>
@@ -929,7 +1075,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
                   <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mb-6">
                     <h4 className="font-semibold text-gray-900 mb-2">Booking Summary</h4>
                     <div className="space-y-1 text-sm text-gray-700">
-                      <p><span className="font-medium">Date:</span> {new Date(formData.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
+                      <p><span className="font-medium">Date:</span> {formatDateLocal(formData.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
                       <p><span className="font-medium">Time:</span> {formData.time}</p>
                       <p><span className="font-medium">Duration:</span> 30 minutes</p>
                     </div>

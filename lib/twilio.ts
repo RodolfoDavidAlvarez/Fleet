@@ -12,8 +12,9 @@ function isSmsEnabled(): boolean {
 
 // Helper function to get Twilio client (recreated if needed)
 function getTwilioClient(): twilio.Twilio | null {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  // Trim env vars to handle trailing newlines from Vercel env export
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
   const smsEnabled = isSmsEnabled();
 
   if (accountSid && authToken && smsEnabled) {
@@ -44,9 +45,10 @@ export async function sendSMS(to: string, message: string): Promise<boolean> {
     return false;
   }
 
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const phoneNumber = process.env.TWILIO_PHONE_NUMBER;
+  // Trim all env vars to handle trailing newlines from Vercel env export
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
+  const phoneNumber = process.env.TWILIO_PHONE_NUMBER?.trim();
 
   if (!accountSid || !authToken) {
     console.warn("Twilio credentials missing. Please set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN environment variables.");
@@ -206,5 +208,23 @@ export async function sendRepairCompletion(
     details.language === "es"
       ? `Reparación completada (#${details.requestId}). ${details.summary}${costLine}`
       : `Repair completed (#${details.requestId}). ${details.summary}${costLine}`;
+  return sendSMS(phone, message);
+}
+
+/**
+ * Send daily brief SMS notification
+ * Quick alert that bookings are scheduled for today
+ */
+export async function sendDailyBriefSMS(
+  phone: string,
+  details: {
+    name: string;
+    bookingCount: number;
+    date: string;
+    testUrl?: string; // Optional URL override for local testing
+  }
+): Promise<boolean> {
+  const url = details.testUrl || 'https://agavefleet.com/my-bookings';
+  const message = `AgaveFleet Daily Brief\n${details.bookingCount} booking${details.bookingCount === 1 ? '' : 's'} scheduled for ${details.date}.\nView details: ${url}`;
   return sendSMS(phone, message);
 }

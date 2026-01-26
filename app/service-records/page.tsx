@@ -32,6 +32,7 @@ const statusStyles: Record<string, string> = {
 export default function ServiceRecordsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // React Query Hooks
   const { data: records = [], isLoading, refetch } = useServiceRecords();
@@ -111,7 +112,12 @@ export default function ServiceRecordsPage() {
           r.vehicleLabel?.toLowerCase().includes(s)
       );
     }
-    return list;
+    // Sort by most recent first (by date)
+    return [...list].sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return dateB - dateA;
+    });
   }, [filter, search, records]);
 
   // Calculate pagination
@@ -231,23 +237,24 @@ export default function ServiceRecordsPage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar role={user.role} />
+      <Sidebar role={user.role} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header userName={user.name} userRole={user.role} userEmail={user.email} />
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 sm:pb-6">
+          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+            <div className="flex flex-col gap-3 sm:gap-4">
               <div>
-                <p className="text-xs text-primary-700 font-semibold uppercase tracking-[0.08em]">Service</p>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-bold text-gray-900">Service Records</h1>
-                  <span className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded-full">{records.length} total</span>
+                <p className="text-xs sm:text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Service</p>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Service Records</h1>
+                  <span className="px-2 sm:px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded-full">{records.length} total</span>
                 </div>
-                <p className="text-sm text-gray-600 mt-1">Technician-completed repairs with mileage, cost, and status.</p>
+                <p className="text-sm text-gray-600 mt-1 hidden sm:block">Technician-completed repairs with mileage, cost, and status.</p>
               </div>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => exportServiceRecords(filtered)} 
+              {/* Desktop buttons - hidden on mobile, use FAB instead */}
+              <div className="hidden sm:flex items-center gap-3">
+                <button
+                  onClick={() => exportServiceRecords(filtered)}
                   className="btn-secondary px-4 py-2 flex items-center gap-2"
                   disabled={filtered.length === 0}
                 >
@@ -265,10 +272,17 @@ export default function ServiceRecordsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <SummaryCard title="Active" value={statusCounts.active} tone="indigo" />
-              <SummaryCard title="Completed" value={statusCounts.completed} tone="green" />
-              <SummaryCard title="Cancelled" value={statusCounts.cancelled} tone="gray" />
+            {/* Stats Cards - Horizontally scrollable on mobile */}
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory sm:grid sm:grid-cols-3 sm:overflow-visible sm:mx-0 sm:px-0 sm:pb-0 no-scrollbar">
+              <div className="flex-shrink-0 w-[calc(33%-0.5rem)] min-w-[120px] snap-start sm:w-auto sm:min-w-0 sm:flex-shrink">
+                <SummaryCard title="Active" value={statusCounts.active} tone="indigo" />
+              </div>
+              <div className="flex-shrink-0 w-[calc(33%-0.5rem)] min-w-[120px] snap-start sm:w-auto sm:min-w-0 sm:flex-shrink">
+                <SummaryCard title="Completed" value={statusCounts.completed} tone="green" />
+              </div>
+              <div className="flex-shrink-0 w-[calc(33%-0.5rem)] min-w-[120px] snap-start sm:w-auto sm:min-w-0 sm:flex-shrink">
+                <SummaryCard title="Cancelled" value={statusCounts.cancelled} tone="gray" />
+              </div>
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
@@ -403,6 +417,15 @@ export default function ServiceRecordsPage() {
           </div>
         </main>
       </div>
+
+      {/* Mobile FAB - New Service Record */}
+      <button
+        onClick={openCreate}
+        className="sm:hidden fixed bottom-6 right-4 w-14 h-14 rounded-full bg-primary-600 text-white shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform safe-area-inset-bottom"
+        aria-label="New service record"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
       <AnimatePresence>
         {selected && (
