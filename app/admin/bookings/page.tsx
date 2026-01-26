@@ -278,6 +278,7 @@ export default function BookingsPage() {
                       <Download className="h-4 w-4" />
                       Export CSV
                     </button>
+                    {/* HIDDEN: New Booking button - using repair request flow instead
                     <button
                       onClick={() => setShowNewBookingModal(true)}
                       className="btn btn-primary flex items-center gap-2"
@@ -285,6 +286,7 @@ export default function BookingsPage() {
                       <Plus className="h-5 w-5" />
                       New Booking
                     </button>
+                    */}
                   </div>
                 )}
               </div>
@@ -732,7 +734,7 @@ export default function BookingsPage() {
         )}
       </AnimatePresence>
 
-      {/* Mobile FAB - Admin Only */}
+      {/* HIDDEN: Mobile FAB - Using repair request flow instead
       {user.role === 'admin' && (
         <button
           onClick={() => setShowNewBookingModal(true)}
@@ -742,8 +744,9 @@ export default function BookingsPage() {
           <Plus className="h-6 w-6" />
         </button>
       )}
+      */}
 
-      {/* New Booking Modal - Admin Only */}
+      {/* HIDDEN: New Booking Modal - Using repair request flow instead
       {user.role === 'admin' && showNewBookingModal && (
         <NewBookingModal
           repairRequests={repairRequests}
@@ -754,6 +757,7 @@ export default function BookingsPage() {
           }}
         />
       )}
+      */}
     </div>
   )
 }
