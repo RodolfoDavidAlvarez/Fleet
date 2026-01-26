@@ -26,10 +26,10 @@ export default function DashboardLayout({ children, userName, userRole }: Dashbo
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <Header 
-          userName={userName} 
+        <Header
+          userName={userName}
           userRole={userRole}
-          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+          onMenuClick={() => setSidebarOpen(true)}
         />
 
         {/* Page content */}

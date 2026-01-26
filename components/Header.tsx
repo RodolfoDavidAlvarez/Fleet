@@ -126,12 +126,13 @@ export default function Header({ userName, userRole, userEmail, onMenuClick }: H
     <header className="surface-primary border-b border-[var(--border)] h-16 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40 backdrop-blur-md bg-opacity-90">
       <div className="flex items-center gap-4 flex-1">
         {/* Mobile menu button */}
-        <button 
+        <button
           onClick={onMenuClick}
-          className="lg:hidden btn-ghost btn-icon"
+          className="lg:hidden p-3 -ml-2 rounded-lg hover:bg-[var(--surface-hover)] active:bg-[var(--surface-hover)] transition-colors touch-manipulation"
           aria-label="Toggle menu"
+          style={{ minWidth: '44px', minHeight: '44px' }}
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-6 w-6" />
         </button>
       </div>
 

@@ -84,7 +84,8 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
     if (window.innerWidth < 1024 && onClose) {
       onClose()
     }
-  }, [pathname, onClose])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]) // Only trigger on pathname change, not onClose reference changes
 
   return (
     <>
