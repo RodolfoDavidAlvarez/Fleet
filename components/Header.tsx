@@ -136,7 +136,7 @@ export default function Header({ userName, userRole, userEmail, onMenuClick }: H
         </button>
       </div>
 
-      <div className="flex items-center gap-2 lg:gap-4">
+      <div className="flex items-center gap-1.5 lg:gap-3">
         {/* Status indicator */}
         <div className="hidden lg:flex items-center">
           <span className="badge badge-success animate-fade-in">
@@ -145,7 +145,10 @@ export default function Header({ userName, userRole, userEmail, onMenuClick }: H
           </span>
         </div>
 
-        {/* Bug Report Button - Floating style */}
+        {/* Divider */}
+        <div className="hidden lg:block h-6 w-px bg-[var(--border)]" />
+
+        {/* Bug Report Button */}
         <div className="relative">
           <button
             onClick={() => setShowBugReportDialog(true)}
@@ -153,20 +156,20 @@ export default function Header({ userName, userRole, userEmail, onMenuClick }: H
             aria-label="Report an issue"
             title="Report an issue"
           >
-            <Bug className="h-5 w-5 text-red-600 group-hover:text-red-700" />
+            <Bug className="h-5 w-5 text-[var(--text-tertiary)] group-hover:text-red-600 transition-colors duration-200" />
           </button>
         </div>
 
         {/* Notifications */}
         <div className="relative">
-          <button 
+          <button
             onClick={() => setShowNotifications(!showNotifications)}
             className="btn-ghost btn-icon relative"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 rounded-full bg-danger-500 text-[10px] text-white flex items-center justify-center shadow">
+              <span className="absolute -top-0.5 -right-0.5 h-[18px] min-w-[18px] px-1 rounded-full bg-[var(--danger-500)] text-[10px] font-bold text-white flex items-center justify-center ring-2 ring-white">
                 {unreadCount}
               </span>
             )}
@@ -210,16 +213,19 @@ export default function Header({ userName, userRole, userEmail, onMenuClick }: H
           )}
         </div>
 
+        {/* Divider */}
+        <div className="hidden sm:block h-6 w-px bg-[var(--border)]" />
+
         {/* User info */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <div className="hidden sm:block text-right">
-            <p className="text-sm font-semibold">{userName}</p>
-            <p className="text-xs text-muted capitalize">{userRole}</p>
+            <p className="text-sm font-semibold leading-tight">{userName}</p>
+            <p className="text-[11px] text-[var(--text-tertiary)] capitalize">{userRole}</p>
           </div>
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="w-9 h-9 bg-gradient-to-br from-[var(--primary-400)] to-[var(--primary-600)] rounded-full flex items-center justify-center shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+              className="w-9 h-9 bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-700)] rounded-full flex items-center justify-center cursor-pointer ring-2 ring-[var(--primary-200)] hover:ring-[var(--primary-300)] transition-all duration-200"
               aria-label="User menu"
             >
               <User className="h-4 w-4 text-white" />

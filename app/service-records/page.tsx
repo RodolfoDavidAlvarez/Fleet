@@ -232,7 +232,7 @@ export default function ServiceRecordsPage() {
   };
 
   const mechanicLabel = (name?: string) => {
-    if (!name) return "—";
+    if (!name) return "\u2014";
     try {
       const parsed = JSON.parse(name);
       if (Array.isArray(parsed)) return parsed.join(", ");
@@ -273,41 +273,51 @@ export default function ServiceRecordsPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 sm:pb-6">
-          <div className="max-w-7xl mx-auto space-y-3">
-            {/* Compact header row */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Service Records</h1>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 text-xs font-semibold bg-gray-100 text-gray-600 rounded-full">{records.length} total</span>
-                  <span className="px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-full">{statusCounts.active} active</span>
-                  <span className="hidden sm:inline px-2 py-0.5 text-xs font-semibold bg-green-50 text-green-600 rounded-full">{statusCounts.completed} done</span>
-                  {statusCounts.cancelled > 0 && (
-                    <span className="hidden sm:inline px-2 py-0.5 text-xs font-semibold bg-gray-50 text-gray-500 rounded-full">{statusCounts.cancelled} cancelled</span>
-                  )}
+          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+            {/* Page header */}
+            <div className="flex flex-col gap-3 sm:gap-4">
+              <div>
+                <p className="text-xs sm:text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Service Records</p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Maintenance history</h1>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 text-[11px] font-semibold bg-gray-100 text-gray-600 rounded-full">{records.length} total</span>
+                    <span className="px-2 py-0.5 text-[11px] font-semibold bg-indigo-50 text-indigo-600 rounded-full">{statusCounts.active} active</span>
+                    <span className="hidden sm:inline px-2 py-0.5 text-[11px] font-semibold bg-green-50 text-green-600 rounded-full">{statusCounts.completed} done</span>
+                    {statusCounts.cancelled > 0 && (
+                      <span className="hidden sm:inline px-2 py-0.5 text-[11px] font-semibold bg-gray-50 text-gray-500 rounded-full">{statusCounts.cancelled} cancelled</span>
+                    )}
+                  </div>
                 </div>
               </div>
+              {/* Desktop buttons */}
               <div className="hidden sm:flex items-center gap-2">
                 <button
                   onClick={() => exportServiceRecords(filtered)}
-                  className="btn-secondary px-3 py-1.5 text-sm flex items-center gap-1.5"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
                   disabled={filtered.length === 0}
                 >
                   <Download className="h-3.5 w-3.5" />
                   Export
                 </button>
-                <button onClick={() => refetch()} className="btn-secondary px-3 py-1.5 text-sm flex items-center gap-1.5">
+                <button
+                  onClick={() => refetch()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+                >
                   <Loader2 className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
                   Refresh
                 </button>
-                <button onClick={openCreate} className="btn-primary px-3 py-1.5 text-sm flex items-center gap-1.5">
+                <button
+                  onClick={openCreate}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-[var(--primary-600)] border border-[var(--primary-600)] rounded-lg hover:bg-[var(--primary-700)] transition-colors shadow-sm"
+                >
                   <Plus className="h-3.5 w-3.5" />
                   New record
                 </button>
               </div>
             </div>
 
-            {/* Filters + Search in one compact bar */}
+            {/* Filters + Search bar */}
             <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm">
               <div className="flex items-center gap-0.5 overflow-x-auto flex-1 no-scrollbar">
                 {["all", "open", "in_progress", "completed", "cancelled"].map((status) => {
@@ -338,7 +348,7 @@ export default function ServiceRecordsPage() {
               </div>
             </div>
 
-            {/* Table with sortable columns */}
+            {/* Table */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
@@ -386,27 +396,27 @@ export default function ServiceRecordsPage() {
                             animate={{ opacity: 1 }}
                             transition={{ duration: 0.15, delay: i * 0.02 }}
                             onClick={() => setSelected(rec)}
-                            className="group hover:bg-blue-50/50 cursor-pointer transition-colors"
+                            className="group hover:bg-blue-50/40 cursor-pointer transition-colors"
                           >
                             <td className="px-4 py-2.5 align-top whitespace-nowrap">
-                              <span className="text-xs text-gray-500">{rec.date ? formatDate(rec.date) : "—"}</span>
+                              <span className="text-xs text-gray-500">{rec.date ? formatDate(rec.date) : "\u2014"}</span>
                             </td>
                             <td className="px-4 py-2.5 align-top">
                               <p className="text-sm font-medium text-gray-900 line-clamp-1">{rec.serviceType || rec.makeModel || "Service"}</p>
                               <p className="text-xs text-gray-400 line-clamp-1 max-w-xs">{rec.description || ""}</p>
                             </td>
                             <td className="px-4 py-2.5 align-top hidden lg:table-cell">
-                              <p className="text-xs font-medium text-gray-700 truncate max-w-[140px]">{rec.vehicleLabel || "—"}</p>
+                              <p className="text-xs font-medium text-gray-700 truncate max-w-[140px]">{rec.vehicleLabel || "\u2014"}</p>
                               {rec.vehicleIdentifier && <p className="text-[11px] text-gray-400">ID: {rec.vehicleIdentifier}</p>}
                             </td>
                             <td className="px-4 py-2.5 align-top">
                               <span className="text-sm text-gray-700">{mechanicLabel(rec.mechanicName)}</span>
                             </td>
                             <td className="px-4 py-2.5 align-top text-right whitespace-nowrap">
-                              <span className="text-sm text-gray-800">{rec.cost !== undefined ? `$${rec.cost.toFixed(2)}` : "—"}</span>
+                              <span className="text-sm text-gray-800">{rec.cost !== undefined ? `$${rec.cost.toFixed(2)}` : "\u2014"}</span>
                             </td>
                             <td className="px-4 py-2.5 align-top text-right whitespace-nowrap hidden md:table-cell">
-                              <span className="text-xs text-gray-500">{rec.mileage !== undefined ? `${rec.mileage.toLocaleString()} mi` : "—"}</span>
+                              <span className="text-xs text-gray-500">{rec.mileage !== undefined ? `${rec.mileage.toLocaleString()} mi` : "\u2014"}</span>
                             </td>
                             <td className="px-4 py-2.5 align-top">
                               <span
@@ -452,104 +462,140 @@ export default function ServiceRecordsPage() {
         <Plus className="h-6 w-6" />
       </button>
 
+      {/* Side Panel */}
       <AnimatePresence>
         {selected && (
-          <motion.div className="fixed inset-0 z-50 overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" onClick={() => setSelected(null)} />
+          <motion.div
+            className="fixed inset-0 z-50 overflow-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.div
+              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+              onClick={() => setSelected(null)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            />
             <motion.div
               className="absolute inset-y-0 right-0 w-full max-w-2xl bg-white shadow-2xl flex flex-col h-full"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 35,
+                mass: 0.8,
+              }}
             >
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white z-10">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">Service details</h2>
-                  <p className="text-sm text-gray-500">Record ID: {selected.id.slice(0, 8)}</p>
+              {/* Panel Header */}
+              <div className="px-6 py-5 border-b border-gray-200 bg-white flex items-center justify-between sticky top-0 z-10">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[var(--primary-100)] to-[var(--primary-200)] flex items-center justify-center">
+                    <ClipboardList className="h-5 w-5 text-[var(--primary-700)]" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 leading-tight">Service details</h2>
+                    <p className="text-[11px] text-gray-400 font-mono tracking-wide">ID: {selected.id.slice(0, 8)}</p>
+                  </div>
                 </div>
                 <button
                   onClick={() => setSelected(null)}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  aria-label="Close"
                 >
-                  <X className="h-6 w-6" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                <div className="flex items-center gap-3">
-                  <BadgeCheck className="h-5 w-5 text-indigo-600" />
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{selected.serviceType || "Service"}</p>
-                    <p className="text-xs text-gray-500">{selected.date ? formatDate(selected.date) : "—"}</p>
+              {/* Panel Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50">
+                {/* Service type + status header card */}
+                <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-xl flex items-center justify-center shadow-sm bg-gradient-to-br from-blue-100 to-blue-50 text-blue-600">
+                        <Wrench className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-base font-bold text-gray-900">{selected.serviceType || "Service"}</p>
+                        <p className="text-sm text-gray-500 mt-0.5">{selected.date ? formatDate(selected.date) : "\u2014"}</p>
+                      </div>
+                    </div>
+                    <span
+                      className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border ${
+                        statusStyles[selected.status || "in_progress"]
+                      }`}
+                    >
+                      {statusLabels[selected.status || "in_progress"]}
+                    </span>
                   </div>
-                  <span
-                    className={`ml-auto px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${
-                      statusStyles[selected.status || "in_progress"]
-                    }`}
-                  >
-                    {statusLabels[selected.status || "in_progress"]}
-                  </span>
-                  {/* Edit disabled per requirements
-                {!editing && (
-                  <button
-                    onClick={() => openEdit(selected)}
-                    className="ml-3 text-sm font-medium text-primary-600 hover:text-primary-700"
-                  >
-                    Edit
-                  </button>
-                )}
-                */}
                 </div>
 
                 {!editing ? (
                   <>
-                    <section>
-                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <User className="h-4 w-4" /> Mechanic
+                    {/* Mechanic & Vehicle section */}
+                    <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-primary-100 flex items-center justify-center">
+                          <User className="h-4 w-4 text-primary-600" />
+                        </div>
+                        Mechanic & Vehicle
                       </h3>
-                      <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Name</p>
-                          <p className="font-medium text-gray-900">{mechanicLabel(selected.mechanicName)}</p>
+                      <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-5 grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Name</p>
+                          <p className="text-base font-bold text-gray-900">{mechanicLabel(selected.mechanicName)}</p>
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Vehicle</p>
-                          <p className="font-medium text-gray-900">{selected.vehicleLabel || selected.vehicleIdentifier || "—"}</p>
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle</p>
+                          <p className="text-base font-bold text-gray-900">{selected.vehicleLabel || selected.vehicleIdentifier || "\u2014"}</p>
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Division</p>
-                          <p className="font-medium text-gray-900">{selected.division || "—"}</p>
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Division</p>
+                          <p className="text-base font-bold text-gray-900">{selected.division || "\u2014"}</p>
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Type</p>
-                          <p className="font-medium text-gray-900">{selected.vehicleType || "—"}</p>
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</p>
+                          <p className="text-base font-bold text-gray-900">{selected.vehicleType || "\u2014"}</p>
                         </div>
                       </div>
                     </section>
 
-                    <section>
-                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <FileText className="h-4 w-4" /> Work performed
+                    {/* Work performed section */}
+                    <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                          <FileText className="h-4 w-4 text-purple-600" />
+                        </div>
+                        Work performed
                       </h3>
-                      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-                        {selected.description || "—"}
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 border border-gray-200 rounded-lg p-5 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap shadow-inner">
+                        {selected.description || "\u2014"}
                       </div>
                     </section>
 
-                    <section>
-                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <Gauge className="h-4 w-4" /> Costs & mileage
-                      </h3>
-                      <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Approx. cost</p>
-                          <p className="font-medium text-gray-900">{selected.cost !== undefined ? `$${selected.cost.toFixed(2)}` : "—"}</p>
+                    {/* Costs & mileage section */}
+                    <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-green-100 flex items-center justify-center">
+                          <DollarSign className="h-4 w-4 text-green-600" />
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Mileage</p>
-                          <p className="font-medium text-gray-900">
-                            {selected.mileage !== undefined ? `${selected.mileage.toLocaleString()} mi` : "—"}
+                        Costs & mileage
+                      </h3>
+                      <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-5 grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Approx. cost</p>
+                          <p className="text-base font-bold text-gray-900">{selected.cost !== undefined ? `$${selected.cost.toFixed(2)}` : "\u2014"}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Mileage</p>
+                          <p className="text-base font-bold text-gray-900">
+                            {selected.mileage !== undefined ? `${selected.mileage.toLocaleString()} mi` : "\u2014"}
                           </p>
                         </div>
                       </div>
@@ -575,4 +621,3 @@ export default function ServiceRecordsPage() {
     </div>
   );
 }
-

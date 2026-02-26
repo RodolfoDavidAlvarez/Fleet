@@ -6,6 +6,16 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatDate(date: string | Date): string {
+  // If it's a date-only string (YYYY-MM-DD), parse as local date to avoid timezone issues
+  // JavaScript's Date() interprets "YYYY-MM-DD" as UTC midnight, which shows as previous day in US timezones
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [year, month, day] = date.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
   return new Date(date).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",

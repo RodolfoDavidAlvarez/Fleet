@@ -77,6 +77,8 @@ export default function RepairsPage() {
   const [selected, setSelected] = useState<RepairRequest | null>(null);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<RepairRequest>>({});
+  const [linkedServiceRecord, setLinkedServiceRecord] = useState<any>(null);
+  const [loadingServiceRecord, setLoadingServiceRecord] = useState(false);
 
   // Report Modal States
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -90,6 +92,35 @@ export default function RepairsPage() {
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
   }, [router]);
+
+  // Fetch linked service record when a repair request is selected
+  useEffect(() => {
+    if (!selected) {
+      setLinkedServiceRecord(null);
+      return;
+    }
+    let cancelled = false;
+    const fetchServiceRecord = async () => {
+      setLoadingServiceRecord(true);
+      try {
+        const res = await fetch(`/api/service-records?repairRequestId=${selected.id}&limit=1`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled && data.records && data.records.length > 0) {
+            setLinkedServiceRecord(data.records[0]);
+          } else if (!cancelled) {
+            setLinkedServiceRecord(null);
+          }
+        }
+      } catch {
+        // silently fail
+      } finally {
+        if (!cancelled) setLoadingServiceRecord(false);
+      }
+    };
+    fetchServiceRecord();
+    return () => { cancelled = true; };
+  }, [selected?.id]);
 
   // Handle URL parameter to open specific repair request
   useEffect(() => {
@@ -403,41 +434,49 @@ export default function RepairsPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 sm:pb-6">
-          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-            {/* Mobile-optimized header */}
-            <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="max-w-7xl mx-auto space-y-5 sm:space-y-6">
+            {/* Page Header */}
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4">
               <div>
-                <p className="text-xs sm:text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Repairs</p>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Repair requests</h1>
-                <p className="text-sm text-gray-600 hidden sm:block">Manage repair requests, triage issues, and schedule bookings.</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--primary-600)] mb-1">Repairs</p>
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">Repair Requests</h1>
+                <p className="text-sm text-gray-500 mt-1 hidden sm:block">Manage repair requests, triage issues, and schedule bookings.</p>
               </div>
-              {/* Desktop buttons - hidden on mobile, use FAB instead */}
-              <div className="hidden sm:flex items-center gap-2">
-                <button onClick={copyRepairFormLink} className="btn btn-secondary flex items-center gap-2" title="Copy repair submission form link">
-                  <Copy className="h-4 w-4" />
+              {/* Desktop buttons */}
+              <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={copyRepairFormLink}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200"
+                  title="Copy repair submission form link"
+                >
+                  <Copy className="h-4 w-4 text-gray-500" />
                   Copy Form Link
                 </button>
-                <button onClick={openRepairForm} className="btn btn-primary flex items-center gap-2" title="Open repair submission form">
+                <button
+                  onClick={openRepairForm}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-white bg-[var(--primary-600)] border border-[var(--primary-600)] rounded-lg shadow-sm hover:shadow-md hover:bg-[var(--primary-700)] transition-all duration-200"
+                  title="Open repair submission form"
+                >
                   <FileText className="h-4 w-4" />
                   New Repair Request
                 </button>
                 <button
                   onClick={handleRefreshClick}
-                  className="btn btn-secondary flex items-center gap-2"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200"
                   disabled={isRefetching || isLoading}
                   title="Refresh repair requests"
                   aria-label="Refresh repair requests list"
                 >
-                  <Loader2 className={`h-4 w-4 ${isRefetching || isLoading ? "animate-spin" : ""}`} />
+                  <Loader2 className={`h-4 w-4 text-gray-500 ${isRefetching || isLoading ? "animate-spin" : ""}`} />
                   Refresh
                 </button>
               </div>
             </div>
 
-            {/* Filters and Search */}
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
+            {/* Filter Bar */}
+            <div className="flex flex-col md:flex-row gap-3 items-center justify-between bg-white p-1.5 rounded-lg border border-gray-200">
               <div
-                className="flex items-center gap-1 overflow-x-auto w-full md:w-auto p-1 no-scrollbar"
+                className="flex items-center gap-1 overflow-x-auto w-full md:w-auto p-0.5 no-scrollbar"
                 role="tablist"
                 aria-label="Filter repair requests by status"
               >
@@ -448,31 +487,33 @@ export default function RepairsPage() {
                     role="tab"
                     aria-selected={filter === status}
                     aria-controls="repair-requests-table"
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
-                      filter === status ? "bg-gray-900 text-white shadow-md" : "text-gray-600 hover:bg-gray-100"
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap capitalize focus:outline-none focus:ring-2 focus:ring-[var(--primary-500)] focus:ring-offset-1 ${
+                      filter === status
+                        ? "bg-gray-900 text-white shadow-sm"
+                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
                     }`}
                   >
                     {status.replace("_", " ")}
                   </button>
                 ))}
               </div>
-              <div className="relative w-full md:w-72">
+              <div className="relative w-full md:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search requests..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full pl-9 pr-4 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[var(--primary-500)] focus:border-transparent focus:bg-white transition-colors"
                 />
               </div>
             </div>
 
             {/* Mobile Card View */}
-            <div className="sm:hidden space-y-2">
+            <div className="sm:hidden space-y-2.5">
               {isLoading ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
+                  <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse shadow-sm">
                     <div className="flex gap-3">
                       <div className="w-10 h-10 rounded-lg bg-gray-200" />
                       <div className="flex-1 space-y-2">
@@ -483,23 +524,23 @@ export default function RepairsPage() {
                   </div>
                 ))
               ) : filteredRequests.length === 0 ? (
-                <div className="bg-white rounded-xl border border-gray-200 px-4 py-10 text-center text-gray-500">
-                  <ClipboardList className="h-10 w-10 mb-2 opacity-20 mx-auto" />
-                  <p className="text-sm">No repair requests found.</p>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-12 text-center text-gray-400">
+                  <ClipboardList className="h-10 w-10 mb-3 opacity-30 mx-auto" />
+                  <p className="text-sm font-medium">No repair requests found.</p>
                 </div>
               ) : (
                 filteredRequests.map((req) => (
                   <button
                     key={req.id}
                     onClick={() => handleRowClick(req)}
-                    className="w-full bg-white rounded-xl border border-gray-200 p-3.5 text-left active:bg-gray-50 transition-colors shadow-sm"
+                    className="w-full bg-white rounded-xl border border-gray-200 shadow-sm p-3.5 text-left active:bg-blue-50/40 transition-colors"
                   >
                     <div className="flex items-start gap-3">
                       {/* Avatar/Photo */}
                       {req.thumbUrls && req.thumbUrls.length > 0 ? (
                         <img src={req.thumbUrls[0]} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-gray-200" loading="lazy" />
                       ) : (
-                        <div className="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold flex items-center justify-center flex-shrink-0">
                           {req.driverName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
                         </div>
                       )}
@@ -513,27 +554,27 @@ export default function RepairsPage() {
                           </span>
                         </div>
                         {/* Description */}
-                        <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed mb-2">{req.description}</p>
+                        <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed mb-2">{req.description}</p>
                         {/* Bottom row: tags + meta */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {req.vehicleIdentifier && (
                               <span className="text-[11px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded font-medium">
-                                ID: {req.vehicleIdentifier}
+                                {req.vehicleIdentifier}
                               </span>
                             )}
-                            <span className="pill bg-primary-50 border-primary-100 text-primary-800 text-[10px] px-1.5 py-0.5 h-auto font-medium">
+                            <span className="text-[10px] font-semibold text-[var(--primary-700)] bg-[var(--primary-50)] border border-[var(--primary-100)] px-1.5 py-0.5 rounded">
                               {req.urgency}
                             </span>
                             {req.aiCategory && (
-                              <span className="pill bg-indigo-50 border-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 h-auto font-medium">
+                              <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
                                 {req.aiCategory}
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             {req.bookingLinkSentAt && (
-                              <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                              <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
                             )}
                             <span className="text-[11px] text-gray-400">{formatDate(req.createdAt)}</span>
                           </div>
@@ -546,27 +587,27 @@ export default function RepairsPage() {
             </div>
 
             {/* Desktop Table View */}
-            <div className="hidden sm:block bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm min-h-[400px]">
+            <div className="hidden sm:block bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                <table className="w-full text-left border-collapse" id="repair-requests-table">
+                  <thead className="bg-gray-50/80 border-b border-gray-200">
                     <tr>
-                      <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Driver & Vehicle</th>
-                      <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Issue</th>
-                      <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Driver & Vehicle</th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Issue</th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-100">
                     {isLoading ? (
                       Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={5} />)
                     ) : filteredRequests.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                        <td colSpan={5} className="px-4 py-16 text-center text-gray-400">
                           <div className="flex flex-col items-center justify-center">
-                            <ClipboardList className="h-12 w-12 mb-3 opacity-20" />
-                            <p>No repair requests found.</p>
+                            <ClipboardList className="h-10 w-10 mb-3 opacity-20" />
+                            <p className="text-sm font-medium">No repair requests found.</p>
                           </div>
                         </td>
                       </tr>
@@ -584,7 +625,7 @@ export default function RepairsPage() {
                               ease: [0.16, 1, 0.3, 1],
                             }}
                             onClick={() => handleRowClick(req)}
-                            className="group hover:bg-gray-50 cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="group hover:bg-blue-50/40 cursor-pointer transition-colors duration-150"
                             role="button"
                             tabIndex={0}
                             aria-label={`View repair request from ${req.driverName}`}
@@ -595,17 +636,17 @@ export default function RepairsPage() {
                               }
                             }}
                           >
-                            <td className="px-4 py-2 align-middle">
+                            <td className="px-4 py-2.5 align-middle">
                               <div className="flex items-center gap-2.5">
                                 {req.thumbUrls && req.thumbUrls.length > 0 ? (
                                   <img
                                     src={req.thumbUrls[0]}
                                     alt={req.driverName}
-                                    className="w-9 h-9 rounded-md object-cover flex-shrink-0 border border-gray-200"
+                                    className="w-8 h-8 rounded-md object-cover flex-shrink-0 border border-gray-200"
                                     loading="lazy"
                                   />
                                 ) : (
-                                  <div className="w-9 h-9 rounded-md bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center justify-center flex-shrink-0 border border-gray-200">
+                                  <div className="w-8 h-8 rounded-md bg-gray-100 text-gray-500 text-[11px] font-bold flex items-center justify-center flex-shrink-0">
                                     {req.driverName
                                       .split(" ")
                                       .map((n) => n[0])
@@ -617,42 +658,42 @@ export default function RepairsPage() {
                                 <div className="min-w-0 flex-1">
                                   <p className="text-sm font-semibold text-gray-900 truncate leading-snug">{req.driverName}</p>
                                   {req.vehicleIdentifier && (
-                                    <p className="text-xs text-gray-500 flex items-center gap-1 leading-snug mt-0.5">
+                                    <p className="text-xs text-gray-400 flex items-center gap-1 leading-snug mt-0.5">
                                       <Wrench className="h-3 w-3 flex-shrink-0" /> <span className="truncate">{req.vehicleIdentifier}</span>
                                     </p>
                                   )}
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-2 align-middle">
+                            <td className="px-4 py-2.5 align-middle">
                               <div className="max-w-xs">
                                 <div className="flex items-center gap-1.5 mb-0.5">
-                                  <span className="pill bg-primary-50 border-primary-100 text-primary-800 text-[10px] px-1.5 py-0.5 h-auto font-medium">
+                                  <span className="text-[10px] font-semibold text-[var(--primary-700)] bg-[var(--primary-50)] border border-[var(--primary-100)] px-1.5 py-0.5 rounded">
                                     {req.urgency}
                                   </span>
                                   {req.aiCategory && (
-                                    <span className="pill bg-indigo-50 border-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 h-auto font-medium">
+                                    <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
                                       {req.aiCategory}
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-700 line-clamp-2 leading-snug">{req.description}</p>
+                                <p className="text-sm text-gray-600 line-clamp-2 leading-snug">{req.description}</p>
                               </div>
                             </td>
-                            <td className="px-4 py-2 align-middle">
+                            <td className="px-4 py-2.5 align-middle">
                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusStyles[req.status] || ""}`}>
                                 <span className={`h-1.5 w-1.5 rounded-full ${statusDots[req.status] || "bg-gray-400"}`} />
                                 {req.status.replace("_", " ")}
                               </span>
                             </td>
-                            <td className="px-4 py-2 align-middle">
-                              <span className="text-sm text-gray-600 font-medium">{formatDate(req.createdAt)}</span>
+                            <td className="px-4 py-2.5 align-middle">
+                              <span className="text-sm text-gray-500">{formatDate(req.createdAt)}</span>
                             </td>
-                            <td className="px-4 py-2 align-middle text-right">
-                              <div className="flex justify-end items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-4 py-2.5 align-middle text-right">
+                              <div className="flex justify-end items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150" onClick={(e) => e.stopPropagation()}>
                                 {req.bookingLinkSentAt && (
                                   <span
-                                    className="text-xs text-green-600 flex items-center gap-1 font-medium"
+                                    className="text-xs text-emerald-600 flex items-center gap-1 font-medium"
                                     title={`Sent on ${new Date(req.bookingLinkSentAt).toLocaleString()}`}
                                   >
                                     <CheckCircle className="h-3.5 w-3.5" />
@@ -660,11 +701,14 @@ export default function RepairsPage() {
                                   </span>
                                 )}
                                 {req.bookingLink && (
-                                  <button onClick={() => copyLink(req.bookingLink)} className="btn btn-ghost btn-icon" title="Copy Booking Link">
-                                    <Copy className="h-4 w-4" />
+                                  <button onClick={() => copyLink(req.bookingLink)} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors" title="Copy Booking Link">
+                                    <Copy className="h-3.5 w-3.5" />
                                   </button>
                                 )}
-                                <button onClick={() => setSelected(req)} className="btn btn-ghost text-sm font-medium">
+                                <button
+                                  onClick={() => setSelected(req)}
+                                  className="px-2.5 py-1 rounded-md text-xs font-semibold text-[var(--primary-600)] hover:bg-[var(--primary-50)] transition-colors"
+                                >
                                   View
                                 </button>
                               </div>
@@ -720,9 +764,10 @@ export default function RepairsPage() {
                 mass: 0.8,
               }}
             >
-              <div className="px-6 py-5 border-b border-gray-200 bg-white flex items-center justify-between sticky top-0 z-10">
+              {/* Side Panel Header */}
+              <div className="px-6 py-4 border-b border-gray-200 bg-white flex items-center justify-between sticky top-0 z-10">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[var(--primary-100)] to-[var(--primary-200)] flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[var(--primary-100)] to-[var(--primary-200)] flex items-center justify-center shadow-sm">
                     <Wrench className="h-5 w-5 text-[var(--primary-700)]" />
                   </div>
                   <div>
@@ -730,45 +775,53 @@ export default function RepairsPage() {
                     <p className="text-[11px] text-gray-400 font-mono tracking-wide">ID: {selected.id.slice(0, 8)}</p>
                   </div>
                 </div>
-                <button onClick={() => setSelected(null)} className="btn btn-ghost btn-icon hover:bg-gray-100 rounded-lg transition-colors" aria-label="Close">
+                <button
+                  onClick={() => setSelected(null)}
+                  className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                  aria-label="Close"
+                >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50">
-                {/* Header Info */}
+              {/* Side Panel Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-gray-50">
+                {/* Header Info Card */}
                 <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       <div
-                        className={`h-12 w-12 rounded-xl flex items-center justify-center shadow-sm ${
+                        className={`h-11 w-11 rounded-xl flex items-center justify-center shadow-sm ${
                           selected.urgency === "critical" || selected.urgency === "high"
                             ? "bg-gradient-to-br from-red-100 to-red-50 text-red-600"
                             : "bg-gradient-to-br from-blue-100 to-blue-50 text-blue-600"
                         }`}
                       >
-                        <Wrench className="h-6 w-6" />
+                        <Wrench className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="text-base font-bold text-gray-900">{selected.driverName}</p>
-                        <p className="text-sm text-gray-500 mt-0.5">{formatDate(selected.createdAt)}</p>
+                        <p className="text-base font-bold text-gray-900 leading-tight">{selected.driverName}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{formatDate(selected.createdAt)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border ${statusStyles[selected.status]}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${statusStyles[selected.status]}`}>
                         <span className={`h-1.5 w-1.5 rounded-full ${statusDots[selected.status] || "bg-gray-400"}`} />
                         {selected.status.replace("_", " ")}
                       </span>
                       {!editing && (
-                        <button onClick={() => openEdit(selected)} className="btn btn-ghost btn-sm flex items-center gap-1.5">
-                          <Edit className="h-4 w-4" /> Edit
+                        <button
+                          onClick={() => openEdit(selected)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <Edit className="h-3.5 w-3.5" /> Edit
                         </button>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
                     <span
-                      className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide ${
                         selected.urgency === "critical"
                           ? "bg-red-100 text-red-700 border border-red-200"
                           : selected.urgency === "high"
@@ -781,7 +834,7 @@ export default function RepairsPage() {
                       {selected.urgency?.toUpperCase() || "MEDIUM"}
                     </span>
                     {selected.aiCategory && (
-                      <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200">
+                      <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200">
                         {selected.aiCategory}
                       </span>
                     )}
@@ -790,20 +843,20 @@ export default function RepairsPage() {
 
                 {!editing ? (
                   <>
-                    {/* AI Analysis Section - Only for Mechanics */}
+                    {/* AI Analysis Section */}
                     {(selected.aiSummary || selected.aiTags || selected.aiConfidence) && (
-                      <section className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border-2 border-indigo-200 p-5 shadow-md">
-                        <h3 className="text-sm font-bold text-indigo-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                      <section className="bg-white rounded-xl border border-indigo-200 p-5 shadow-sm">
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
                             <BadgeCheck className="h-4 w-4 text-indigo-600" />
                           </div>
-                          AI Analysis (For Mechanic Review)
+                          AI Analysis
                         </h3>
                         <div className="space-y-4">
                           {selected.aiSummary && (
                             <div>
-                              <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">AI Summary</p>
-                              <div className="bg-white border border-indigo-200 rounded-lg p-4 text-sm text-gray-800 leading-relaxed">
+                              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Summary</p>
+                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 leading-relaxed">
                                 {selected.aiSummary}
                               </div>
                             </div>
@@ -811,12 +864,12 @@ export default function RepairsPage() {
 
                           {selected.aiTags && selected.aiTags.length > 0 && (
                             <div>
-                              <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">AI Tags</p>
-                              <div className="flex flex-wrap gap-2">
+                              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Tags</p>
+                              <div className="flex flex-wrap gap-1.5">
                                 {selected.aiTags.map((tag, idx) => (
                                   <span
                                     key={idx}
-                                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200"
+                                    className="px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200"
                                   >
                                     {tag}
                                   </span>
@@ -827,17 +880,17 @@ export default function RepairsPage() {
 
                           {selected.aiConfidence !== undefined && (
                             <div>
-                              <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">AI Confidence</p>
+                              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Confidence</p>
                               <div className="flex items-center gap-3">
-                                <div className="flex-1 bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                <div className="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
                                   <div
                                     className={`h-full rounded-full transition-all ${
-                                      selected.aiConfidence >= 0.8 ? "bg-green-500" : selected.aiConfidence >= 0.6 ? "bg-yellow-500" : "bg-orange-500"
+                                      selected.aiConfidence >= 0.8 ? "bg-emerald-500" : selected.aiConfidence >= 0.6 ? "bg-yellow-500" : "bg-orange-500"
                                     }`}
                                     style={{ width: `${selected.aiConfidence * 100}%` }}
                                   />
                                 </div>
-                                <span className="text-sm font-bold text-gray-900 min-w-[3rem]">{(selected.aiConfidence * 100).toFixed(0)}%</span>
+                                <span className="text-sm font-bold text-gray-900 min-w-[3rem] tabular-nums">{(selected.aiConfidence * 100).toFixed(0)}%</span>
                               </div>
                             </div>
                           )}
@@ -845,159 +898,161 @@ export default function RepairsPage() {
                       </section>
                     )}
 
-                    {/* Read Only View */}
+                    {/* Issue Description */}
                     <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-primary-100 flex items-center justify-center">
-                          <ClipboardList className="h-4 w-4 text-primary-600" />
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-lg bg-[var(--primary-100)] flex items-center justify-center">
+                          <ClipboardList className="h-4 w-4 text-[var(--primary-600)]" />
                         </div>
                         Issue Description
                       </h3>
-                      <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 border border-gray-200 rounded-lg p-5 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap shadow-inner">
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                         {selected.description}
                       </div>
                     </section>
 
+                    {/* Photos */}
                     {selected.thumbUrls?.length > 0 && (
                       <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2.5">
                           <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
                             <Camera className="h-4 w-4 text-purple-600" />
                           </div>
                           Photos ({selected.thumbUrls.length})
                         </h3>
-                        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                        <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
                           {selected.thumbUrls.map((url, i) => (
                             <button
                               key={i}
                               onClick={() => openPhotoGallery(selected.photoUrls || selected.thumbUrls, selected.thumbUrls, i)}
                               className="group relative flex-shrink-0 touch-manipulation"
                             >
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 group-active:bg-black/20 rounded-xl transition-colors z-10" />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 group-active:bg-black/20 rounded-lg transition-colors z-10" />
                               <img
                                 src={url}
                                 alt={`Evidence ${i + 1}`}
-                                className="h-32 w-32 rounded-xl object-cover border-2 border-gray-200 group-hover:border-primary-300 shadow-md group-hover:shadow-lg transition-all"
+                                className="h-28 w-28 rounded-lg object-cover border border-gray-200 group-hover:border-[var(--primary-300)] shadow-sm group-hover:shadow-md transition-all"
                               />
-                              <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 sm:transition-opacity">
-                                Tap to view
+                              <div className="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 sm:transition-opacity">
+                                View
                               </div>
                             </button>
                           ))}
                         </div>
-                        <p className="text-xs text-gray-500 mt-2 sm:hidden">Tap photo to view full size</p>
+                        <p className="text-xs text-gray-400 mt-2 sm:hidden">Tap photo to view full size</p>
                       </section>
                     )}
 
+                    {/* Vehicle & Contact */}
                     <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-green-100 flex items-center justify-center">
-                          <Wrench className="h-4 w-4 text-green-600" />
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                          <Wrench className="h-4 w-4 text-emerald-600" />
                         </div>
                         Vehicle & Contact
                       </h3>
-                      <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-5 grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Request Number</p>
-                          <p className="text-base font-bold text-gray-900">
-                            {selected.requestNumber ? `#${selected.requestNumber}` : <span className="text-gray-400 italic">—</span>}
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-3.5">
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Request #</p>
+                          <p className="text-sm font-bold text-gray-900">
+                            {selected.requestNumber ? `#${selected.requestNumber}` : <span className="text-gray-300 font-normal">--</span>}
                           </p>
                         </div>
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle</p>
-                          <p className="text-base font-bold text-gray-900">
-                            {selected.vehicleIdentifier || <span className="text-gray-400 italic">Not specified</span>}
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Vehicle</p>
+                          <p className="text-sm font-bold text-gray-900">
+                            {selected.vehicleIdentifier || <span className="text-gray-300 font-normal">Not specified</span>}
                           </p>
                         </div>
                         {selected.makeModel && (
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Make & Model</p>
-                            <p className="text-base font-bold text-gray-900">{selected.makeModel}</p>
+                          <div>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Make & Model</p>
+                            <p className="text-sm font-bold text-gray-900">{selected.makeModel}</p>
                           </div>
                         )}
                         {selected.vehicleType && (
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle Type</p>
-                            <p className="text-base font-bold text-gray-900">{selected.vehicleType}</p>
+                          <div>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Vehicle Type</p>
+                            <p className="text-sm font-bold text-gray-900">{selected.vehicleType}</p>
                           </div>
                         )}
                         {selected.division && (
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Division</p>
-                            <p className="text-base font-bold text-gray-900">{selected.division}</p>
+                          <div>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Division</p>
+                            <p className="text-sm font-bold text-gray-900">{selected.division}</p>
                           </div>
                         )}
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Odometer</p>
-                          <p className="text-base font-bold text-gray-900">
-                            {selected.odometer ? `${selected.odometer.toLocaleString()} mi` : <span className="text-gray-400 italic">—</span>}
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Odometer</p>
+                          <p className="text-sm font-bold text-gray-900">
+                            {selected.odometer ? `${selected.odometer.toLocaleString()} mi` : <span className="text-gray-300 font-normal">--</span>}
                           </p>
                         </div>
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Phone</p>
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Phone</p>
                           <a
                             href={`tel:${selected.driverPhone}`}
-                            className="text-base font-bold text-primary-600 hover:text-primary-700 hover:underline"
+                            className="text-sm font-bold text-[var(--primary-600)] hover:text-[var(--primary-700)] hover:underline"
                           >
-                            {selected.driverPhone || <span className="text-gray-400 italic">—</span>}
+                            {selected.driverPhone || <span className="text-gray-300 font-normal">--</span>}
                           </a>
                         </div>
                         {selected.driverEmail && (
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Email</p>
+                          <div>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Email</p>
                             <a
                               href={`mailto:${selected.driverEmail}`}
-                              className="text-base font-bold text-primary-600 hover:text-primary-700 hover:underline"
+                              className="text-sm font-bold text-[var(--primary-600)] hover:text-[var(--primary-700)] hover:underline truncate block"
                             >
                               {selected.driverEmail}
                             </a>
                           </div>
                         )}
                         {selected.preferredLanguage && (
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred Language</p>
-                            <p className="text-base font-bold text-gray-900 uppercase">{selected.preferredLanguage}</p>
+                          <div>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Language</p>
+                            <p className="text-sm font-bold text-gray-900 uppercase">{selected.preferredLanguage}</p>
                           </div>
                         )}
                         {selected.smsConsent !== undefined && (
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">SMS Consent</p>
-                            <p className="text-base font-bold text-gray-900">{selected.smsConsent ? "Yes" : "No"}</p>
+                          <div>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">SMS Consent</p>
+                            <p className="text-sm font-bold text-gray-900">{selected.smsConsent ? "Yes" : "No"}</p>
                           </div>
                         )}
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Location</p>
-                          <p className="text-base font-bold text-gray-900">{selected.location || <span className="text-gray-400 italic">—</span>}</p>
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Location</p>
+                          <p className="text-sm font-bold text-gray-900">{selected.location || <span className="text-gray-300 font-normal">--</span>}</p>
                         </div>
                         {selected.incidentDate && (
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Incident Date</p>
-                            <p className="text-base font-bold text-gray-900">{formatDate(selected.incidentDate)}</p>
+                          <div>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Incident Date</p>
+                            <p className="text-sm font-bold text-gray-900">{formatDate(selected.incidentDate)}</p>
                           </div>
                         )}
                         {selected.incidentType && (
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Incident Type</p>
-                            <p className="text-base font-bold text-gray-900">{selected.incidentType}</p>
+                          <div>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Incident Type</p>
+                            <p className="text-sm font-bold text-gray-900">{selected.incidentType}</p>
                           </div>
                         )}
                         {selected.isImmediate && (
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Immediate Attention</p>
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+                          <div>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Immediate Attention</p>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-red-100 text-red-700 border border-red-200">
                               Required
                             </span>
                           </div>
                         )}
                         {selected.bookingId && (
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Booking ID</p>
-                            <p className="text-base font-bold text-gray-900 font-mono text-sm">{selected.bookingId.slice(0, 8)}...</p>
+                          <div>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Booking ID</p>
+                            <p className="text-sm font-bold text-gray-900 font-mono">{selected.bookingId.slice(0, 8)}...</p>
                           </div>
                         )}
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Updated</p>
-                          <p className="text-base font-bold text-gray-900">{formatDate(selected.updatedAt)}</p>
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Updated</p>
+                          <p className="text-sm font-bold text-gray-900">{formatDate(selected.updatedAt)}</p>
                         </div>
                       </div>
                     </section>
@@ -1005,66 +1060,66 @@ export default function RepairsPage() {
                     {/* Booking Link Status */}
                     {selected.bookingLink && (
                       <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2.5">
                           <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
                             <Send className="h-4 w-4 text-blue-600" />
                           </div>
                           Booking Link
                         </h3>
-                        <div className="bg-gradient-to-br from-blue-50 to-white border border-blue-200 rounded-lg p-4 space-y-3">
+                        <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               {selected.bookingLinkSentAt ? (
                                 <>
-                                  <CheckCircle className="h-5 w-5 text-green-600" />
-                                  <span className="text-sm font-semibold text-green-700">Link Sent</span>
+                                  <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                  <span className="text-sm font-semibold text-emerald-700">Link Sent</span>
                                 </>
                               ) : (
                                 <>
-                                  <AlertCircle className="h-5 w-5 text-yellow-600" />
+                                  <AlertCircle className="h-4 w-4 text-yellow-600" />
                                   <span className="text-sm font-semibold text-yellow-700">Not Sent</span>
                                 </>
                               )}
                             </div>
                             {selected.bookingLinkSentAt && (
-                              <span className="text-xs text-gray-500">{new Date(selected.bookingLinkSentAt).toLocaleString()}</span>
+                              <span className="text-[11px] text-gray-400">{new Date(selected.bookingLinkSentAt).toLocaleString()}</span>
                             )}
                           </div>
 
-                          {/* Booking Link Display with Actions */}
-                          <div className="pt-2 border-t border-blue-200">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Booking Link</p>
-                            <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-3">
+                          {/* Booking Link Display */}
+                          <div className="pt-3 border-t border-gray-100">
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Link</p>
+                            <div className="flex items-center gap-2 bg-gray-50 rounded-lg border border-gray-200 p-2.5">
                               <input
                                 type="text"
                                 readOnly
                                 value={selected.bookingLink}
-                                className="flex-1 text-sm font-mono text-gray-700 bg-transparent border-none outline-none"
+                                className="flex-1 text-xs font-mono text-gray-600 bg-transparent border-none outline-none min-w-0"
                               />
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-0.5 flex-shrink-0">
                                 <button
                                   onClick={() => copyLink(selected.bookingLink)}
-                                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                  className="p-1.5 hover:bg-gray-200 rounded-md transition-colors"
                                   title="Copy link"
                                 >
-                                  <Copy className="h-4 w-4 text-gray-600" />
+                                  <Copy className="h-3.5 w-3.5 text-gray-500" />
                                 </button>
                                 <button
                                   onClick={() => window.open(selected.bookingLink, "_blank")}
-                                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                  className="p-1.5 hover:bg-gray-200 rounded-md transition-colors"
                                   title="Open in new tab"
                                 >
-                                  <ExternalLink className="h-4 w-4 text-gray-600" />
+                                  <ExternalLink className="h-3.5 w-3.5 text-gray-500" />
                                 </button>
                               </div>
                             </div>
                           </div>
 
                           {selected.scheduledDate && (
-                            <div className="pt-2 border-t border-blue-200">
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Scheduled</p>
+                            <div className="pt-3 border-t border-gray-100">
+                              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Scheduled</p>
                               <p className="text-sm font-bold text-gray-900">
-                                {selected.scheduledDate} {selected.scheduledTime && `• ${selected.scheduledTime}`}
+                                {selected.scheduledDate} {selected.scheduledTime && `at ${selected.scheduledTime}`}
                               </p>
                             </div>
                           )}
@@ -1074,18 +1129,18 @@ export default function RepairsPage() {
 
                     {/* Actions */}
                     <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2.5">
                         <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
                           <CheckCircle className="h-4 w-4 text-indigo-600" />
                         </div>
                         Actions
                       </h3>
-                      <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="flex flex-col sm:flex-row gap-2.5">
                         {selected.status !== "completed" && (
                           <button
                             onClick={() => handleSendLinkClick(selected)}
                             disabled={sendingId === selected.id}
-                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
+                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
                               sendingId === selected.id
                                 ? "bg-[var(--primary-500)] text-white opacity-75 cursor-not-allowed"
                                 : "bg-[var(--primary-600)] text-white hover:bg-[var(--primary-700)] active:scale-[0.98]"
@@ -1110,14 +1165,14 @@ export default function RepairsPage() {
                           </button>
                         )}
                         {selected.status === "completed" ? (
-                          <div className="flex-1 flex items-center justify-center gap-2.5 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700">
-                            <CheckCircle className="h-5 w-5" />
+                          <div className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700">
+                            <CheckCircle className="h-4 w-4" />
                             <span className="text-sm font-bold">Service Report Submitted</span>
                           </div>
                         ) : (
                           <button
                             onClick={() => openReport(selected)}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold border-2 border-gray-300 text-gray-700 hover:border-[var(--primary-300)] hover:text-[var(--primary-700)] hover:bg-[var(--primary-50)] transition-all duration-200 active:scale-[0.98]"
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-gray-300 text-gray-700 hover:border-[var(--primary-300)] hover:text-[var(--primary-700)] hover:bg-[var(--primary-50)] shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.98]"
                           >
                             <CheckCircle className="h-4 w-4" />
                             Submit Service Report
@@ -1125,99 +1180,176 @@ export default function RepairsPage() {
                         )}
                       </div>
                       {selected.bookingLinkSentAt && (
-                        <p className="mt-3 text-xs text-gray-500 text-center">Sent on {new Date(selected.bookingLinkSentAt).toLocaleString()}</p>
+                        <p className="mt-3 text-[11px] text-gray-400 text-center">Last sent: {new Date(selected.bookingLinkSentAt).toLocaleString()}</p>
                       )}
                     </div>
+
+                    {/* Linked Service Record */}
+                    {loadingServiceRecord ? (
+                      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                          <span className="text-sm text-gray-400">Loading service record...</span>
+                        </div>
+                      </div>
+                    ) : linkedServiceRecord ? (
+                      <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                            <FileText className="h-4 w-4 text-emerald-600" />
+                          </div>
+                          Service Record
+                        </h3>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                            <div>
+                              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Service Type</p>
+                              <p className="text-sm font-bold text-gray-900">{linkedServiceRecord.serviceType || "Service"}</p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Date</p>
+                              <p className="text-sm font-bold text-gray-900">{linkedServiceRecord.date ? formatDate(linkedServiceRecord.date) : "--"}</p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Mechanic</p>
+                              <p className="text-sm font-bold text-gray-900">{linkedServiceRecord.mechanicName || "--"}</p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Status</p>
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                                linkedServiceRecord.status === "completed" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                linkedServiceRecord.status === "in_progress" ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                "bg-gray-100 text-gray-700 border-gray-200"
+                              }`}>
+                                {linkedServiceRecord.status === "in_progress" ? "In Progress" : linkedServiceRecord.status || "In Progress"}
+                              </span>
+                            </div>
+                            {linkedServiceRecord.cost !== undefined && linkedServiceRecord.cost !== null && (
+                              <div>
+                                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Cost</p>
+                                <p className="text-sm font-bold text-gray-900 tabular-nums">${linkedServiceRecord.cost.toFixed(2)}</p>
+                              </div>
+                            )}
+                            {linkedServiceRecord.mileage !== undefined && linkedServiceRecord.mileage !== null && (
+                              <div>
+                                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Mileage</p>
+                                <p className="text-sm font-bold text-gray-900 tabular-nums">{linkedServiceRecord.mileage.toLocaleString()} mi</p>
+                              </div>
+                            )}
+                          </div>
+                          {linkedServiceRecord.description && (
+                            <div className="pt-3 border-t border-gray-100">
+                              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Work Performed</p>
+                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                {linkedServiceRecord.description}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </section>
+                    ) : null}
                   </>
                 ) : (
                   /* Edit Mode */
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <label className="space-y-1.5 block">
-                        <span className="text-sm font-semibold text-gray-700">Driver Name</span>
-                        <input
-                          className="input-field w-full"
-                          value={editForm.driverName || ""}
-                          onChange={(e) => setEditForm({ ...editForm, driverName: e.target.value })}
+                  <div className="space-y-5">
+                    <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                          <Edit className="h-4 w-4 text-amber-600" />
+                        </div>
+                        Edit Request
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label className="space-y-1.5 block">
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Driver Name</span>
+                          <input
+                            className="input-field w-full"
+                            value={editForm.driverName || ""}
+                            onChange={(e) => setEditForm({ ...editForm, driverName: e.target.value })}
+                          />
+                        </label>
+                        <label className="space-y-1.5 block">
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Driver Phone</span>
+                          <input
+                            className="input-field w-full"
+                            value={editForm.driverPhone || ""}
+                            onChange={(e) => setEditForm({ ...editForm, driverPhone: e.target.value })}
+                          />
+                        </label>
+                        <label className="space-y-1.5 block">
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Vehicle ID</span>
+                          <input
+                            className="input-field w-full"
+                            value={editForm.vehicleIdentifier || ""}
+                            onChange={(e) => setEditForm({ ...editForm, vehicleIdentifier: e.target.value })}
+                          />
+                        </label>
+                        <label className="space-y-1.5 block">
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Odometer</span>
+                          <input
+                            type="number"
+                            className="input-field w-full"
+                            value={editForm.odometer || ""}
+                            onChange={(e) => setEditForm({ ...editForm, odometer: Number(e.target.value) })}
+                          />
+                        </label>
+                        <label className="space-y-1.5 block">
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Status</span>
+                          <Select
+                            value={editForm.status || "submitted"}
+                            onChange={(value) => setEditForm({ ...editForm, status: value as any })}
+                            options={[
+                              { value: "submitted", label: "Submitted" },
+                              { value: "triaged", label: "Triaged" },
+                              { value: "waiting_booking", label: "Waiting Booking" },
+                              { value: "scheduled", label: "Scheduled" },
+                              { value: "in_progress", label: "In Progress" },
+                              { value: "completed", label: "Completed" },
+                              { value: "cancelled", label: "Cancelled" },
+                            ]}
+                            placeholder="Select status"
+                          />
+                        </label>
+                        <label className="space-y-1.5 block">
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Urgency</span>
+                          <Select
+                            value={editForm.urgency || "medium"}
+                            onChange={(value) => setEditForm({ ...editForm, urgency: value as any })}
+                            options={[
+                              { value: "low", label: "Low" },
+                              { value: "medium", label: "Medium" },
+                              { value: "high", label: "High" },
+                              { value: "critical", label: "Critical" },
+                            ]}
+                            placeholder="Select urgency"
+                          />
+                        </label>
+                      </div>
+                      <label className="space-y-1.5 block mt-4">
+                        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Description</span>
+                        <textarea
+                          className="input-field w-full min-h-[120px]"
+                          value={editForm.description || ""}
+                          onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                         />
                       </label>
-                      <label className="space-y-1.5 block">
-                        <span className="text-sm font-semibold text-gray-700">Driver Phone</span>
-                        <input
-                          className="input-field w-full"
-                          value={editForm.driverPhone || ""}
-                          onChange={(e) => setEditForm({ ...editForm, driverPhone: e.target.value })}
-                        />
-                      </label>
-                      <label className="space-y-1.5 block">
-                        <span className="text-sm font-semibold text-gray-700">Vehicle ID</span>
-                        <input
-                          className="input-field w-full"
-                          value={editForm.vehicleIdentifier || ""}
-                          onChange={(e) => setEditForm({ ...editForm, vehicleIdentifier: e.target.value })}
-                        />
-                      </label>
-                      <label className="space-y-1.5 block">
-                        <span className="text-sm font-semibold text-gray-700">Odometer</span>
-                        <input
-                          type="number"
-                          className="input-field w-full"
-                          value={editForm.odometer || ""}
-                          onChange={(e) => setEditForm({ ...editForm, odometer: Number(e.target.value) })}
-                        />
-                      </label>
-                      <label className="space-y-1.5 block">
-                        <span className="text-sm font-semibold text-gray-700">Status</span>
-                        <Select
-                          value={editForm.status || "submitted"}
-                          onChange={(value) => setEditForm({ ...editForm, status: value as any })}
-                          options={[
-                            { value: "submitted", label: "Submitted" },
-                            { value: "triaged", label: "Triaged" },
-                            { value: "waiting_booking", label: "Waiting Booking" },
-                            { value: "scheduled", label: "Scheduled" },
-                            { value: "in_progress", label: "In Progress" },
-                            { value: "completed", label: "Completed" },
-                            { value: "cancelled", label: "Cancelled" },
-                          ]}
-                          placeholder="Select status"
-                        />
-                      </label>
-                      <label className="space-y-1.5 block">
-                        <span className="text-sm font-semibold text-gray-700">Urgency</span>
-                        <Select
-                          value={editForm.urgency || "medium"}
-                          onChange={(value) => setEditForm({ ...editForm, urgency: value as any })}
-                          options={[
-                            { value: "low", label: "Low" },
-                            { value: "medium", label: "Medium" },
-                            { value: "high", label: "High" },
-                            { value: "critical", label: "Critical" },
-                          ]}
-                          placeholder="Select urgency"
-                        />
-                      </label>
-                    </div>
-                    <label className="space-y-1.5 block">
-                      <span className="text-sm font-semibold text-gray-700">Description</span>
-                      <textarea
-                        className="input-field w-full min-h-[120px]"
-                        value={editForm.description || ""}
-                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                      />
-                    </label>
-                    <div className="flex gap-3">
-                      <button onClick={() => setEditing(false)} className="btn btn-secondary flex-1" disabled={updateRepair.isPending}>
-                        Cancel
-                      </button>
-                      <button
-                        onClick={submitEdit}
-                        className="btn btn-primary flex-1 flex items-center gap-2 justify-center"
-                        disabled={updateRepair.isPending}
-                      >
-                        {updateRepair.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                        Save changes
-                      </button>
+                      <div className="flex gap-2.5 mt-5">
+                        <button
+                          onClick={() => setEditing(false)}
+                          className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200"
+                          disabled={updateRepair.isPending}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={submitEdit}
+                          className="flex-1 flex items-center gap-2 justify-center px-4 py-2.5 text-sm font-semibold text-white bg-[var(--primary-600)] rounded-lg shadow-sm hover:shadow-md hover:bg-[var(--primary-700)] transition-all duration-200"
+                          disabled={updateRepair.isPending}
+                        >
+                          {updateRepair.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                          Save Changes
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1324,15 +1456,25 @@ function SendLinkConfirmationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <div className="fixed inset-0 z-[60] overflow-hidden">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onCancel} />
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-lg w-full max-w-sm border border-gray-200">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm border border-gray-200 overflow-hidden">
           {/* Header */}
-          <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">{isResend ? "Resend Link" : "Send Booking Link"}</h3>
-            <button onClick={onCancel} disabled={isSending} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
-              <X className="h-5 w-5" />
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-lg bg-[var(--primary-100)] flex items-center justify-center">
+                <Send className="h-4 w-4 text-[var(--primary-600)]" />
+              </div>
+              <h3 className="text-base font-bold text-gray-900">{isResend ? "Resend Link" : "Send Booking Link"}</h3>
+            </div>
+            <button
+              onClick={onCancel}
+              disabled={isSending}
+              className="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
             </button>
           </div>
 
@@ -1340,7 +1482,7 @@ function SendLinkConfirmationModal({
           <div className="p-5 space-y-4">
             {/* Phone Number Input */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Phone Number</label>
               <input
                 type="tel"
                 value={phoneNumber}
@@ -1349,38 +1491,42 @@ function SendLinkConfirmationModal({
                 className="input-field w-full"
                 placeholder="Enter phone number"
               />
-              {request.driverName && <p className="text-xs text-gray-500 mt-1">Driver: {request.driverName}</p>}
+              {request.driverName && <p className="text-[11px] text-gray-400 mt-1.5">Driver: {request.driverName}</p>}
             </div>
 
-            {/* Simple Warnings */}
+            {/* Warnings */}
             {hasDuplicates && (
-              <div className="flex items-start gap-2 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <div className="flex items-start gap-2.5 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium">
-                    Note: {duplicateRequests.length} other {duplicateRequests.length === 1 ? "link" : "links"} sent to this number
+                  <p className="font-semibold text-xs">
+                    {duplicateRequests.length} other {duplicateRequests.length === 1 ? "link" : "links"} sent to this number
                   </p>
                 </div>
               </div>
             )}
 
             {isResend && !hasDuplicates && (
-              <div className="flex items-start gap-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-start gap-2.5 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                <p>Previously sent on {new Date(request.bookingLinkSentAt!).toLocaleDateString()}</p>
+                <p className="text-xs">Previously sent on {new Date(request.bookingLinkSentAt!).toLocaleDateString()}</p>
               </div>
             )}
           </div>
 
           {/* Actions */}
-          <div className="px-5 py-4 border-t border-gray-200 bg-gray-50 flex gap-3">
-            <button onClick={onCancel} disabled={isSending} className="btn btn-secondary flex-1">
+          <div className="px-5 py-3.5 border-t border-gray-100 bg-gray-50 flex gap-2.5 rounded-b-xl">
+            <button
+              onClick={onCancel}
+              disabled={isSending}
+              className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200"
+            >
               Cancel
             </button>
             <button
               onClick={handleConfirm}
               disabled={isSending || !phoneNumber.trim()}
-              className="btn btn-primary flex-1 flex items-center gap-2 justify-center"
+              className="flex-1 flex items-center gap-2 justify-center px-4 py-2 text-sm font-semibold text-white bg-[var(--primary-600)] rounded-lg shadow-sm hover:shadow-md hover:bg-[var(--primary-700)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSending ? (
                 <>
