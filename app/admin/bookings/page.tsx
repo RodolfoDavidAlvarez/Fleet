@@ -76,31 +76,24 @@ export default function BookingsPage() {
       return
     }
     const parsedUser = JSON.parse(userData)
-    if (parsedUser.role !== 'admin' && parsedUser.role !== 'mechanic') {
-      router.push('/login')
-      return
-    }
     setUser(parsedUser)
 
-    // Filter by mechanicId if user is a mechanic, otherwise show all bookings
-    const mechanicId = parsedUser.role === 'mechanic' ? parsedUser.id : undefined
-    loadBookings(mechanicId)
+    // Show all bookings for everyone (no role-based filtering)
+    loadBookings()
 
-    // Load repair requests for admin (for creating bookings)
-    if (parsedUser.role === 'admin') {
-      const loadRepairRequests = async () => {
-        try {
-          const res = await fetch('/api/repair-requests?status=submitted,waiting_booking,triaged')
-          if (res.ok) {
-            const data = await res.json()
-            setRepairRequests(data.requests || [])
-          }
-        } catch (err) {
-          console.error('Error fetching repair requests:', err)
+    // Load repair requests for creating bookings
+    const loadRepairRequests = async () => {
+      try {
+        const res = await fetch('/api/repair-requests?status=submitted,waiting_booking,triaged')
+        if (res.ok) {
+          const data = await res.json()
+          setRepairRequests(data.requests || [])
         }
+      } catch (err) {
+        console.error('Error fetching repair requests:', err)
       }
-      loadRepairRequests()
     }
+    loadRepairRequests()
 
     // Load saved view preference
     const savedView = localStorage.getItem('bookingsViewMode')
@@ -261,7 +254,7 @@ export default function BookingsPage() {
                 </div>
 
                 {/* Admin actions - desktop only, mobile uses FAB */}
-                {user.role === 'admin' && (
+                {(
                   <div className="hidden sm:flex items-center gap-2 ml-auto">
                     <button
                       onClick={() => router.push('/admin/settings?tab=calendar')}
@@ -735,7 +728,7 @@ export default function BookingsPage() {
       </AnimatePresence>
 
       {/* HIDDEN: Mobile FAB - Using repair request flow instead
-      {user.role === 'admin' && (
+      {(
         <button
           onClick={() => setShowNewBookingModal(true)}
           className="sm:hidden fixed bottom-6 right-4 w-14 h-14 rounded-full bg-primary-600 text-white shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform safe-area-inset-bottom"

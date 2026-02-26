@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { ServiceRecord, RepairRequest } from "@/types";
-import { Wrench, ClipboardList, Plus, Loader2, Search, DollarSign, Gauge, Calendar, User, FileText, BadgeCheck, X, Download } from "lucide-react";
+import { Wrench, ClipboardList, Plus, Loader2, Search, DollarSign, Gauge, Calendar, User, FileText, BadgeCheck, X, Download, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useServiceRecords, useCreateServiceRecord, useUpdateServiceRecord } from "@/hooks/use-service-records";
 import { exportServiceRecords } from "@/lib/export-utils";
@@ -47,6 +47,8 @@ export default function ServiceRecordsPage() {
   const [editing, setEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [sortField, setSortField] = useState<"date" | "serviceType" | "mechanicName" | "cost" | "mileage" | "status">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [editForm, setEditForm] = useState({
     mechanicName: "",
     serviceType: "",
@@ -112,13 +114,43 @@ export default function ServiceRecordsPage() {
           r.vehicleLabel?.toLowerCase().includes(s)
       );
     }
-    // Sort by most recent first (by date)
+    const dir = sortDir === "asc" ? 1 : -1;
     return [...list].sort((a, b) => {
-      const dateA = a.date ? new Date(a.date).getTime() : 0;
-      const dateB = b.date ? new Date(b.date).getTime() : 0;
-      return dateB - dateA;
+      switch (sortField) {
+        case "date": {
+          const da = a.date ? new Date(a.date).getTime() : 0;
+          const db = b.date ? new Date(b.date).getTime() : 0;
+          return (da - db) * dir;
+        }
+        case "cost":
+          return ((a.cost ?? 0) - (b.cost ?? 0)) * dir;
+        case "mileage":
+          return ((a.mileage ?? 0) - (b.mileage ?? 0)) * dir;
+        case "serviceType":
+          return (a.serviceType || "").localeCompare(b.serviceType || "") * dir;
+        case "mechanicName":
+          return (a.mechanicName || "").localeCompare(b.mechanicName || "") * dir;
+        case "status":
+          return (a.status || "").localeCompare(b.status || "") * dir;
+        default:
+          return 0;
+      }
     });
-  }, [filter, search, records]);
+  }, [filter, search, records, sortField, sortDir]);
+
+  const toggleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDir(field === "date" ? "desc" : "asc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: typeof sortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 text-gray-300" />;
+    return sortDir === "asc" ? <ArrowUp className="h-3 w-3 text-primary-600" /> : <ArrowDown className="h-3 w-3 text-primary-600" />;
+  };
 
   // Calculate pagination
   const paginatedRecords = useMemo<ServiceRecord[]>(() => {
@@ -241,97 +273,107 @@ export default function ServiceRecordsPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 sm:pb-6">
-          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-            <div className="flex flex-col gap-3 sm:gap-4">
-              <div>
-                <p className="text-xs sm:text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Service</p>
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Service Records</h1>
-                  <span className="px-2 sm:px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded-full">{records.length} total</span>
+          <div className="max-w-7xl mx-auto space-y-3">
+            {/* Compact header row */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Service Records</h1>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 text-xs font-semibold bg-gray-100 text-gray-600 rounded-full">{records.length} total</span>
+                  <span className="px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-full">{statusCounts.active} active</span>
+                  <span className="hidden sm:inline px-2 py-0.5 text-xs font-semibold bg-green-50 text-green-600 rounded-full">{statusCounts.completed} done</span>
+                  {statusCounts.cancelled > 0 && (
+                    <span className="hidden sm:inline px-2 py-0.5 text-xs font-semibold bg-gray-50 text-gray-500 rounded-full">{statusCounts.cancelled} cancelled</span>
+                  )}
                 </div>
-                <p className="text-sm text-gray-600 mt-1 hidden sm:block">Technician-completed repairs with mileage, cost, and status.</p>
               </div>
-              {/* Desktop buttons - hidden on mobile, use FAB instead */}
-              <div className="hidden sm:flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-2">
                 <button
                   onClick={() => exportServiceRecords(filtered)}
-                  className="btn-secondary px-4 py-2 flex items-center gap-2"
+                  className="btn-secondary px-3 py-1.5 text-sm flex items-center gap-1.5"
                   disabled={filtered.length === 0}
                 >
-                  <Download className="h-4 w-4" />
-                  Export CSV
+                  <Download className="h-3.5 w-3.5" />
+                  Export
                 </button>
-                <button onClick={() => refetch()} className="btn-secondary px-4 py-2 flex items-center gap-2">
-                  <Loader2 className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                <button onClick={() => refetch()} className="btn-secondary px-3 py-1.5 text-sm flex items-center gap-1.5">
+                  <Loader2 className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
                   Refresh
                 </button>
-                <button onClick={openCreate} className="btn-primary px-4 py-2 flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  New service record
+                <button onClick={openCreate} className="btn-primary px-3 py-1.5 text-sm flex items-center gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
+                  New record
                 </button>
               </div>
             </div>
 
-            {/* Stats Cards - Horizontally scrollable on mobile */}
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory sm:grid sm:grid-cols-3 sm:overflow-visible sm:mx-0 sm:px-0 sm:pb-0 no-scrollbar">
-              <div className="flex-shrink-0 w-[calc(33%-0.5rem)] min-w-[120px] snap-start sm:w-auto sm:min-w-0 sm:flex-shrink">
-                <SummaryCard title="Active" value={statusCounts.active} tone="indigo" />
+            {/* Filters + Search in one compact bar */}
+            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm">
+              <div className="flex items-center gap-0.5 overflow-x-auto flex-1 no-scrollbar">
+                {["all", "open", "in_progress", "completed", "cancelled"].map((status) => {
+                  const count = status === "all" ? records.length : status === "completed" ? statusCounts.completed : status === "cancelled" ? statusCounts.cancelled : status === "open" ? records.filter((r: ServiceRecord) => r.status === "open").length : status === "in_progress" ? records.filter((r: ServiceRecord) => !r.status || r.status === "in_progress").length : 0;
+                  return (
+                    <button
+                      key={status}
+                      onClick={() => setFilter(status)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                        filter === status ? "bg-gray-900 text-white shadow-sm" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      }`}
+                    >
+                      {statusLabels[status] || "All"}
+                      <span className={`text-[10px] ${filter === status ? "text-gray-300" : "text-gray-400"}`}>{count}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <div className="flex-shrink-0 w-[calc(33%-0.5rem)] min-w-[120px] snap-start sm:w-auto sm:min-w-0 sm:flex-shrink">
-                <SummaryCard title="Completed" value={statusCounts.completed} tone="green" />
-              </div>
-              <div className="flex-shrink-0 w-[calc(33%-0.5rem)] min-w-[120px] snap-start sm:w-auto sm:min-w-0 sm:flex-shrink">
-                <SummaryCard title="Cancelled" value={statusCounts.cancelled} tone="gray" />
-              </div>
-            </div>
-
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-1 overflow-x-auto w-full md:w-auto p-1">
-                {["all", "open", "in_progress", "completed", "cancelled"].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setFilter(status)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                      filter === status ? "bg-gray-900 text-white shadow-md" : "text-gray-600 hover:bg-gray-100"
-                    }`}
-                  >
-                    {statusLabels[status] || status}
-                  </button>
-                ))}
-              </div>
-              <div className="relative w-full md:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search service records..."
+                  placeholder="Search records..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm min-h-[400px]">
+            {/* Table with sortable columns */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-gray-50 border-b border-gray-100">
+                  <thead className="bg-gray-50/80 border-b border-gray-200">
                     <tr>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Repair</th>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Mechanic</th>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Cost & Mileage</th>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("date")}>
+                        <span className="flex items-center gap-1">Date <SortIcon field="date" /></span>
+                      </th>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("serviceType")}>
+                        <span className="flex items-center gap-1">Repair <SortIcon field="serviceType" /></span>
+                      </th>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Vehicle</th>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("mechanicName")}>
+                        <span className="flex items-center gap-1">Mechanic <SortIcon field="mechanicName" /></span>
+                      </th>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none text-right" onClick={() => toggleSort("cost")}>
+                        <span className="flex items-center gap-1 justify-end">Cost <SortIcon field="cost" /></span>
+                      </th>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none text-right hidden md:table-cell" onClick={() => toggleSort("mileage")}>
+                        <span className="flex items-center gap-1 justify-end">Mileage <SortIcon field="mileage" /></span>
+                      </th>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("status")}>
+                        <span className="flex items-center gap-1">Status <SortIcon field="status" /></span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {isLoading ? (
-                      Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={5} />)
+                      Array.from({ length: 8 }).map((_, i) => <TableRowSkeleton key={i} columns={7} />)
                     ) : filtered.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                        <td colSpan={7} className="px-4 py-12 text-center text-gray-500">
                           <div className="flex flex-col items-center justify-center">
-                            <ClipboardList className="h-12 w-12 mb-3 opacity-20" />
-                            <p>No service records yet.</p>
+                            <ClipboardList className="h-10 w-10 mb-2 opacity-20" />
+                            <p className="text-sm">No service records found.</p>
                           </div>
                         </td>
                       </tr>
@@ -340,57 +382,40 @@ export default function ServiceRecordsPage() {
                         {paginatedRecords.map((rec, i) => (
                           <motion.tr
                             key={rec.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.2, delay: i * 0.05 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.15, delay: i * 0.02 }}
                             onClick={() => setSelected(rec)}
-                            className="group hover:bg-gray-50 cursor-pointer transition-colors"
+                            className="group hover:bg-blue-50/50 cursor-pointer transition-colors"
                           >
-                            <td className="px-6 py-4 align-top">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <Wrench className="h-4 w-4 text-gray-400" />
-                                  <p className="text-sm font-semibold text-gray-900 line-clamp-1">{rec.serviceType || rec.makeModel || "Service"}</p>
-                                </div>
-                                <p className="text-xs text-gray-500 line-clamp-2">{rec.description || "—"}</p>
-                                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" /> {rec.date ? formatDate(rec.date) : "—"}
-                                </p>
-                              </div>
+                            <td className="px-4 py-2.5 align-top whitespace-nowrap">
+                              <span className="text-xs text-gray-500">{rec.date ? formatDate(rec.date) : "—"}</span>
                             </td>
-                            <td className="px-6 py-4 align-top">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <User className="h-3.5 w-3.5 text-gray-400" />
-                                  <span className="text-sm font-medium text-gray-900">{mechanicLabel(rec.mechanicName)}</span>
-                                </div>
-                                {rec.vehicleLabel && <p className="text-xs text-gray-500 truncate">{rec.vehicleLabel}</p>}
-                                {rec.vehicleIdentifier && <p className="text-xs text-gray-500">ID: {rec.vehicleIdentifier}</p>}
-                              </div>
+                            <td className="px-4 py-2.5 align-top">
+                              <p className="text-sm font-medium text-gray-900 line-clamp-1">{rec.serviceType || rec.makeModel || "Service"}</p>
+                              <p className="text-xs text-gray-400 line-clamp-1 max-w-xs">{rec.description || ""}</p>
                             </td>
-                            <td className="px-6 py-4 align-top">
-                              <div className="space-y-1 text-sm text-gray-800">
-                                <div className="flex items-center gap-2">
-                                  <DollarSign className="h-3.5 w-3.5 text-gray-400" />
-                                  <span>{rec.cost !== undefined ? `$${rec.cost.toFixed(2)}` : "—"}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Gauge className="h-3.5 w-3.5 text-gray-400" />
-                                  <span>{rec.mileage !== undefined ? `${rec.mileage.toLocaleString()} mi` : "—"}</span>
-                                </div>
-                              </div>
+                            <td className="px-4 py-2.5 align-top hidden lg:table-cell">
+                              <p className="text-xs font-medium text-gray-700 truncate max-w-[140px]">{rec.vehicleLabel || "—"}</p>
+                              {rec.vehicleIdentifier && <p className="text-[11px] text-gray-400">ID: {rec.vehicleIdentifier}</p>}
                             </td>
-                            <td className="px-6 py-4 align-top">
+                            <td className="px-4 py-2.5 align-top">
+                              <span className="text-sm text-gray-700">{mechanicLabel(rec.mechanicName)}</span>
+                            </td>
+                            <td className="px-4 py-2.5 align-top text-right whitespace-nowrap">
+                              <span className="text-sm text-gray-800">{rec.cost !== undefined ? `$${rec.cost.toFixed(2)}` : "—"}</span>
+                            </td>
+                            <td className="px-4 py-2.5 align-top text-right whitespace-nowrap hidden md:table-cell">
+                              <span className="text-xs text-gray-500">{rec.mileage !== undefined ? `${rec.mileage.toLocaleString()} mi` : "—"}</span>
+                            </td>
+                            <td className="px-4 py-2.5 align-top">
                               <span
-                                className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                                className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${
                                   statusStyles[rec.status || "in_progress"] || "bg-gray-100 text-gray-700"
                                 }`}
                               >
                                 {statusLabels[rec.status || "in_progress"] || rec.status}
                               </span>
-                            </td>
-                            <td className="px-6 py-4 align-top text-right">
-                              <button className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline">View details</button>
                             </td>
                           </motion.tr>
                         ))}
@@ -401,7 +426,7 @@ export default function ServiceRecordsPage() {
               </div>
               {/* Pagination */}
               {filtered.length > 0 && (
-                <div className="px-6 py-4 border-t border-gray-200">
+                <div className="px-4 py-3 border-t border-gray-200">
                   <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
@@ -551,19 +576,3 @@ export default function ServiceRecordsPage() {
   );
 }
 
-function SummaryCard({ title, value, tone }: { title: string; value: number; tone: "indigo" | "green" | "gray" }) {
-  const colors: Record<string, string> = {
-    indigo: "from-indigo-500 to-indigo-600",
-    green: "from-emerald-500 to-emerald-600",
-    gray: "from-gray-400 to-gray-500",
-  };
-  return (
-    <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{title}</p>
-      <div className="flex items-center gap-2">
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        <span className={`h-2 w-10 rounded-full bg-gradient-to-r ${colors[tone]} opacity-70`} />
-      </div>
-    </div>
-  );
-}

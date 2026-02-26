@@ -32,13 +32,23 @@ import Select from "@/components/ui/Select";
 import PhotoGallery from "@/components/PhotoGallery";
 
 const statusStyles: Record<string, string> = {
-  submitted: "bg-yellow-50 text-yellow-700 border-yellow-200",
-  triaged: "bg-blue-50 text-blue-700 border-blue-200",
-  waiting_booking: "bg-orange-50 text-orange-700 border-orange-200",
-  scheduled: "bg-purple-50 text-purple-700 border-purple-200",
-  in_progress: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  completed: "bg-green-50 text-green-700 border-green-200",
-  cancelled: "bg-gray-100 text-gray-700 border-gray-200",
+  submitted: "bg-amber-50 text-amber-800 border-amber-300",
+  triaged: "bg-sky-50 text-sky-800 border-sky-300",
+  waiting_booking: "bg-orange-50 text-orange-800 border-orange-300",
+  scheduled: "bg-violet-50 text-violet-800 border-violet-300",
+  in_progress: "bg-blue-50 text-blue-800 border-blue-300",
+  completed: "bg-emerald-50 text-emerald-800 border-emerald-300",
+  cancelled: "bg-gray-100 text-gray-600 border-gray-300",
+};
+
+const statusDots: Record<string, string> = {
+  submitted: "bg-amber-500",
+  triaged: "bg-sky-500",
+  waiting_booking: "bg-orange-500",
+  scheduled: "bg-violet-500",
+  in_progress: "bg-blue-500 animate-pulse",
+  completed: "bg-emerald-500",
+  cancelled: "bg-gray-400",
 };
 
 export default function RepairsPage() {
@@ -78,10 +88,6 @@ export default function RepairsPage() {
       return;
     }
     const parsedUser = JSON.parse(userData);
-    if (parsedUser.role !== "admin" && parsedUser.role !== "mechanic") {
-      router.push("/login");
-      return;
-    }
     setUser(parsedUser);
   }, [router]);
 
@@ -286,17 +292,20 @@ export default function RepairsPage() {
         throw new Error(error.error || "Failed to create service record");
       }
 
-      // Also submit repair report for backward compatibility
-      const reportPayload = {
-        summary: formData.description,
-        laborHours: formData.laborHours ? Number(formData.laborHours) : undefined,
-        laborCost: formData.laborCost ? Number(formData.laborCost) : undefined,
-        partsCost: formData.partsCost ? Number(formData.partsCost) : undefined,
-        totalCost: formData.totalCost ? Number(formData.totalCost) : undefined,
-        status: "completed",
-      };
-
-      await submitReportMutation.mutateAsync({ requestId: selected.id, data: reportPayload });
+      // Also submit repair report for backward compatibility (ignore 409 conflict if report already exists)
+      try {
+        const reportPayload = {
+          summary: formData.description,
+          laborHours: formData.laborHours ? Number(formData.laborHours) : undefined,
+          laborCost: formData.laborCost ? Number(formData.laborCost) : undefined,
+          partsCost: formData.partsCost ? Number(formData.partsCost) : undefined,
+          totalCost: formData.totalCost ? Number(formData.totalCost) : undefined,
+          status: "completed",
+        };
+        await submitReportMutation.mutateAsync({ requestId: selected.id, data: reportPayload });
+      } catch (reportErr) {
+        // 409 = report already exists, which is fine — service record was created
+      }
 
       // Update repair request status
       await updateRepair.mutateAsync({
@@ -306,11 +315,7 @@ export default function RepairsPage() {
 
       showToast("Service report submitted successfully!", "success");
       setReportModalOpen(false);
-
-      // Redirect to service records page
-      setTimeout(() => {
-        router.push("/service-records");
-      }, 1000);
+      setSelected({ ...selected, status: "completed" });
     } catch (error) {
       // Only log in development
       if (process.env.NODE_ENV === "development") {
@@ -463,8 +468,85 @@ export default function RepairsPage() {
               </div>
             </div>
 
-            {/* Table View */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm min-h-[400px]">
+            {/* Mobile Card View */}
+            <div className="sm:hidden space-y-2">
+              {isLoading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gray-200" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-1/2" />
+                        <div className="h-3 bg-gray-200 rounded w-3/4" />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : filteredRequests.length === 0 ? (
+                <div className="bg-white rounded-xl border border-gray-200 px-4 py-10 text-center text-gray-500">
+                  <ClipboardList className="h-10 w-10 mb-2 opacity-20 mx-auto" />
+                  <p className="text-sm">No repair requests found.</p>
+                </div>
+              ) : (
+                filteredRequests.map((req) => (
+                  <button
+                    key={req.id}
+                    onClick={() => handleRowClick(req)}
+                    className="w-full bg-white rounded-xl border border-gray-200 p-3.5 text-left active:bg-gray-50 transition-colors shadow-sm"
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Avatar/Photo */}
+                      {req.thumbUrls && req.thumbUrls.length > 0 ? (
+                        <img src={req.thumbUrls[0]} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-gray-200" loading="lazy" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center justify-center flex-shrink-0">
+                          {req.driverName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        {/* Top row: name + status */}
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{req.driverName}</p>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border flex-shrink-0 ${statusStyles[req.status] || ""}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${statusDots[req.status] || "bg-gray-400"}`} />
+                            {req.status.replace("_", " ")}
+                          </span>
+                        </div>
+                        {/* Description */}
+                        <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed mb-2">{req.description}</p>
+                        {/* Bottom row: tags + meta */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {req.vehicleIdentifier && (
+                              <span className="text-[11px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded font-medium">
+                                ID: {req.vehicleIdentifier}
+                              </span>
+                            )}
+                            <span className="pill bg-primary-50 border-primary-100 text-primary-800 text-[10px] px-1.5 py-0.5 h-auto font-medium">
+                              {req.urgency}
+                            </span>
+                            {req.aiCategory && (
+                              <span className="pill bg-indigo-50 border-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 h-auto font-medium">
+                                {req.aiCategory}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {req.bookingLinkSentAt && (
+                              <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                            )}
+                            <span className="text-[11px] text-gray-400">{formatDate(req.createdAt)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden sm:block bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm min-h-[400px]">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-gray-50 border-b border-gray-200">
@@ -501,7 +583,6 @@ export default function RepairsPage() {
                               delay: Math.min(i * 0.03, 0.3),
                               ease: [0.16, 1, 0.3, 1],
                             }}
-                            whileHover={{ scale: 1.01, transition: { duration: 0.2 } }}
                             onClick={() => handleRowClick(req)}
                             className="group hover:bg-gray-50 cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
                             role="button"
@@ -516,7 +597,6 @@ export default function RepairsPage() {
                           >
                             <td className="px-4 py-2 align-middle">
                               <div className="flex items-center gap-2.5">
-                                {/* Compact square thumbnail - shows first repair photo or driver initials */}
                                 {req.thumbUrls && req.thumbUrls.length > 0 ? (
                                   <img
                                     src={req.thumbUrls[0]}
@@ -560,7 +640,8 @@ export default function RepairsPage() {
                               </div>
                             </td>
                             <td className="px-4 py-2 align-middle">
-                              <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusStyles[req.status] || ""}`}>
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusStyles[req.status] || ""}`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${statusDots[req.status] || "bg-gray-400"}`} />
                                 {req.status.replace("_", " ")}
                               </span>
                             </td>
@@ -639,21 +720,19 @@ export default function RepairsPage() {
                 mass: 0.8,
               }}
             >
-              <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white flex items-center justify-between sticky top-0 z-10 shadow-sm">
+              <div className="px-6 py-5 border-b border-gray-200 bg-white flex items-center justify-between sticky top-0 z-10">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center">
-                    <Wrench className="h-5 w-5 text-primary-600" />
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[var(--primary-100)] to-[var(--primary-200)] flex items-center justify-center">
+                    <Wrench className="h-5 w-5 text-[var(--primary-700)]" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Request Details</h2>
-                    <p className="text-xs text-gray-500 font-mono">ID: {selected.id.slice(0, 8)}</p>
+                    <h2 className="text-lg font-bold text-gray-900 leading-tight">Request Details</h2>
+                    <p className="text-[11px] text-gray-400 font-mono tracking-wide">ID: {selected.id.slice(0, 8)}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setSelected(null)} className="btn btn-ghost btn-icon" aria-label="Close">
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
+                <button onClick={() => setSelected(null)} className="btn btn-ghost btn-icon hover:bg-gray-100 rounded-lg transition-colors" aria-label="Close">
+                  <X className="h-5 w-5" />
+                </button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50">
@@ -676,7 +755,8 @@ export default function RepairsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border-2 ${statusStyles[selected.status]}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border ${statusStyles[selected.status]}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${statusDots[selected.status] || "bg-gray-400"}`} />
                         {selected.status.replace("_", " ")}
                       </span>
                       {!editing && (
@@ -1001,37 +1081,51 @@ export default function RepairsPage() {
                         Actions
                       </h3>
                       <div className="flex flex-col sm:flex-row gap-3">
-                        <button
-                          onClick={() => handleSendLinkClick(selected)}
-                          disabled={sendingId === selected.id}
-                          className={`btn flex-1 flex items-center gap-2 transition-all ${
-                            sendingId === selected.id ? "btn-primary opacity-75 cursor-not-allowed" : "btn-primary"
-                          }`}
-                        >
-                          {sendingId === selected.id ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Sending...
-                            </>
-                          ) : selected.bookingLinkSentAt ? (
-                            <>
-                              <Send className="h-4 w-4" />
-                              Resend Booking Link
-                            </>
-                          ) : (
-                            <>
-                              <Send className="h-4 w-4" />
-                              Send Booking Link
-                            </>
-                          )}
-                        </button>
-                        <button onClick={() => openReport(selected)} className="btn btn-secondary flex-1 flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4" />
-                          Submit Service Report
-                        </button>
+                        {selected.status !== "completed" && (
+                          <button
+                            onClick={() => handleSendLinkClick(selected)}
+                            disabled={sendingId === selected.id}
+                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
+                              sendingId === selected.id
+                                ? "bg-[var(--primary-500)] text-white opacity-75 cursor-not-allowed"
+                                : "bg-[var(--primary-600)] text-white hover:bg-[var(--primary-700)] active:scale-[0.98]"
+                            }`}
+                          >
+                            {sendingId === selected.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Sending...
+                              </>
+                            ) : selected.bookingLinkSentAt ? (
+                              <>
+                                <Send className="h-4 w-4" />
+                                Resend Booking Link
+                              </>
+                            ) : (
+                              <>
+                                <Send className="h-4 w-4" />
+                                Send Booking Link
+                              </>
+                            )}
+                          </button>
+                        )}
+                        {selected.status === "completed" ? (
+                          <div className="flex-1 flex items-center justify-center gap-2.5 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700">
+                            <CheckCircle className="h-5 w-5" />
+                            <span className="text-sm font-bold">Service Report Submitted</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => openReport(selected)}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold border-2 border-gray-300 text-gray-700 hover:border-[var(--primary-300)] hover:text-[var(--primary-700)] hover:bg-[var(--primary-50)] transition-all duration-200 active:scale-[0.98]"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            Submit Service Report
+                          </button>
+                        )}
                       </div>
                       {selected.bookingLinkSentAt && (
-                        <p className="mt-2 text-xs text-gray-500 text-center">Sent on {new Date(selected.bookingLinkSentAt).toLocaleString()}</p>
+                        <p className="mt-3 text-xs text-gray-500 text-center">Sent on {new Date(selected.bookingLinkSentAt).toLocaleString()}</p>
                       )}
                     </div>
                   </>

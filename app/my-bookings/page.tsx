@@ -5,17 +5,17 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { Calendar, Phone, MapPin, Clock, ChevronRight, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react'
-import { format, isToday, isTomorrow, isThisWeek, parseISO } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 
 interface Booking {
   id: string
-  customer_name: string
-  customer_email?: string
-  customer_phone: string
-  service_type: string
-  scheduled_date: string
-  scheduled_time: string
-  vehicle_info?: string
+  customerName: string
+  customerEmail?: string
+  customerPhone: string
+  serviceType: string
+  scheduledDate: string
+  scheduledTime: string
+  vehicleInfo?: string
   notes?: string
   status: string
 }
@@ -86,36 +86,34 @@ export default function MyBookingsPage() {
   const isLoading = bookingsQuery.isLoading
 
   // Group bookings - filter out any with missing dates first
-  const today = new Date()
+  // Use Arizona time (MST, UTC-7, no DST) to match the daily brief server logic
+  const now = new Date()
+  const mstOffset = -7 * 60 * 60 * 1000
+  const today = new Date(now.getTime() + mstOffset + now.getTimezoneOffset() * 60 * 1000)
   const todayStr = format(today, 'yyyy-MM-dd')
 
   // Only process bookings that have a valid scheduled_date
-  const validBookings = bookings.filter(b => b.scheduled_date && typeof b.scheduled_date === 'string')
+  const validBookings = bookings.filter(b => b.scheduledDate && typeof b.scheduledDate === 'string')
 
-  const todayBookings = validBookings.filter(b => b.scheduled_date === todayStr && b.status !== 'cancelled')
+  // Calculate tomorrow's date string in MST for reliable comparison
+  const tomorrowMst = new Date(today.getTime() + 24 * 60 * 60 * 1000)
+  const tomorrowStr = format(tomorrowMst, 'yyyy-MM-dd')
+
+  // Get the start and end of the current week (Sunday-Saturday) in MST
+  const dayOfWeek = today.getDay()
+  const weekStartMst = new Date(today.getTime() - dayOfWeek * 24 * 60 * 60 * 1000)
+  const weekStartStr = format(weekStartMst, 'yyyy-MM-dd')
+  const weekEndMst = new Date(weekStartMst.getTime() + 6 * 24 * 60 * 60 * 1000)
+  const weekEndStr = format(weekEndMst, 'yyyy-MM-dd')
+
+  const todayBookings = validBookings.filter(b => b.scheduledDate === todayStr && b.status !== 'cancelled')
   const upcomingBookings = validBookings.filter(b => {
-    try {
-      const bookingDate = parseISO(b.scheduled_date)
-      return bookingDate > today && b.status !== 'cancelled'
-    } catch {
-      return false
-    }
-  }).sort((a, b) => (a.scheduled_date || '').localeCompare(b.scheduled_date || ''))
+    return b.scheduledDate > todayStr && b.status !== 'cancelled'
+  }).sort((a, b) => (a.scheduled_date || '').localeCompare(b.scheduledDate || ''))
 
-  const tomorrowBookings = upcomingBookings.filter(b => {
-    try {
-      return isTomorrow(parseISO(b.scheduled_date))
-    } catch {
-      return false
-    }
-  })
+  const tomorrowBookings = upcomingBookings.filter(b => b.scheduledDate === tomorrowStr)
   const thisWeekBookings = upcomingBookings.filter(b => {
-    try {
-      const d = parseISO(b.scheduled_date)
-      return isThisWeek(d) && !isTomorrow(d)
-    } catch {
-      return false
-    }
+    return b.scheduledDate >= weekStartStr && b.scheduledDate <= weekEndStr && b.scheduledDate !== tomorrowStr
   })
 
   const getStatusBadge = (status: string) => {
@@ -140,7 +138,7 @@ export default function MyBookingsPage() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-blue-600" />
-            <span className="text-lg font-semibold text-gray-900">{booking.scheduled_time || 'TBD'}</span>
+            <span className="text-lg font-semibold text-gray-900">{booking.scheduledTime || 'TBD'}</span>
           </div>
           <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadge(booking.status)}`}>
             {booking.status.replace('_', ' ')}
@@ -149,17 +147,17 @@ export default function MyBookingsPage() {
 
         {/* Vehicle Info */}
         <div className="mb-3">
-          <p className="font-medium text-gray-900">{booking.vehicle_info || 'Vehicle TBD'}</p>
-          <p className="text-sm text-gray-500">{booking.service_type}</p>
+          <p className="font-medium text-gray-900">{booking.vehicleInfo || 'Vehicle TBD'}</p>
+          <p className="text-sm text-gray-500">{booking.serviceType}</p>
         </div>
 
         {/* Customer */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-600">{booking.customer_name}</p>
+            <p className="text-sm text-gray-600">{booking.customerName}</p>
           </div>
           <a
-            href={`tel:${booking.customer_phone}`}
+            href={`tel:${booking.customerPhone}`}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 active:bg-blue-800 transition-colors"
           >
             <Phone className="w-4 h-4" />
@@ -271,11 +269,11 @@ export default function MyBookingsPage() {
                   {thisWeekBookings.map(booking => {
                     let dateLabel = 'Date TBD'
                     try {
-                      if (booking.scheduled_date) {
-                        dateLabel = format(parseISO(booking.scheduled_date), 'EEEE, MMM d')
+                      if (booking.scheduledDate) {
+                        dateLabel = format(parseISO(booking.scheduledDate), 'EEEE, MMM d')
                       }
                     } catch {
-                      dateLabel = booking.scheduled_date || 'Date TBD'
+                      dateLabel = booking.scheduledDate || 'Date TBD'
                     }
                     return (
                       <div key={booking.id}>

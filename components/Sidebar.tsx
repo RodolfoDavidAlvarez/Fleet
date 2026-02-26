@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 
 interface SidebarProps {
-  role: 'admin' | 'mechanic'
+  role: string
   isOpen?: boolean
   onClose?: () => void
 }
@@ -37,11 +37,8 @@ const unifiedLinks = [
   { href: '/admin/drivers', label: 'Members', icon: Users },
 ]
 
-const mechanicOnlyLinks = [
-  { href: '/mechanic/notifications', label: 'Send SMS', icon: MessageSquare },
-]
-
 const adminOnlyLinks = [
+  { href: '/mechanic/notifications', label: 'Send SMS', icon: MessageSquare },
   { href: '/admin/announcements', label: 'Announcements', icon: Megaphone },
   { href: '/admin/bug-reports', label: 'Bug Reports', icon: Bug },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
@@ -52,11 +49,9 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
   const [collapsed, setCollapsed] = useState(false)
   
   // Memoize links to prevent recalculation on every render
-  const links = useMemo(() => 
-    role === 'admin' 
-      ? [...unifiedLinks, ...adminOnlyLinks]
-      : [...unifiedLinks, ...mechanicOnlyLinks],
-    [role]
+  const links = useMemo(() =>
+    [...unifiedLinks, ...adminOnlyLinks],
+    []
   )
 
   // Memoize logout handler
@@ -140,11 +135,9 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
           
           {!collapsed && (
             <div className="flex items-center gap-2 mt-4">
-              <div className={`h-2 w-2 rounded-full animate-pulse ${
-                role === 'admin' ? 'bg-[var(--primary-500)]' : 'bg-[var(--success-500)]'
-              }`}></div>
+              <div className="h-2 w-2 rounded-full animate-pulse bg-[var(--primary-500)]"></div>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                {role === 'admin' ? 'Admin Console' : 'Mechanic Portal'}
+                Admin Console
               </p>
             </div>
           )}
@@ -167,53 +160,113 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
         </button>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto no-scrollbar relative z-10">
-          {links.map((link) => {
-            const Icon = link.icon
-            // Extract base path without query params for matching (pathname doesn't include query params)
-            const baseHref = link.href.split('?')[0]
-            const isActive = pathname === baseHref
-            
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                prefetch={true}
-                className={cn(
-                  'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                  isActive
-                    ? 'bg-gradient-to-r from-[var(--primary-50)] to-[var(--primary-100)] text-[var(--primary-700)]'
-                    : 'text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] hover:translate-x-1',
-                  collapsed && 'justify-center'
-                )}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                {isActive && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-[var(--primary-500)] to-[var(--primary-600)] opacity-10 rounded-lg pointer-events-none" />
-                )}
-                
-                <Icon className={cn(
-                  'h-5 w-5 flex-shrink-0 relative z-20 transition-transform group-hover:scale-110',
-                  isActive ? 'text-[var(--primary-600)]' : ''
-                )} />
-                
-                {!collapsed && (
-                  <span className="truncate relative z-20">{link.label}</span>
-                )}
-                
-                {isActive && !collapsed && (
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-[var(--primary-500)] rounded-l-full z-20" />
-                )}
-                
-                {/* Tooltip for collapsed state */}
-                {collapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-md text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
-                    {link.label}
-                  </div>
-                )}
-              </Link>
-            )
-          })}
+        <nav className="flex-1 p-3 overflow-y-auto no-scrollbar relative z-10">
+          {/* Main Navigation */}
+          {!collapsed && (
+            <div className="px-3 mb-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Navigation</p>
+            </div>
+          )}
+          <div className="space-y-0.5">
+            {unifiedLinks.map((link) => {
+              const Icon = link.icon
+              const baseHref = link.href.split('?')[0]
+              const isActive = pathname === baseHref
+
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  prefetch={true}
+                  className={cn(
+                    'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                    isActive
+                      ? 'bg-[var(--primary-50)] text-[var(--primary-700)] shadow-sm'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]',
+                    collapsed && 'justify-center'
+                  )}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--primary-500)] rounded-r-full z-20" />
+                  )}
+
+                  <Icon className={cn(
+                    'h-5 w-5 flex-shrink-0 relative z-20 transition-colors duration-200',
+                    isActive ? 'text-[var(--primary-600)]' : 'group-hover:text-[var(--text-primary)]'
+                  )} />
+
+                  {!collapsed && (
+                    <span className="truncate relative z-20">{link.label}</span>
+                  )}
+
+                  {/* Tooltip for collapsed state */}
+                  {collapsed && (
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-md text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
+                      {link.label}
+                    </div>
+                  )}
+                </Link>
+              )
+            })}
+          </div>
+
+          {/* Section Divider */}
+          <div className={cn("my-3", collapsed ? "px-2" : "px-3")}>
+            <div className="border-t border-[var(--border)]" />
+          </div>
+
+          {/* Role-specific links */}
+          {!collapsed && (
+            <div className="px-3 mb-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                Administration
+              </p>
+            </div>
+          )}
+          <div className="space-y-0.5">
+            {adminOnlyLinks.map((link) => {
+              const Icon = link.icon
+              const baseHref = link.href.split('?')[0]
+              const isActive = pathname === baseHref
+
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  prefetch={true}
+                  className={cn(
+                    'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                    isActive
+                      ? 'bg-[var(--primary-50)] text-[var(--primary-700)] shadow-sm'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]',
+                    collapsed && 'justify-center'
+                  )}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--primary-500)] rounded-r-full z-20" />
+                  )}
+
+                  <Icon className={cn(
+                    'h-5 w-5 flex-shrink-0 relative z-20 transition-colors duration-200',
+                    isActive ? 'text-[var(--primary-600)]' : 'group-hover:text-[var(--text-primary)]'
+                  )} />
+
+                  {!collapsed && (
+                    <span className="truncate relative z-20">{link.label}</span>
+                  )}
+
+                  {/* Tooltip for collapsed state */}
+                  {collapsed && (
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-md text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
+                      {link.label}
+                    </div>
+                  )}
+                </Link>
+              )
+            })}
+          </div>
         </nav>
 
         {/* Footer */}
