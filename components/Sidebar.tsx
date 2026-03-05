@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Megaphone,
   Bug,
+  ClipboardCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useMemo, useCallback } from 'react'
@@ -35,6 +36,7 @@ const unifiedLinks = [
   { href: '/admin/bookings', label: 'Bookings', icon: Calendar },
   { href: '/service-records', label: 'Service Records', icon: FileText },
   { href: '/admin/drivers', label: 'Members', icon: Users },
+  { href: '/admin/inspections', label: 'Inspections', icon: ClipboardCheck },
 ]
 
 const adminOnlyLinks = [
@@ -92,14 +94,14 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — Industrial Dark */}
       <div className={cn(
-        "fixed lg:sticky top-0 h-screen flex flex-col surface-primary border-r border-[var(--border)] transition-all duration-300 z-[100]",
+        "fixed lg:sticky top-0 h-screen flex flex-col bg-slate-950 border-r border-slate-800 transition-all duration-300 z-[100]",
         collapsed ? "w-16" : "w-64",
         isOpen ? "left-0" : "-left-64 lg:left-0"
       )}>
         {/* Header */}
-        <div className="p-4 border-b border-[var(--border)]">
+        <div className="p-4 border-b border-slate-800">
           <div className="flex items-center justify-between">
             <Link href="/dashboard" className={cn(
               "flex items-center gap-3 transition-all",
@@ -112,31 +114,31 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
                     alt="AGAVE ENVIRONMENTAL CONTRACTING, INC."
                     width={140}
                     height={36}
-                    className="object-contain"
+                    className="object-contain brightness-0 invert"
                     style={{ width: 'auto', height: '36px' }}
                     priority
                   />
                 </div>
               ) : (
-                <div className="w-8 h-8 bg-gradient-to-br from-[var(--primary-500)] to-[var(--primary-600)] rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-sm">A</span>
                 </div>
               )}
             </Link>
-            
+
             {/* Mobile close button */}
-            <button 
+            <button
               onClick={onClose}
-              className="lg:hidden btn-ghost btn-icon btn-sm"
+              className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
-          
+
           {!collapsed && (
             <div className="flex items-center gap-2 mt-4">
-              <div className="h-2 w-2 rounded-full animate-pulse bg-[var(--primary-500)]"></div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              <div className="h-2 w-2 rounded-full animate-pulse bg-amber-500"></div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-500">
                 Admin Console
               </p>
             </div>
@@ -147,14 +149,14 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
         <button
           onClick={useCallback(() => setCollapsed(!collapsed), [collapsed])}
           className={cn(
-            "hidden lg:flex absolute -right-3 top-20 w-6 h-6 bg-[var(--surface)] border border-[var(--border)] rounded-full items-center justify-center hover:bg-[var(--surface-hover)] transition-all",
-            "shadow-sm z-10 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            "hidden lg:flex absolute -right-3 top-20 w-6 h-6 bg-slate-800 border border-slate-700 rounded-full items-center justify-center hover:bg-slate-700 transition-all",
+            "shadow-sm z-10 focus:outline-none focus:ring-2 focus:ring-amber-500"
           )}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-expanded={!collapsed}
         >
           <ChevronRight className={cn(
-            "h-3 w-3 transition-transform",
+            "h-3 w-3 text-slate-400 transition-transform",
             collapsed ? "" : "rotate-180"
           )} />
         </button>
@@ -164,7 +166,7 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
           {/* Main Navigation */}
           {!collapsed && (
             <div className="px-3 mb-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Navigation</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Navigation</p>
             </div>
           )}
           <div className="space-y-0.5">
@@ -179,21 +181,17 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
                   href={link.href}
                   prefetch={true}
                   className={cn(
-                    'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                    'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-amber-500',
                     isActive
-                      ? 'bg-[var(--primary-50)] text-[var(--primary-700)] shadow-sm'
-                      : 'text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]',
+                      ? 'bg-slate-900 text-white border-l-[3px] border-l-amber-500 pl-[9px]'
+                      : 'text-slate-400 hover:bg-slate-900/50 hover:text-white',
                     collapsed && 'justify-center'
                   )}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--primary-500)] rounded-r-full z-20" />
-                  )}
-
                   <Icon className={cn(
                     'h-5 w-5 flex-shrink-0 relative z-20 transition-colors duration-200',
-                    isActive ? 'text-[var(--primary-600)]' : 'group-hover:text-[var(--text-primary)]'
+                    isActive ? 'text-amber-500' : 'group-hover:text-slate-200'
                   )} />
 
                   {!collapsed && (
@@ -202,7 +200,7 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
 
                   {/* Tooltip for collapsed state */}
                   {collapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-md text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 border border-slate-700 rounded-md text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
                       {link.label}
                     </div>
                   )}
@@ -213,13 +211,13 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
 
           {/* Section Divider */}
           <div className={cn("my-3", collapsed ? "px-2" : "px-3")}>
-            <div className="border-t border-[var(--border)]" />
+            <div className="border-t border-slate-800" />
           </div>
 
           {/* Role-specific links */}
           {!collapsed && (
             <div className="px-3 mb-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
                 Administration
               </p>
             </div>
@@ -236,21 +234,17 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
                   href={link.href}
                   prefetch={true}
                   className={cn(
-                    'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                    'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-amber-500',
                     isActive
-                      ? 'bg-[var(--primary-50)] text-[var(--primary-700)] shadow-sm'
-                      : 'text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]',
+                      ? 'bg-slate-900 text-white border-l-[3px] border-l-amber-500 pl-[9px]'
+                      : 'text-slate-400 hover:bg-slate-900/50 hover:text-white',
                     collapsed && 'justify-center'
                   )}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--primary-500)] rounded-r-full z-20" />
-                  )}
-
                   <Icon className={cn(
                     'h-5 w-5 flex-shrink-0 relative z-20 transition-colors duration-200',
-                    isActive ? 'text-[var(--primary-600)]' : 'group-hover:text-[var(--text-primary)]'
+                    isActive ? 'text-amber-500' : 'group-hover:text-slate-200'
                   )} />
 
                   {!collapsed && (
@@ -259,7 +253,7 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
 
                   {/* Tooltip for collapsed state */}
                   {collapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-md text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 border border-slate-700 rounded-md text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
                       {link.label}
                     </div>
                   )}
@@ -270,19 +264,18 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-[var(--border)]">
+        <div className="p-3 border-t border-slate-800">
           <button
             onClick={handleLogout}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
-              "bg-[var(--surface)] hover:bg-[var(--danger-50)] hover:text-[var(--danger-600)]",
-              "border border-[var(--border)] hover:border-[var(--danger-200)]",
+              "text-slate-400 hover:text-red-400 hover:bg-slate-900",
               "group",
               collapsed && "justify-center"
             )}
           >
-            <LogOut className="h-5 w-5 transition-transform group-hover:scale-110" />
-            {!collapsed && <span className="font-semibold">Logout</span>}
+            <LogOut className="h-5 w-5" />
+            {!collapsed && <span className="font-semibold text-sm">Logout</span>}
           </button>
         </div>
       </div>

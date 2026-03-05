@@ -255,3 +255,52 @@ export interface RepairReport {
   totalCost?: number;
   createdAt: string;
 }
+
+// Vehicle Inspections (Proactive Maintenance)
+export type ConditionRating = "good" | "fair" | "poor" | "critical";
+export type InspectionStatus = "submitted" | "reviewed" | "flagged";
+
+export interface VehicleInspection {
+  id: string;
+  vehicleId?: string;
+  vehicleNumber?: string;
+  driverId?: string;
+  driverName: string;
+  driverPhone?: string;
+  preferredLanguage?: "en" | "es";
+  currentMileage: number;
+  lastOilChangeDate?: string;
+  lastOilChangeMileage?: number;
+  lastMaintenanceDate?: string;
+  lastMaintenanceType?: string;
+  tireCondition: ConditionRating;
+  brakeCondition: ConditionRating;
+  lightsWorking: boolean;
+  fluidLevels: ConditionRating;
+  bodyCondition: ConditionRating;
+  warningLightsOn: boolean;
+  warningLightsDescription?: string;
+  notes?: string;
+  photoUrls: string[];
+  isFuelEntry: boolean;
+  fuelGallons?: number;
+  campaignId?: string;
+  status: InspectionStatus;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
+}
+
+export interface InspectionCampaign {
+  id: string;
+  title: string;
+  description?: string;
+  dueDate: string;
+  frequency: "one_time" | "monthly" | "quarterly";
+  status: "active" | "completed" | "cancelled";
+  createdBy?: string;
+  smsSentAt?: string;
+  totalDrivers: number;
+  submissionsCount: number;
+  createdAt: string;
+}
