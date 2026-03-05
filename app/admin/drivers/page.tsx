@@ -163,19 +163,58 @@ export default function DriversPage() {
     }
   };
 
+  // Send inspection reminder to a specific driver
+  const [sendingInspection, setSendingInspection] = useState<string | null>(null);
+  const handleSendInspection = async (driver: User) => {
+    if (!driver.phone) {
+      showToast(`${driver.name} has no phone number`, "error");
+      return;
+    }
+    setSendingInspection(driver.id);
+    try {
+      const res = await fetch("/api/inspections/send-reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ driverId: driver.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showToast(`Inspection form sent to ${driver.name}`, "success");
+    } catch (err: any) {
+      showToast(err.message || "Failed to send", "error");
+    } finally {
+      setSendingInspection(null);
+    }
+  };
+
   // Render cell content based on column type
   const renderCell = (column: ColumnConfig, driver: User) => {
     switch (column.id) {
       case "name":
         return (
-          <EditableTextField
-            value={driver.name}
-            onUpdate={async (value) => {
-              await updateDriver(driver.id, { name: value });
-              showToast("Name updated successfully!", "success");
-            }}
-            className="font-semibold text-sm"
-          />
+          <div className="flex items-center gap-2">
+            <EditableTextField
+              value={driver.name}
+              onUpdate={async (value) => {
+                await updateDriver(driver.id, { name: value });
+                showToast("Name updated successfully!", "success");
+              }}
+              className="font-semibold text-sm"
+            />
+            {overdueDriverIds.has(driver.id) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSendInspection(driver);
+                }}
+                className="flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 text-[10px] font-bold rounded-full border border-red-200 hover:bg-red-100 transition-colors whitespace-nowrap"
+                title={`${overdueVehiclesByDriver.get(driver.id)?.length || 0} vehicle(s) overdue for inspection`}
+              >
+                <AlertCircle className="h-3 w-3" />
+                Overdue
+              </button>
+            )}
+          </div>
         );
       case "role":
         return (
@@ -650,9 +689,35 @@ export default function DriversPage() {
     });
   }, [allVehicles, memberVehicleSearch]);
 
+  // Fetch inspection overview to identify overdue drivers
+  const [overdueDriverIds, setOverdueDriverIds] = useState<Set<string>>(new Set());
+  const [overdueVehiclesByDriver, setOverdueVehiclesByDriver] = useState<Map<string, any[]>>(new Map());
+
+  useEffect(() => {
+    fetch("/api/inspections/overview")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.vehicles) {
+          const driverIds = new Set<string>();
+          const vehiclesByDriver = new Map<string, any[]>();
+          for (const v of data.vehicles) {
+            if (v.healthStatus === "red" && v.driver_id) {
+              driverIds.add(v.driver_id);
+              if (!vehiclesByDriver.has(v.driver_id)) vehiclesByDriver.set(v.driver_id, []);
+              vehiclesByDriver.get(v.driver_id)!.push(v);
+            }
+          }
+          setOverdueDriverIds(driverIds);
+          setOverdueVehiclesByDriver(vehiclesByDriver);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Count stats
   const driverCount = drivers.filter((d) => d.role === "driver").length;
   const mechanicCount = drivers.filter((d) => d.role === "mechanic").length;
+  const overdueDriverCount = overdueDriverIds.size;
 
   if (!user) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
@@ -666,30 +731,34 @@ export default function DriversPage() {
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto space-y-5">
             {/* Header Section */}
-            <div className="flex flex-col gap-4">
-              {/* Title and Description */}
-              <div>
-                <p className="text-sm text-primary-700 font-semibold uppercase tracking-[0.08em] mb-1">Team</p>
-                <h1 className="text-3xl font-bold text-gray-900 mb-1">Team Members</h1>
-                <p className="text-gray-600 text-sm">Manage and view all registered team members including drivers, mechanics, and administrators.</p>
-              </div>
-
-              {/* Stats Cards Row - Compact */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-blue-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
-                  <p className="text-xs text-gray-500 font-medium mb-0.5">Total Members</p>
-                  <p className="text-xl font-bold text-gray-900">{drivers.length}</p>
-                </div>
-                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-green-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
-                  <p className="text-xs text-gray-500 font-medium mb-0.5">Drivers</p>
-                  <p className="text-xl font-bold text-gray-900">{driverCount}</p>
-                </div>
-                {mechanicCount > 0 && (
-                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-purple-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default">
-                    <p className="text-xs text-gray-500 font-medium mb-0.5">Mechanics</p>
-                    <p className="text-xl font-bold text-gray-900">{mechanicCount}</p>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center gap-4">
+                  <div>
+                    <p className="text-xs text-primary-700 font-semibold uppercase tracking-[0.08em]">Team</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Team Members</h1>
                   </div>
-                )}
+                  {/* Inline Stats */}
+                  <div className="hidden sm:flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-blue-200">
+                      {drivers.length} Members
+                    </span>
+                    <span className="flex items-center gap-1.5 bg-green-50 text-green-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-green-200">
+                      {driverCount} Drivers
+                    </span>
+                    {mechanicCount > 0 && (
+                      <span className="flex items-center gap-1.5 bg-purple-50 text-purple-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-purple-200">
+                        {mechanicCount} Mechanics
+                      </span>
+                    )}
+                    {overdueDriverCount > 0 && (
+                      <span className="flex items-center gap-1.5 bg-red-50 text-red-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-red-200">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        {overdueDriverCount} Overdue Inspections
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Toolbar: Compact and Intuitive */}

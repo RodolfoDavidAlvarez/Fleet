@@ -429,18 +429,36 @@ export default function RepairsPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-[var(--bg-secondary)]">
       <Sidebar role={user.role} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 sm:pb-6">
           <div className="max-w-7xl mx-auto space-y-5 sm:space-y-6">
             {/* Page Header */}
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--primary-600)] mb-1">Repairs</p>
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">Repair Requests</h1>
-                <p className="text-sm text-gray-500 mt-1 hidden sm:block">Manage repair requests, triage issues, and schedule bookings.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex items-center gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-600">Repairs</p>
+                  <h1 className="text-2xl font-bold text-[var(--text-primary)]">Repair Requests</h1>
+                </div>
+                {/* Inline Stats */}
+                <div className="hidden sm:flex items-center gap-2">
+                  <span className="flex items-center gap-1.5 bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-amber-200">
+                    {requests.filter(r => r.status === "submitted").length} New
+                  </span>
+                  {requests.filter(r => r.status === "in_progress").length > 0 && (
+                    <span className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-blue-200">
+                      {requests.filter(r => r.status === "in_progress").length} In Progress
+                    </span>
+                  )}
+                  {requests.filter(r => r.status === "waiting_booking").length > 0 && (
+                    <span className="flex items-center gap-1.5 bg-orange-50 text-orange-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-orange-200">
+                      {requests.filter(r => r.status === "waiting_booking").length} Waiting
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-400 font-medium">{requests.length} total</span>
+                </div>
               </div>
               {/* Desktop buttons */}
               <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
@@ -474,7 +492,7 @@ export default function RepairsPage() {
             </div>
 
             {/* Filter Bar */}
-            <div className="flex flex-col md:flex-row gap-3 items-center justify-between bg-white p-1.5 rounded-lg border border-gray-200">
+            <div className="flex flex-col md:flex-row gap-3 items-center justify-between bg-slate-900 p-1.5 rounded-lg border border-slate-700">
               <div
                 className="flex items-center gap-1 overflow-x-auto w-full md:w-auto p-0.5 no-scrollbar"
                 role="tablist"
@@ -489,8 +507,8 @@ export default function RepairsPage() {
                     aria-controls="repair-requests-table"
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap capitalize focus:outline-none focus:ring-2 focus:ring-[var(--primary-500)] focus:ring-offset-1 ${
                       filter === status
-                        ? "bg-gray-900 text-white shadow-sm"
-                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                        ? "bg-amber-600 text-white shadow-sm"
+                        : "text-slate-400 hover:text-white hover:bg-slate-700"
                     }`}
                   >
                     {status.replace("_", " ")}
@@ -504,7 +522,7 @@ export default function RepairsPage() {
                   placeholder="Search requests..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[var(--primary-500)] focus:border-transparent focus:bg-white transition-colors"
+                  className="w-full pl-9 pr-4 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
                 />
               </div>
             </div>
@@ -533,7 +551,7 @@ export default function RepairsPage() {
                   <button
                     key={req.id}
                     onClick={() => handleRowClick(req)}
-                    className="w-full bg-white rounded-xl border border-gray-200 shadow-sm p-3.5 text-left active:bg-blue-50/40 transition-colors"
+                    className="w-full bg-white rounded-xl border border-gray-200 shadow-sm p-3.5 text-left active:bg-amber-50/40 transition-colors"
                   >
                     <div className="flex items-start gap-3">
                       {/* Avatar/Photo */}
@@ -590,13 +608,13 @@ export default function RepairsPage() {
             <div className="hidden sm:block bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse" id="repair-requests-table">
-                  <thead className="bg-gray-50/80 border-b border-gray-200">
+                  <thead className="bg-slate-800 border-b border-slate-700">
                     <tr>
-                      <th className="px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Driver & Vehicle</th>
-                      <th className="px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Issue</th>
-                      <th className="px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-4 py-2.5 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider">Driver & Vehicle</th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider">Issue</th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -625,7 +643,7 @@ export default function RepairsPage() {
                               ease: [0.16, 1, 0.3, 1],
                             }}
                             onClick={() => handleRowClick(req)}
-                            className="group hover:bg-blue-50/40 cursor-pointer transition-colors duration-150"
+                            className="group hover:bg-amber-50/40 cursor-pointer transition-colors duration-150"
                             role="button"
                             tabIndex={0}
                             aria-label={`View repair request from ${req.driverName}`}

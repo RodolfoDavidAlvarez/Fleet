@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export interface VehicleFilters {
   department?: string;
   status?: VehicleStatus | "all";
-  vehicleType?: "Vehicle" | "Equipment" | "Trailer" | "all";
+  vehicleType?: "Vehicle" | "Equipment" | "Trailer" | "Small Equipment" | "all";
   usageCategory?: string | "all";
   daysSinceLastUse?: string | "all";
 }
@@ -85,7 +85,8 @@ export default function VehicleFilters({ vehicles, filters, onFiltersChange }: V
   const vehicleTypeOptions = [
     { value: "all", label: "All Types" },
     { value: "Vehicle", label: "Vehicle" },
-    { value: "Equipment", label: "Equipment" },
+    { value: "Equipment", label: "Heavy Equipment" },
+    { value: "Small Equipment", label: "Small Equipment" },
     { value: "Trailer", label: "Trailer" },
   ];
 

@@ -62,7 +62,7 @@ export default function VehiclesPage() {
     mileage: 0,
     status: "operational" as any,
     vehicleNumber: "",
-    vehicleType: "Vehicle" as "Vehicle" | "Equipment" | "Trailer",
+    vehicleType: "Vehicle" as "Vehicle" | "Equipment" | "Trailer" | "Small Equipment",
     driverId: "" as string | undefined,
   });
   const activeCount = vehicles.filter((v) => v.status === "active" || v.status === "operational").length;
@@ -74,12 +74,14 @@ export default function VehiclesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState<VehicleFiltersType>({
-    department: "all",
-    status: "all",
-    vehicleType: "all",
-    usageCategory: "all",
-    daysSinceLastUse: "all",
+  const [filters, setFilters] = useState<VehicleFiltersType>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("vehicles-filters");
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+      }
+    }
+    return { department: "all", status: "all", vehicleType: "all", usageCategory: "all", daysSinceLastUse: "all" };
   });
   const [sortBy, setSortBy] = useState<"make" | "year" | "status" | "vehicleType" | "department" | "mileage" | "lastUsedDate">("make");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -120,6 +122,11 @@ export default function VehiclesPage() {
   useEffect(() => {
     localStorage.setItem("vehicles-column-config", JSON.stringify(columns));
   }, [columns]);
+
+  // Persist filters
+  useEffect(() => {
+    localStorage.setItem("vehicles-filters", JSON.stringify(filters));
+  }, [filters]);
 
   // Get visible columns sorted by order
   const visibleColumns = useMemo(() => {
@@ -440,8 +447,13 @@ export default function VehiclesPage() {
       });
     }
 
-    // Apply sorting
+    // Apply sorting — complete records (with make/model) first, then by selected sort
     const sorted = [...filtered].sort((a, b) => {
+      // Completeness: records with make AND model sort before incomplete ones
+      const aComplete = a.make && a.model ? 1 : 0;
+      const bComplete = b.make && b.model ? 1 : 0;
+      if (aComplete !== bComplete) return bComplete - aComplete;
+
       let aValue: any;
       let bValue: any;
 
@@ -598,43 +610,37 @@ export default function VehiclesPage() {
         <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 sm:pb-6">
           <div className="max-w-7xl mx-auto space-y-4 sm:space-y-5">
-            {/* Header Section - Mobile optimized */}
-            <div className="flex flex-col gap-3 sm:gap-4">
-              {/* Title and Description */}
-              <div>
-                <p className="text-xs sm:text-sm text-primary-700 font-semibold uppercase tracking-[0.08em] mb-1">Fleet</p>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Vehicles</h1>
-                <p className="text-gray-600 text-xs sm:text-sm hidden sm:block">Manage your fleet vehicles and their status.</p>
-              </div>
-
-              {/* Stats Cards Row - Horizontally scrollable on mobile */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible no-scrollbar">
-                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-green-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default flex-shrink-0">
-                  <p className="text-xs text-gray-500 font-medium mb-0.5">Operational</p>
-                  <p className="text-xl font-bold text-gray-900">{activeCount}</p>
+            {/* Compact Header */}
+            <div className="flex flex-col gap-3 sm:gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center gap-4">
+                  <div>
+                    <p className="text-xs text-primary-700 font-semibold uppercase tracking-[0.08em]">Fleet</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Vehicles</h1>
+                  </div>
+                  {/* Inline Stats */}
+                  <div className="hidden sm:flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 bg-green-50 text-green-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-green-200">
+                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                      {activeCount} Operational
+                    </span>
+                    {inServiceCount > 0 && (
+                      <span className="flex items-center gap-1.5 bg-yellow-50 text-yellow-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-yellow-200">
+                        {inServiceCount} In Service
+                      </span>
+                    )}
+                    {brokenDownCount > 0 && (
+                      <span className="flex items-center gap-1.5 bg-red-50 text-red-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-red-200">
+                        {brokenDownCount} Down
+                      </span>
+                    )}
+                    {idleCount > 0 && (
+                      <span className="flex items-center gap-1.5 bg-orange-50 text-orange-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-orange-200">
+                        {idleCount} Idle
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-yellow-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default flex-shrink-0">
-                  <p className="text-xs text-gray-500 font-medium mb-0.5">In Service</p>
-                  <p className="text-xl font-bold text-gray-900">{inServiceCount}</p>
-                </div>
-                {forSaleCount > 0 && (
-                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-purple-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default flex-shrink-0">
-                    <p className="text-xs text-gray-500 font-medium mb-0.5">For Sale</p>
-                    <p className="text-lg font-semibold text-gray-900">{forSaleCount}</p>
-                  </div>
-                )}
-                {idleCount > 0 && (
-                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-orange-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default flex-shrink-0">
-                    <p className="text-xs text-gray-500 font-medium mb-0.5">Idle</p>
-                    <p className="text-lg font-semibold text-gray-900">{idleCount}</p>
-                  </div>
-                )}
-                {brokenDownCount > 0 && (
-                  <div className="card-surface px-3.5 py-2 rounded-lg text-sm border-l-4 border-red-500 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-default flex-shrink-0">
-                    <p className="text-xs text-gray-500 font-medium mb-0.5">Broken Down</p>
-                    <p className="text-xl font-bold text-gray-900">{brokenDownCount}</p>
-                  </div>
-                )}
               </div>
 
               {/* Toolbar: Compact and Intuitive */}
@@ -1381,7 +1387,8 @@ export default function VehiclesPage() {
                           onChange={(e) => setFormData({ ...formData, vehicleType: e.target.value as any })}
                         >
                           <option value="Vehicle">Vehicle (Truck, Car, Van)</option>
-                          <option value="Equipment">Equipment (Loader, Mower, Gator)</option>
+                          <option value="Equipment">Heavy Equipment (Loader, Mower, Gator)</option>
+                          <option value="Small Equipment">Small Equipment (Tools, Compactors)</option>
                           <option value="Trailer">Trailer (Flatbed, Cargo)</option>
                         </select>
                       </label>

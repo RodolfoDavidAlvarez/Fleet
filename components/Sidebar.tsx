@@ -19,6 +19,7 @@ import {
   Megaphone,
   Bug,
   ClipboardCheck,
+  ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useMemo, useCallback } from 'react'
@@ -37,6 +38,7 @@ const unifiedLinks = [
   { href: '/service-records', label: 'Service Records', icon: FileText },
   { href: '/admin/drivers', label: 'Members', icon: Users },
   { href: '/admin/inspections', label: 'Inspections', icon: ClipboardCheck },
+  { href: '/admin/compliance', label: 'Compliance', icon: ShieldCheck },
 ]
 
 const adminOnlyLinks = [

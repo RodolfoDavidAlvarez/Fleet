@@ -64,7 +64,7 @@ export interface Vehicle {
   title?: string;
   photoUrls?: string[];
   airtableId?: string;
-  vehicleType?: "Vehicle" | "Equipment" | "Trailer";
+  vehicleType?: "Vehicle" | "Equipment" | "Trailer" | "Small Equipment";
   createdAt: string;
   repairRequests?: RepairRequest[];
   mileageHistory?: MileageHistory[];

@@ -1,17 +1,19 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Check, Loader2, Truck, Container, Construction, HelpCircle, ChevronDown } from "lucide-react";
+import { Check, Loader2, Truck, Container, Construction, HelpCircle, ChevronDown, Wrench } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+type VehicleTypeValue = "Vehicle" | "Equipment" | "Trailer" | "Small Equipment";
+
 interface EditableVehicleTypeProps {
-  vehicleType: "Vehicle" | "Equipment" | "Trailer" | undefined;
-  onUpdate: (newType: "Vehicle" | "Equipment" | "Trailer") => Promise<void>;
+  vehicleType: VehicleTypeValue | undefined;
+  onUpdate: (newType: VehicleTypeValue) => Promise<void>;
   className?: string;
 }
 
 const TYPE_OPTIONS: {
-  value: "Vehicle" | "Equipment" | "Trailer";
+  value: VehicleTypeValue;
   label: string;
   icon: typeof Truck;
   color: string;
@@ -30,6 +32,13 @@ const TYPE_OPTIONS: {
     icon: Construction,
     color: "text-purple-600",
     bgColor: "bg-purple-50",
+  },
+  {
+    value: "Small Equipment",
+    label: "Small Equipment",
+    icon: Wrench,
+    color: "text-teal-600",
+    bgColor: "bg-teal-50",
   },
   {
     value: "Trailer",
@@ -61,7 +70,7 @@ export default function EditableVehicleType({ vehicleType, onUpdate, className =
     };
   }, [isOpen]);
 
-  const handleSelect = async (newType: "Vehicle" | "Equipment" | "Trailer") => {
+  const handleSelect = async (newType: VehicleTypeValue) => {
     if (newType === vehicleType) {
       setIsOpen(false);
       return;
@@ -104,7 +113,7 @@ export default function EditableVehicleType({ vehicleType, onUpdate, className =
           <TypeIcon className={`h-3.5 w-3.5 ${typeColor} flex-shrink-0`} />
         )}
         <span className={`${typeColor} whitespace-nowrap overflow-hidden text-ellipsis flex-1 min-w-0 text-left`}>
-          {currentType?.value === "Equipment" ? "Equip." : currentType?.label || "Vehicle"}
+          {currentType?.value === "Equipment" ? "Equip." : currentType?.value === "Small Equipment" ? "Sm. Equip." : currentType?.label || "Vehicle"}
         </span>
         {!isSaving && <ChevronDown className={`h-3 w-3 ${typeColor} transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`} />}
       </button>

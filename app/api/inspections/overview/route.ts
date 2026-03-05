@@ -78,23 +78,27 @@ export async function GET(req: NextRequest) {
       const vInspections = inspectionsByVehicle.get(v.id) || [];
       const latest = vInspections[0]; // already sorted desc
 
-      let healthStatus: "green" | "yellow" | "red" = "red"; // default: no inspection
+      // healthStatus reflects INSPECTION RECENCY only (green/yellow/red = timing)
+      // hasCriticalIssues is a separate flag for condition problems
+      let healthStatus: "green" | "yellow" | "red" = "red"; // default: no inspection = overdue
       let daysSinceInspection: number | null = null;
+      let hasCriticalIssues = false;
 
       if (latest) {
         inspectedCount++;
         const inspDate = new Date(latest.created_at).getTime();
         daysSinceInspection = Math.floor((now - inspDate) / (24 * 60 * 60 * 1000));
 
+        // Health status based on inspection recency ONLY
         if (daysSinceInspection <= 30) healthStatus = "green";
         else if (daysSinceInspection <= 60) healthStatus = "yellow";
         else healthStatus = "red";
 
-        // Check for critical conditions
+        // Check for critical conditions (separate from overdue)
         const hasCritical = ["tire_condition", "brake_condition", "fluid_levels", "body_condition"]
           .some(f => latest[f] === "critical" || latest[f] === "poor");
-        if (hasCritical) {
-          healthStatus = "red";
+        if (hasCritical || latest.warning_lights_on) {
+          hasCriticalIssues = true;
           criticalCount++;
           flaggedItems.push({
             vehicleNumber: v.vehicle_number,
@@ -110,10 +114,6 @@ export async function GET(req: NextRequest) {
             inspectionDate: latest.created_at,
           });
         }
-
-        if (latest.warning_lights_on) {
-          healthStatus = "red";
-        }
       }
 
       if (healthStatus === "red") overdueCount++;
@@ -122,6 +122,7 @@ export async function GET(req: NextRequest) {
         ...v,
         assignedDriver: v.driver_id ? driverMap.get(v.driver_id) || null : null,
         healthStatus,
+        hasCriticalIssues,
         daysSinceInspection,
         latestInspection: latest || null,
         inspectionCount: vInspections.length,
