@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { normalizePhoneNumber } from "@/lib/airtable";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password, phone, role } = await request.json();
+    const body = await request.json();
+    const { name, email, password, role } = body;
+    const phone = normalizePhoneNumber(body.phone) || body.phone || null;
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: "Name, email, and password are required" }, { status: 400 });

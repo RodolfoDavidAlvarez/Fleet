@@ -20,6 +20,8 @@ import {
   Search,
   ChevronDown,
   Check,
+  ClipboardCheck,
+  Send,
 } from "lucide-react";
 import { Vehicle, VehicleStatus } from "@/types";
 import { useToast } from "@/components/ui/toast";
@@ -45,6 +47,7 @@ export default function VehicleDetailPage() {
   const [driverSearch, setDriverSearch] = useState("");
   const driverDropdownRef = useRef<HTMLDivElement>(null);
   const justSavedRef = useRef(false);
+  const [sendingInspection, setSendingInspection] = useState(false);
 
   // Load persisted driver search from localStorage
   useEffect(() => {
@@ -428,6 +431,28 @@ export default function VehicleDetailPage() {
     }
   };
 
+  const handleSendInspection = async () => {
+    if (!vehicle?.driverId) return;
+    setSendingInspection(true);
+    try {
+      const res = await fetch("/api/inspections/send-reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ driverId: vehicle.driverId }),
+      });
+      if (res.ok) {
+        showToast("Inspection form sent to driver!", "success");
+      } else {
+        const err = await res.json();
+        showToast(err.error || "Failed to send", "error");
+      }
+    } catch {
+      showToast("Failed to send inspection form", "error");
+    } finally {
+      setSendingInspection(false);
+    }
+  };
+
   if (!user) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
@@ -542,10 +567,26 @@ export default function VehicleDetailPage() {
                     </button>
                   </>
                 ) : (
-                  <button onClick={() => setIsEditing(true)} className="btn btn-primary flex items-center gap-2">
-                    <Edit2 className="h-4 w-4" />
-                    Edit Vehicle
-                  </button>
+                  <>
+                    {vehicle?.driverId && (
+                      <button
+                        onClick={handleSendInspection}
+                        disabled={sendingInspection}
+                        className="btn btn-secondary flex items-center gap-2 text-sm"
+                      >
+                        {sendingInspection ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ClipboardCheck className="h-4 w-4" />
+                        )}
+                        Send Inspection
+                      </button>
+                    )}
+                    <button onClick={() => setIsEditing(true)} className="btn btn-primary flex items-center gap-2">
+                      <Edit2 className="h-4 w-4" />
+                      Edit Vehicle
+                    </button>
+                  </>
                 )}
               </div>
             </div>

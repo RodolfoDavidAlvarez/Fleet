@@ -480,7 +480,6 @@ export default function ServiceReportForm({
                       value={form.date}
                       onChange={(value) => setForm({ ...form, date: value })}
                       placeholder="Select a date"
-                      minDate={new Date().toISOString().split("T")[0]}
                     />
                   </label>
 

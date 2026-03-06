@@ -6,6 +6,7 @@ import { optimizeAndStoreImages } from "@/lib/media";
 import { notifyAdminOfRepair, sendRepairSubmissionNotice } from "@/lib/twilio";
 import { sendRepairSubmissionEmail, notifyAdminNewRepairRequest } from "@/lib/email";
 import { createServerClient } from "@/lib/supabase";
+import { normalizePhoneNumber } from "@/lib/airtable";
 
 export const runtime = "nodejs";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB per image
@@ -132,6 +133,11 @@ export async function POST(request: NextRequest) {
       };
     }
 
+    // Normalize phone number to E.164 format before saving
+    if (parsed.data.driverPhone) {
+      parsed.data.driverPhone = normalizePhoneNumber(parsed.data.driverPhone) || parsed.data.driverPhone;
+    }
+
     const record = await repairRequestDB.create({
       ...parsed.data,
       odometer: parsed.data.odometer ?? undefined,
@@ -155,8 +161,8 @@ export async function POST(request: NextRequest) {
 
     const asyncNotifications: Promise<unknown>[] = [];
 
-    // Only send SMS to driver if they consented
-    if (record.driverPhone && parsed.data.smsConsent) {
+    // Send SMS confirmation to driver if phone provided
+    if (record.driverPhone) {
       asyncNotifications.push(
         sendRepairSubmissionNotice(record.driverPhone, {
           requestId: record.id,
@@ -208,9 +214,12 @@ export async function POST(request: NextRequest) {
                   notifyAdminOfRepair(
                     {
                       requestId: record.id,
+                      requestNumber: record.requestNumber,
                       driverName: record.driverName,
                       driverPhone: record.driverPhone,
                       urgency: record.urgency,
+                      description: ai.summary || record.description,
+                      vehicleIdentifier: record.vehicleIdentifier,
                     },
                     admin.phone
                   )
@@ -221,12 +230,18 @@ export async function POST(request: NextRequest) {
                 asyncNotifications.push(
                   notifyAdminNewRepairRequest(admin.email, {
                     requestId: record.id,
+                    requestNumber: record.requestNumber,
                     driverName: record.driverName,
                     driverPhone: record.driverPhone,
                     driverEmail: record.driverEmail,
                     urgency: record.urgency,
                     summary: ai.summary,
+                    description: record.description,
                     vehicleIdentifier: record.vehicleIdentifier,
+                    photoUrls: record.photoUrls,
+                    division: record.division,
+                    vehicleType: record.vehicleType,
+                    incidentDate: record.incidentDate,
                   })
                 );
               }

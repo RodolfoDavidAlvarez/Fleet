@@ -3,6 +3,15 @@ import { createServerClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
+// Helper to get Monday of the week containing a given date
+function getWeekMonday(date: Date): string {
+  const d = new Date(date)
+  const day = d.getDay()
+  const mondayOffset = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + mondayOffset)
+  return d.toISOString().split('T')[0]
+}
+
 // API to check availability for multiple dates (for calendar display)
 export async function GET(request: NextRequest) {
   try {
@@ -44,91 +53,74 @@ export async function GET(request: NextRequest) {
       minBookingDate.setHours(0, 0, 0, 0)
     }
 
-    // Get all bookings in the date range
+    // Get ALL bookings in an extended range (to cover weekly limits across month boundaries)
+    const extendedStart = new Date(startDate + 'T12:00:00')
+    extendedStart.setDate(extendedStart.getDate() - 7) // Go back a week
+    const extendedEnd = new Date(endDate + 'T12:00:00')
+    extendedEnd.setDate(extendedEnd.getDate() + 7) // Go forward a week
+
     const { data: bookings } = await supabase
       .from('bookings')
       .select('scheduled_date, scheduled_time, status')
-      .gte('scheduled_date', startDate)
-      .lte('scheduled_date', endDate)
+      .gte('scheduled_date', extendedStart.toISOString().split('T')[0])
+      .lte('scheduled_date', extendedEnd.toISOString().split('T')[0])
       .in('status', ['pending', 'confirmed', 'in_progress'])
 
-    // Count bookings per date
-    const bookingsByDate: Record<string, number> = {}
+    // Count bookings per week (keyed by Monday date string)
+    const bookingsByWeek: Record<string, number> = {}
     bookings?.forEach((booking) => {
-      const date = booking.scheduled_date
-      bookingsByDate[date] = (bookingsByDate[date] || 0) + 1
+      const bDate = new Date(booking.scheduled_date + 'T12:00:00') // noon to avoid timezone issues
+      const monday = getWeekMonday(bDate)
+      bookingsByWeek[monday] = (bookingsByWeek[monday] || 0) + 1
     })
+
+    // Pre-compute slots info
+    const [startHour, startMin] = startTime.split(':').map(Number)
+    const [endHour, endMin] = endTime.split(':').map(Number)
+    const startMinutes = startHour * 60 + startMin
+    const endMinutes = endHour * 60 + endMin
+    const totalSlotTime = slotDuration + slotBufferTime
 
     // Check availability for each date in range
     const dateAvailability: Record<string, { hasSlots: boolean; slotCount: number }> = {}
-    const start = new Date(startDate + 'T00:00:00')
-    const end = new Date(endDate + 'T23:59:59')
-
-    // Count weekly bookings to check weekly limit
-    const weekStartDate = new Date(start)
-    const dayOfWeek = weekStartDate.getDay()
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-    weekStartDate.setDate(start.getDate() + mondayOffset)
-    weekStartDate.setHours(0, 0, 0, 0)
-    
-    const weekEndDate = new Date(weekStartDate)
-    weekEndDate.setDate(weekStartDate.getDate() + 6)
-    weekEndDate.setHours(23, 59, 59, 999)
-
-    const { count: weeklyBookings } = await supabase
-      .from('bookings')
-      .select('*', { count: 'exact', head: true })
-      .gte('scheduled_date', weekStartDate.toISOString().split('T')[0])
-      .lte('scheduled_date', weekEndDate.toISOString().split('T')[0])
-      .in('status', ['pending', 'confirmed', 'in_progress'])
-
-    const bookingsRemaining = maxBookingsPerWeek - (weeklyBookings || 0)
+    const start = new Date(startDate + 'T12:00:00') // Use noon to avoid timezone day shifts
+    const end = new Date(endDate + 'T12:00:00')
 
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const dateStr = d.toISOString().split('T')[0]
-      const dayOfWeek = d.getUTCDay()
-      const dateObj = new Date(dateStr + 'T00:00:00')
+      // Use local day of week (parsing YYYY-MM-DD at noon avoids timezone shifts)
+      const dayOfWeek = d.getDay()
+      const dateForCompare = new Date(dateStr + 'T00:00:00')
 
       // Check if date is within advance booking window
-      const isWithinAdvanceWindow = dateObj >= minBookingDate
+      const isWithinAdvanceWindow = dateForCompare >= minBookingDate
 
       // Check if it's a working day
       const isWorkingDay = workingDays.includes(dayOfWeek)
 
-      if (isWorkingDay && isWithinAdvanceWindow && bookingsRemaining > 0) {
+      // Check weekly booking limit for THIS date's week
+      const weekMonday = getWeekMonday(d)
+      const weekBookingCount = bookingsByWeek[weekMonday] || 0
+      const hasWeeklyCapacity = weekBookingCount < maxBookingsPerWeek
+
+      if (isWorkingDay && isWithinAdvanceWindow && hasWeeklyCapacity) {
         // Calculate available slots for this date
-        const [startHour, startMin] = startTime.split(':').map(Number)
-        const [endHour, endMin] = endTime.split(':').map(Number)
-        
-        const startMinutes = startHour * 60 + startMin
-        const endMinutes = endHour * 60 + endMin
-        
-        // Total time per slot = slotDuration + slotBufferTime
-        const totalSlotTime = slotDuration + slotBufferTime
-        
         let availableSlotCount = 0
         for (let minutes = startMinutes; minutes < endMinutes; minutes += totalSlotTime) {
-          // Check if there's enough time for a full slot
           if (minutes + slotDuration > endMinutes) break
-          
-          const hour = Math.floor(minutes / 60)
-          const min = minutes % 60
-          const timeString = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`
-          
-          // Check if this slot overlaps with any existing booking
+
           const slotStartMinutes = minutes
           const slotEndMinutes = minutes + slotDuration + slotBufferTime
-          
+
+          // Check if this slot overlaps with any existing booking on this date
           const hasOverlap = bookings?.some((b) => {
             if (b.scheduled_date !== dateStr) return false
             const [bookingHour, bookingMin] = b.scheduled_time.split(':').map(Number)
             const bookingStartMinutes = bookingHour * 60 + bookingMin
             const bookingEndMinutes = bookingStartMinutes + slotDuration + slotBufferTime
-            
-            // Check for overlap
             return slotStartMinutes < bookingEndMinutes && slotEndMinutes > bookingStartMinutes
           })
-          
+
           if (!hasOverlap) {
             availableSlotCount++
           }
@@ -160,4 +152,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

@@ -114,6 +114,38 @@ export function exportVehicles(vehicles: any[]) {
 }
 
 /**
+ * Export fleet refresh data to CSV
+ */
+export function exportFleetRefresh(vehicles: any[], departmentFilter?: string) {
+  const exportData = vehicles.map(vehicle => ({
+    'Vehicle #': vehicle.vehicleNumber || '',
+    'Make': vehicle.make || '',
+    'Model': vehicle.model || '',
+    'Year': vehicle.year || '',
+    'Department': vehicle.department || '',
+    'Status': vehicle.status || '',
+    'Vehicle Type': vehicle.vehicleType || '',
+    'Current Mileage': vehicle.currentMileage || 0,
+    'Last Service Date': vehicle.lastServiceDate || '',
+    'Last Service Mileage': vehicle.lastServiceMileage || '',
+    'Miles Since Service': vehicle.milesSinceService !== null ? vehicle.milesSinceService : '',
+    'Days Since Service': vehicle.daysSinceService !== null ? vehicle.daysSinceService : '',
+    'Service Status': vehicle.maintenanceStatus === 'overdue' ? 'OVERDUE'
+      : vehicle.maintenanceStatus === 'due_soon' ? 'DUE SOON'
+      : vehicle.maintenanceStatus === 'good' ? 'GOOD'
+      : 'NO RECORD',
+    'Driver Name': vehicle.driverName || '',
+    'Driver Email': vehicle.driverEmail || '',
+    'Driver Phone': vehicle.driverPhone || '',
+    'VIN': vehicle.vin || '',
+    'License Plate': vehicle.licensePlate || '',
+  }))
+
+  const suffix = departmentFilter && departmentFilter !== 'all' ? `_${departmentFilter.replace(/\s+/g, '_').toLowerCase()}` : ''
+  downloadCSV(exportData, `maintenance_tracker${suffix}`)
+}
+
+/**
  * Export bookings to CSV
  */
 export function exportBookings(bookings: any[]) {

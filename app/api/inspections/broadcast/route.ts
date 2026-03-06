@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
       description,
       dueDate,
       frequency,
+      driverIds,
     } = body;
 
     if (!title || !dueDate) {
@@ -22,13 +23,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get all drivers with phone numbers
-    const { data: drivers } = await supabase
+    // Get drivers — either specific ones or all approved drivers with phone numbers
+    let query = supabase
       .from("users")
       .select("id, name, phone, preferred_language")
-      .in("role", ["driver", "customer"])
-      .eq("approval_status", "approved")
       .not("phone", "is", null);
+
+    if (driverIds && Array.isArray(driverIds) && driverIds.length > 0) {
+      query = query.in("id", driverIds);
+    } else {
+      query = query.in("role", ["driver", "customer"]).eq("approval_status", "approved");
+    }
+
+    const { data: drivers } = await query;
 
     const driverCount = drivers?.length || 0;
 

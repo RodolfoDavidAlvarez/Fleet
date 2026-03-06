@@ -92,11 +92,6 @@ export default function DatePicker({
   const isDateDisabled = (day: number | null) => {
     if (day === null) return true;
     const dateString = formatDateString(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-    const date = new Date(dateString + "T00:00:00");
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (date < today) return true; // Can't select past dates
     if (minDate && dateString < minDate) return true;
     if (maxDate && dateString > maxDate) return true;
     return false;

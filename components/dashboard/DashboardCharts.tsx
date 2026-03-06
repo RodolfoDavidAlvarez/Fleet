@@ -7,7 +7,7 @@ interface DashboardChartsProps {
   stats: DashboardStats;
 }
 
-const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#0ea5e9"];
+const COLORS = ["#10b981", "#f59e0b", "#d97706", "#ef4444", "#8b5cf6", "#b45309"];
 const URGENCY_COLOR: Record<string, string> = {
   critical: "#ef4444",
   high: "#f97316",

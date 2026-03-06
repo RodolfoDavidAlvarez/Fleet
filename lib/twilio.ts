@@ -160,9 +160,12 @@ export async function sendRepairSubmissionNotice(
 export async function notifyAdminOfRepair(
   details: {
     requestId: string;
+    requestNumber?: number;
     driverName?: string;
     driverPhone?: string;
     urgency?: string;
+    description?: string;
+    vehicleIdentifier?: string;
   },
   toPhone?: string
 ) {
@@ -171,7 +174,12 @@ export async function notifyAdminOfRepair(
   if (!targetPhone) {
     return false;
   }
-  const message = `New repair request #${details.requestId}\nDriver: ${details.driverName || "Unknown"} (${details.driverPhone || "n/a"})\nUrgency: ${details.urgency || "unspecified"}.`;
+  // Use short request number if available, otherwise last 8 chars of UUID
+  const displayId = details.requestNumber ? `#${details.requestNumber}` : `#${details.requestId.slice(-8)}`;
+  const vehicle = details.vehicleIdentifier ? `\nVehicle: ${details.vehicleIdentifier}` : "";
+  // Truncate description to keep SMS concise
+  const issue = details.description ? `\nIssue: ${details.description.substring(0, 120)}${details.description.length > 120 ? "..." : ""}` : "";
+  const message = `🔧 Repair ${displayId}\nDriver: ${details.driverName || "Unknown"}${vehicle}${issue}\nUrgency: ${details.urgency || "unspecified"}`;
   return sendSMS(targetPhone, message);
 }
 

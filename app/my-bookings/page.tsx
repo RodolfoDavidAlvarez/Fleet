@@ -118,9 +118,9 @@ export default function MyBookingsPage() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      confirmed: 'bg-green-100 text-green-700',
-      pending: 'bg-yellow-100 text-yellow-700',
-      in_progress: 'bg-blue-100 text-blue-700',
+      confirmed: 'bg-emerald-100 text-emerald-700',
+      pending: 'bg-amber-100 text-amber-700',
+      in_progress: 'bg-amber-50 text-amber-600',
       completed: 'bg-gray-100 text-gray-600',
       cancelled: 'bg-red-100 text-red-700',
     }
@@ -129,9 +129,9 @@ export default function MyBookingsPage() {
 
   const getStatusBorderColor = (status: string) => {
     const colors: Record<string, string> = {
-      confirmed: 'border-l-green-500',
-      pending: 'border-l-yellow-400',
-      in_progress: 'border-l-blue-500',
+      confirmed: 'border-l-emerald-500',
+      pending: 'border-l-amber-500',
+      in_progress: 'border-l-amber-400',
       completed: 'border-l-gray-300',
       cancelled: 'border-l-red-500',
     }
@@ -149,7 +149,7 @@ export default function MyBookingsPage() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-slate-400" />
-            <span className="text-xl font-extrabold tracking-tight text-gray-900">{booking.scheduledTime || 'TBD'}</span>
+            <span className="text-xl font-extrabold tracking-tight font-mono text-gray-900">{booking.scheduledTime || 'TBD'}</span>
           </div>
           <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${getStatusBadge(booking.status)}`}>
             {booking.status.replace('_', ' ')}
@@ -167,7 +167,7 @@ export default function MyBookingsPage() {
           <p className="text-sm text-gray-500">{booking.customerName}</p>
           <a
             href={`tel:${booking.customerPhone}`}
-            className="flex items-center gap-2 px-4 py-2 bg-[var(--primary-600)] text-white rounded-lg text-sm font-semibold hover:opacity-90 active:opacity-80 transition-opacity"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-500 active:bg-amber-700 transition-colors"
           >
             <Phone className="w-4 h-4" />
             Call
@@ -326,15 +326,15 @@ export default function MyBookingsPage() {
               <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Summary</h3>
               <div className="grid grid-cols-3 gap-2.5">
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3.5 text-center">
-                  <p className="text-3xl font-extrabold tracking-tight text-slate-800">{todayBookings.length}</p>
+                  <p className="text-3xl font-extrabold tracking-tight font-mono text-slate-800">{todayBookings.length}</p>
                   <p className="text-[11px] font-medium text-gray-400 mt-0.5">Today</p>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3.5 text-center">
-                  <p className="text-3xl font-extrabold tracking-tight text-slate-800">{tomorrowBookings.length}</p>
+                  <p className="text-3xl font-extrabold tracking-tight font-mono text-slate-800">{tomorrowBookings.length}</p>
                   <p className="text-[11px] font-medium text-gray-400 mt-0.5">Tomorrow</p>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3.5 text-center">
-                  <p className="text-3xl font-extrabold tracking-tight text-slate-800">{upcomingBookings.length}</p>
+                  <p className="text-3xl font-extrabold tracking-tight font-mono text-slate-800">{upcomingBookings.length}</p>
                   <p className="text-[11px] font-medium text-gray-400 mt-0.5">Upcoming</p>
                 </div>
               </div>

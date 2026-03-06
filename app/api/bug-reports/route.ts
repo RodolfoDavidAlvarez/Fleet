@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 import sharp from "sharp";
+import { sendSMS } from "@/lib/twilio";
 
 // Service role client for storage operations (bypasses RLS)
 const supabaseAdmin = createClient(
@@ -445,21 +446,24 @@ export async function POST(request: NextRequest) {
           </html>
         `;
 
-        // Send email asynchronously (don't await to avoid blocking)
-        // Note: Using onboarding@resend.dev until agavefleet.com domain is verified
-        // Sending to ralvarez@bettersystems.ai (account owner) - Resend test mode restriction
-        // To send to any email: verify agavefleet.com at https://resend.com/domains
+        // Send email notification to Rodo
         resend.emails
           .send({
-            from: "AgaveFleet Bug Reports <onboarding@resend.dev>",
-            to: "ralvarez@bettersystems.ai",
-            subject: `🐛 New Bug Report: ${sanitizedTitle.substring(0, 50)}${sanitizedTitle.length > 50 ? "..." : ""}`,
+            from: "AgaveFleet <ralvarez@bettersystems.ai>",
+            to: "rodolfo@bettersystems.ai",
+            subject: `🐛 Bug Report: ${sanitizedTitle.substring(0, 50)}${sanitizedTitle.length > 50 ? "..." : ""}`,
             html: emailHtml,
-            reply_to: userEmail, // Allow developer to reply directly to the user
+            reply_to: userEmail,
           })
           .catch((emailError) => {
-            console.error("Error sending email (non-critical):", emailError);
+            console.error("Error sending bug report email (non-critical):", emailError);
           });
+
+        // Send SMS notification to Rodo
+        const smsBody = `🐛 AgaveFleet Bug Report\nFrom: ${userName}\nTitle: ${sanitizedTitle.substring(0, 100)}\n${sanitizedDescription.substring(0, 150)}`;
+        sendSMS("+19285501649", smsBody).catch((smsError) => {
+          console.error("Error sending bug report SMS (non-critical):", smsError);
+        });
       } catch (emailError) {
         console.error("Error preparing email (non-critical):", emailError);
         // Don't fail the request if email fails

@@ -2,12 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
 
-// POST - Generate and send monthly compliance report email
+// GET - Cron endpoint for monthly compliance report (called by Vercel cron on 1st of each month)
+export async function GET() {
+  return generateAndSendReport({});
+}
+
+// POST - Manual send from compliance dashboard
 export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => ({}));
+  return generateAndSendReport(body);
+}
+
+async function generateAndSendReport(body: any) {
   try {
     const supabase = createServerClient();
-    const body = await req.json().catch(() => ({}));
-    const { recipients } = body;
+    const { recipients, scheduledAt } = body;
 
     // Fetch compliance data directly (not via HTTP to avoid localhost issues)
     const { data: vehicles } = await supabase
@@ -347,10 +356,11 @@ export async function POST(req: NextRequest) {
 </td></tr></table>
 </body></html>`;
 
-    // Send to all recipients
+    // Send to all recipients (with optional scheduling)
     let sentCount = 0;
+    const emailOptions = scheduledAt ? { scheduledAt } : undefined;
     for (const email of toEmails) {
-      const sent = await sendEmail(email, `Fleet Report — ${monthYear} | ${overallPct}% Compliance`, html);
+      const sent = await sendEmail(email, `Fleet Report — ${monthYear} | ${overallPct}% Compliance`, html, undefined, emailOptions);
       if (sent) sentCount++;
     }
 

@@ -294,6 +294,10 @@ export default function InspectionsDashboard() {
   });
   const [broadcasting, setBroadcasting] = useState(false);
   const [broadcastResult, setBroadcastResult] = useState<string | null>(null);
+  const [broadcastMode, setBroadcastMode] = useState<"all" | "select">("all");
+  const [broadcastDriverSearch, setBroadcastDriverSearch] = useState("");
+  const [selectedDriverIds, setSelectedDriverIds] = useState<Set<string>>(new Set());
+  const [allDrivers, setAllDrivers] = useState<any[]>([]);
 
   // Default to "feed" tab
   const [activeTab, setActiveTab] = useState<"vehicles" | "feed">("feed");
@@ -379,14 +383,36 @@ export default function InspectionsDashboard() {
     }
   }, []);
 
+  // Fetch all drivers when broadcast modal opens
+  const openBroadcastModal = useCallback(async () => {
+    setShowBroadcast(true);
+    setBroadcastMode("all");
+    setSelectedDriverIds(new Set());
+    setBroadcastDriverSearch("");
+    try {
+      const res = await fetch("/api/drivers?approval_status=approved");
+      if (res.ok) {
+        const result = await res.json();
+        setAllDrivers((result.drivers || result).filter((d: any) => d.phone));
+      }
+    } catch (err) {
+      console.error("Failed to load drivers:", err);
+    }
+  }, []);
+
   const handleBroadcast = async () => {
+    if (broadcastMode === "select" && selectedDriverIds.size === 0) return;
     setBroadcasting(true);
     setBroadcastResult(null);
     try {
+      const payload: any = { ...broadcastForm };
+      if (broadcastMode === "select") {
+        payload.driverIds = Array.from(selectedDriverIds);
+      }
       const res = await fetch("/api/inspections/broadcast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(broadcastForm),
+        body: JSON.stringify(payload),
       });
       const result = await res.json();
       if (res.ok) {
@@ -502,7 +528,7 @@ export default function InspectionsDashboard() {
                 </h1>
               </div>
               <button
-                onClick={() => setShowBroadcast(true)}
+                onClick={openBroadcastModal}
                 className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white font-semibold rounded-xl hover:bg-gray-800 transition-colors"
               >
                 <Megaphone className="h-4 w-4" />
@@ -939,16 +965,14 @@ export default function InspectionsDashboard() {
       {/* Broadcast Modal */}
       {showBroadcast && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-gray-900">Broadcast Inspection Request</h2>
-              <button onClick={() => setShowBroadcast(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setShowBroadcast(false)} className="text-gray-400 hover:text-gray-600 text-xl">
                 &times;
               </button>
             </div>
-            <p className="text-sm text-gray-500">
-              Send an SMS to all drivers with a link to the inspection form.
-            </p>
+
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
@@ -958,28 +982,122 @@ export default function InspectionsDashboard() {
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-                <input
-                  type="date"
-                  value={broadcastForm.dueDate}
-                  onChange={(e) => setBroadcastForm({ ...broadcastForm, dueDate: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    value={broadcastForm.dueDate}
+                    onChange={(e) => setBroadcastForm({ ...broadcastForm, dueDate: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+                  <select
+                    value={broadcastForm.frequency}
+                    onChange={(e) => setBroadcastForm({ ...broadcastForm, frequency: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                  >
+                    <option value="one_time">One Time</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                  </select>
+                </div>
               </div>
+
+              {/* Send To Selector */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
-                <select
-                  value={broadcastForm.frequency}
-                  onChange={(e) => setBroadcastForm({ ...broadcastForm, frequency: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                >
-                  <option value="one_time">One Time</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                </select>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Send To</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setBroadcastMode("all")}
+                    className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors border ${
+                      broadcastMode === "all"
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    All Drivers ({allDrivers.length})
+                  </button>
+                  <button
+                    onClick={() => setBroadcastMode("select")}
+                    className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors border ${
+                      broadcastMode === "select"
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    Select Drivers {selectedDriverIds.size > 0 && `(${selectedDriverIds.size})`}
+                  </button>
+                </div>
               </div>
+
+              {/* Driver Selection List */}
+              {broadcastMode === "select" && (
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="p-2 border-b border-gray-100">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                      <input
+                        value={broadcastDriverSearch}
+                        onChange={(e) => setBroadcastDriverSearch(e.target.value)}
+                        placeholder="Search drivers..."
+                        className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border-0 focus:ring-0 outline-none bg-gray-50"
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto divide-y divide-gray-50">
+                    {allDrivers
+                      .filter((d) =>
+                        !broadcastDriverSearch ||
+                        d.name?.toLowerCase().includes(broadcastDriverSearch.toLowerCase()) ||
+                        d.phone?.includes(broadcastDriverSearch)
+                      )
+                      .map((driver) => (
+                        <label
+                          key={driver.id}
+                          className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedDriverIds.has(driver.id)}
+                            onChange={() => {
+                              const next = new Set(selectedDriverIds);
+                              if (next.has(driver.id)) next.delete(driver.id);
+                              else next.add(driver.id);
+                              setSelectedDriverIds(next);
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{driver.name}</p>
+                            <p className="text-xs text-gray-500">{driver.phone}</p>
+                          </div>
+                        </label>
+                      ))}
+                    {allDrivers.filter((d) =>
+                      !broadcastDriverSearch ||
+                      d.name?.toLowerCase().includes(broadcastDriverSearch.toLowerCase())
+                    ).length === 0 && (
+                      <p className="text-sm text-gray-400 text-center py-4">No drivers found</p>
+                    )}
+                  </div>
+                  {selectedDriverIds.size > 0 && (
+                    <div className="px-3 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                      <span className="text-xs text-gray-500">{selectedDriverIds.size} selected</span>
+                      <button
+                        onClick={() => setSelectedDriverIds(new Set())}
+                        className="text-xs text-red-500 font-medium hover:text-red-700"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowBroadcast(false)}
@@ -989,11 +1107,11 @@ export default function InspectionsDashboard() {
               </button>
               <button
                 onClick={handleBroadcast}
-                disabled={broadcasting}
+                disabled={broadcasting || (broadcastMode === "select" && selectedDriverIds.size === 0)}
                 className="flex-1 py-2.5 bg-gray-900 text-white font-semibold rounded-xl hover:bg-gray-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
               >
                 <Megaphone className="h-4 w-4" />
-                {broadcasting ? "Sending..." : "Send SMS"}
+                {broadcasting ? "Sending..." : broadcastMode === "all" ? `Send to All (${allDrivers.length})` : `Send to ${selectedDriverIds.size} Drivers`}
               </button>
             </div>
           </div>

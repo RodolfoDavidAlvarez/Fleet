@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
 // PATCH - Update bug report status (admin only)
 export async function PATCH(
@@ -75,6 +78,30 @@ export async function PATCH(
         { error: 'Failed to update bug report' },
         { status: 500 }
       )
+    }
+
+    // Notify the submitter when their bug report is resolved
+    if (resend && (status === 'resolved' || status === 'closed') && bugReport.user_email) {
+      const statusLabel = status === 'resolved' ? 'Resolved' : 'Closed'
+      resend.emails.send({
+        from: 'AgaveFleet <ralvarez@bettersystems.ai>',
+        to: bugReport.user_email,
+        subject: `Your bug report has been ${statusLabel.toLowerCase()}: ${bugReport.title}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+              <h2 style="margin: 0;">Bug Report ${statusLabel}</h2>
+            </div>
+            <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-radius: 0 0 8px 8px;">
+              <p style="margin: 0 0 16px 0;"><strong>${bugReport.title}</strong></p>
+              ${admin_notes ? `<p style="margin: 0 0 16px 0; color: #374151;"><strong>Resolution:</strong> ${admin_notes}</p>` : ''}
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">Thank you for reporting this issue. If you continue to experience problems, please submit a new report.</p>
+            </div>
+          </div>
+        `,
+      }).catch((err) => {
+        console.error('Error sending resolution notification (non-critical):', err)
+      })
     }
 
     return NextResponse.json({

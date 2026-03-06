@@ -268,7 +268,7 @@ export default function ServiceRecordsPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-[var(--bg-secondary)]">
       <Sidebar role={user.role} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userName={user.name} userRole={user.role} userEmail={user.email} onMenuClick={() => setSidebarOpen(true)} />
@@ -277,9 +277,9 @@ export default function ServiceRecordsPage() {
             {/* Page header */}
             <div className="flex flex-col gap-3 sm:gap-4">
               <div>
-                <p className="text-xs sm:text-sm text-primary-700 font-semibold uppercase tracking-[0.08em]">Service Records</p>
+                <p className="text-xs sm:text-sm text-amber-600 font-semibold uppercase tracking-[0.08em]">Service Records</p>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Maintenance history</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">Maintenance history</h1>
                   <div className="flex items-center gap-1.5">
                     <span className="px-2 py-0.5 text-[11px] font-semibold bg-gray-100 text-gray-600 rounded-full">{records.length} total</span>
                     <span className="px-2 py-0.5 text-[11px] font-semibold bg-indigo-50 text-indigo-600 rounded-full">{statusCounts.active} active</span>
@@ -327,7 +327,7 @@ export default function ServiceRecordsPage() {
                       key={status}
                       onClick={() => setFilter(status)}
                       className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 ${
-                        filter === status ? "bg-gray-900 text-white shadow-sm" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                        filter === status ? "bg-amber-600 text-white shadow-sm" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                       }`}
                     >
                       {statusLabels[status] || "All"}
@@ -352,25 +352,25 @@ export default function ServiceRecordsPage() {
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-gray-50/80 border-b border-gray-200">
+                  <thead className="bg-slate-800 border-b border-gray-200">
                     <tr>
-                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("date")}>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-300 uppercase tracking-wider cursor-pointer hover:text-white select-none" onClick={() => toggleSort("date")}>
                         <span className="flex items-center gap-1">Date <SortIcon field="date" /></span>
                       </th>
-                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("serviceType")}>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-300 uppercase tracking-wider cursor-pointer hover:text-white select-none" onClick={() => toggleSort("serviceType")}>
                         <span className="flex items-center gap-1">Repair <SortIcon field="serviceType" /></span>
                       </th>
-                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Vehicle</th>
-                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("mechanicName")}>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-300 uppercase tracking-wider hidden lg:table-cell">Vehicle</th>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-300 uppercase tracking-wider cursor-pointer hover:text-white select-none" onClick={() => toggleSort("mechanicName")}>
                         <span className="flex items-center gap-1">Mechanic <SortIcon field="mechanicName" /></span>
                       </th>
-                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none text-right" onClick={() => toggleSort("cost")}>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-300 uppercase tracking-wider cursor-pointer hover:text-white select-none text-right" onClick={() => toggleSort("cost")}>
                         <span className="flex items-center gap-1 justify-end">Cost <SortIcon field="cost" /></span>
                       </th>
-                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none text-right hidden md:table-cell" onClick={() => toggleSort("mileage")}>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-300 uppercase tracking-wider cursor-pointer hover:text-white select-none text-right hidden md:table-cell" onClick={() => toggleSort("mileage")}>
                         <span className="flex items-center gap-1 justify-end">Mileage <SortIcon field="mileage" /></span>
                       </th>
-                      <th className="px-4 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none" onClick={() => toggleSort("status")}>
+                      <th className="px-4 py-2.5 text-[11px] font-semibold text-slate-300 uppercase tracking-wider cursor-pointer hover:text-white select-none" onClick={() => toggleSort("status")}>
                         <span className="flex items-center gap-1">Status <SortIcon field="status" /></span>
                       </th>
                     </tr>

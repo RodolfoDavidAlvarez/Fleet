@@ -234,7 +234,6 @@ export default function RepairRequestPage() {
     isImmediate: "false",
     description: "",
     date: new Date().toISOString().split("T")[0],
-    smsConsent: false,
   });
   const [photos, setPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -332,10 +331,6 @@ export default function RepairRequestPage() {
       errors.description = "Description is required";
     }
 
-    // Require SMS consent if phone is provided
-    if (form.driverPhone && !form.smsConsent) {
-      errors.smsConsent = t.smsConsentRequired;
-    }
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -382,7 +377,7 @@ export default function RepairRequestPage() {
     fd.append("description", form.description.trim());
     fd.append("incidentDate", form.date);
     fd.append("preferredLanguage", language);
-    fd.append("smsConsent", form.smsConsent ? "true" : "false");
+    fd.append("smsConsent", "true");
     photos.forEach((file) => fd.append("photos", file));
 
     // Show success immediately - don't make user wait for upload
@@ -749,34 +744,6 @@ export default function RepairRequestPage() {
                 </p>
               )}
             </label>
-
-            {/* SMS Consent */}
-            <div className="space-y-2">
-              <label
-                className={`flex items-start gap-3 cursor-pointer p-4 rounded-lg border transition-colors ${
-                  fieldErrors.smsConsent
-                    ? 'bg-red-50 border-red-300'
-                    : 'bg-gray-50 border-gray-200'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  name="smsConsent"
-                  checked={form.smsConsent}
-                  onChange={(e) => {
-                    setForm({ ...form, smsConsent: e.target.checked });
-                    if (fieldErrors.smsConsent) {
-                      setFieldErrors({ ...fieldErrors, smsConsent: "" });
-                    }
-                  }}
-                  className="mt-1 h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                />
-                <span className="text-sm text-gray-700">{t.smsConsent}</span>
-              </label>
-              {fieldErrors.smsConsent && (
-                <span className="text-sm text-red-600 block">{fieldErrors.smsConsent}</span>
-              )}
-            </div>
 
             <button type="submit" disabled={submitting} className="btn btn-primary w-full btn-lg">
               {submitting ? t.submitting : t.submit}

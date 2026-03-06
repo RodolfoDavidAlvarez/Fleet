@@ -199,7 +199,7 @@ export default function CompliancePage() {
               <div className="flex items-center gap-4">
                 <div>
                   <p className="text-xs text-primary-700 font-semibold uppercase tracking-[0.08em]">Fleet</p>
-                  <h1 className="text-2xl font-bold text-gray-900">Compliance</h1>
+                  <h1 className="text-2xl font-bold text-gray-900">Data Compliance</h1>
                 </div>
                 {data && (
                   <div className="hidden sm:flex items-center gap-2">

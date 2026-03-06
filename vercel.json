@@ -17,6 +17,10 @@
     {
       "path": "/api/bookings/daily-brief",
       "schedule": "0 13 * * 1-5"
+    },
+    {
+      "path": "/api/compliance/report",
+      "schedule": "0 16 1 * *"
     }
   ]
 }

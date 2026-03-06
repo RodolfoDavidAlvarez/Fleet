@@ -121,7 +121,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-primary-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-amber-50 flex flex-col">
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
         <div className="bg-white rounded-2xl shadow-2xl shadow-slate-200/60 w-full max-w-5xl overflow-hidden flex flex-col md:flex-row">
 
@@ -135,7 +135,7 @@ export default function LoginPage() {
 
             {/* Logo / Brand Area */}
             <div className="mb-10">
-              <div className="h-16 w-16 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-primary-500/25">
+              <div className="h-16 w-16 bg-gradient-to-br from-amber-500 to-amber-700 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-amber-500/25">
                 <Shield className="h-8 w-8 text-white" strokeWidth={2.5} />
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 mb-2">
@@ -221,7 +221,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="btn btn-primary w-full flex items-center justify-center gap-2.5 py-3.5 text-base font-semibold rounded-xl shadow-lg shadow-primary-500/20 hover:shadow-xl hover:shadow-primary-500/30 transition-all duration-200 mt-2"
+                className="btn btn-primary w-full flex items-center justify-center gap-2.5 py-3.5 text-base font-semibold rounded-xl shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 transition-all duration-200 mt-2"
               >
                 {loading ? (
                   <>
@@ -251,14 +251,14 @@ export default function LoginPage() {
             {/* Subtle grid pattern overlay */}
             <div className="absolute inset-0 bg-[size:20px_20px] bg-[image:linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)]" />
             {/* Radial glow accent */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-primary-500/10 rounded-full blur-3xl" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-amber-500/10 rounded-full blur-3xl" />
 
             <div className="relative z-10 p-10 lg:p-14 text-white space-y-10">
               {/* Panel Header */}
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-                    <Zap className="h-6 w-6 text-primary-400" />
+                    <Zap className="h-6 w-6 text-amber-400" />
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold tracking-tight">Fleet Management</h2>
@@ -284,9 +284,9 @@ export default function LoginPage() {
                   const Icon = item.icon
                   return (
                     <li key={i} className="flex items-start gap-4 group">
-                      <div className="border-l-2 border-primary-500/60 group-hover:border-primary-400 pl-4 transition-colors duration-200">
+                      <div className="border-l-2 border-amber-500/60 group-hover:border-amber-400 pl-4 transition-colors duration-200">
                         <div className="flex items-center gap-3 mb-1">
-                          <Icon className="h-4 w-4 text-primary-400 flex-shrink-0" />
+                          <Icon className="h-4 w-4 text-amber-400 flex-shrink-0" />
                           <span className="text-white font-semibold text-sm">{item.text}</span>
                         </div>
                         <p className="text-slate-400 text-xs pl-7">{item.desc}</p>

@@ -229,6 +229,7 @@ export default function UnifiedDashboard() {
       gradient: 'from-red-500 to-red-600',
       change: 'Requires attention',
       trend: (stats?.urgentRepairRequests || 0) > 0 ? 'down' : 'stable',
+      accent: 'border-l-red-500',
     },
     {
       title: 'Active Vehicles',
@@ -237,22 +238,25 @@ export default function UnifiedDashboard() {
       gradient: 'from-emerald-500 to-emerald-600',
       change: `${stats?.vehiclesInService || 0} in service`,
       trend: 'up',
+      accent: 'border-l-emerald-500',
     },
     {
       title: 'Maintenance Cost',
       value: `$${(stats?.totalMaintenanceCost || 0).toLocaleString()}`,
       icon: Wrench,
-      gradient: 'from-blue-500 to-blue-600',
+      gradient: 'from-amber-500 to-amber-600',
       change: 'Total spent',
       trend: 'stable',
+      accent: 'border-l-amber-500',
     },
     {
       title: 'Pending Bookings',
       value: stats?.pendingBookings || 0,
       icon: Calendar,
-      gradient: 'from-purple-500 to-purple-600',
+      gradient: 'from-slate-500 to-slate-600',
       change: `${stats?.totalBookings || 0} total`,
       trend: 'up',
+      accent: 'border-l-slate-400',
     },
   ]
 
@@ -310,7 +314,7 @@ export default function UnifiedDashboard() {
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-primary)]">
                   Fleet Overview
                 </h1>
-                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)] text-xs font-medium text-[var(--text-tertiary)]">
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--bg-tertiary)] border border-[var(--border)] text-xs font-mono font-medium text-[var(--text-tertiary)]">
                   <Clock className="h-3 w-3" />
                   {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                 </span>
@@ -363,10 +367,10 @@ export default function UnifiedDashboard() {
                 return (
                   <div
                     key={stat.title}
-                    className={`relative overflow-hidden rounded-xl border transition-all duration-200 group ${
+                    className={`relative overflow-hidden rounded-lg border-l-[3px] ${stat.accent} border border-[var(--border)] transition-all duration-200 group ${
                       isUrgent
-                        ? 'border-red-200 bg-gradient-to-br from-red-50 to-[var(--surface)] hover:border-red-300 hover:shadow-lg hover:shadow-red-500/10'
-                        : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary-200)] hover:shadow-lg hover:shadow-[var(--primary-500)]/5'
+                        ? 'bg-gradient-to-br from-red-50 to-[var(--surface)] hover:shadow-lg hover:shadow-red-500/10'
+                        : 'bg-[var(--surface)] hover:shadow-md'
                     }`}
                     style={{ animationDelay: `${idx * 0.05}s` }}
                   >
@@ -374,22 +378,20 @@ export default function UnifiedDashboard() {
                       <div className="flex items-center justify-between mb-3">
                         <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${
                           isUrgent ? 'text-red-500' : 'text-[var(--text-tertiary)]'
-                        } group-hover:scale-110 transition-transform`} />
+                        }`} />
                         <span className={`text-[10px] font-bold uppercase tracking-[0.1em] ${
                           isUrgent ? 'text-red-500' : 'text-[var(--text-tertiary)]'
                         }`}>
                           {stat.change}
                         </span>
                       </div>
-                      <p className={`text-3xl sm:text-4xl font-extrabold tracking-tight leading-none ${
+                      <p className={`text-3xl sm:text-4xl font-extrabold tracking-tight leading-none font-mono ${
                         isUrgent ? 'text-red-600' : 'text-[var(--text-primary)]'
                       }`}>
                         {stat.value}
                       </p>
                       <p className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mt-1">{stat.title}</p>
                     </div>
-                    {/* Bottom accent line */}
-                    <div className={`h-0.5 ${isUrgent ? 'bg-gradient-to-r from-red-500 to-orange-400' : 'bg-gradient-to-r from-transparent via-[var(--primary-300)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity'}`} />
                   </div>
                 )
               })}

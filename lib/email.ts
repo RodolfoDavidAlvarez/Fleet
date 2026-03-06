@@ -11,7 +11,7 @@ if (resendApiKey) {
   resend = new Resend(resendApiKey);
 }
 
-export async function sendEmail(to: string | string[], subject: string, html: string, text?: string): Promise<boolean> {
+export async function sendEmail(to: string | string[], subject: string, html: string, text?: string, options?: { scheduledAt?: string }): Promise<boolean> {
   if (!emailEnabled || !resend) {
     console.info("[Email disabled] Would send to:", to, subject);
     return false;
@@ -20,13 +20,19 @@ export async function sendEmail(to: string | string[], subject: string, html: st
   try {
     const recipients = Array.isArray(to) ? to : [to];
 
-    await resend.emails.send({
+    const payload: any = {
       from: `${fromName} <${fromEmail}>`,
       to: recipients,
       subject,
       html,
-      text: text || html.replace(/<[^>]*>/g, ""), // Strip HTML tags for text version
-    });
+      text: text || html.replace(/<[^>]*>/g, ""),
+    };
+
+    if (options?.scheduledAt) {
+      payload.scheduledAt = options.scheduledAt;
+    }
+
+    await resend.emails.send(payload);
 
     return true;
   } catch (error) {
@@ -399,50 +405,101 @@ export async function notifyAdminNewRepairRequest(
   adminEmail: string,
   details: {
     requestId: string;
+    requestNumber?: number;
     driverName: string;
     driverPhone?: string;
     driverEmail?: string;
     urgency: string;
     summary: string;
+    description?: string;
     vehicleIdentifier?: string;
+    photoUrls?: string[];
+    division?: string;
+    vehicleType?: string;
+    incidentDate?: string;
   }
 ): Promise<boolean> {
+  const urgencyColor = details.urgency === "critical" || details.urgency === "high" ? "#ef4444" : "#f59e0b";
+  const urgencyBg = details.urgency === "critical" || details.urgency === "high" ? "#fef2f2" : "#fffbeb";
+  const displayId = details.requestNumber ? `#${details.requestNumber}` : details.requestId.slice(0, 8);
+
+  const photosHtml = details.photoUrls && details.photoUrls.length > 0
+    ? `
+      <div style="margin-top: 20px;">
+        <p style="font-weight: 600; font-size: 14px; color: #374151; margin-bottom: 10px;">Photos (${details.photoUrls.length})</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          ${details.photoUrls.map(url => `<a href="${url}" target="_blank" style="display: inline-block;"><img src="${url}" alt="Repair photo" style="width: 180px; height: 140px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb;" /></a>`).join("")}
+        </div>
+      </div>`
+    : "";
+
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: ${details.urgency === "critical" || details.urgency === "high" ? "#ef4444" : "#f59e0b"}; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-        .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 5px 5px; }
-        .info-box { background-color: white; padding: 15px; margin: 10px 0; border-left: 4px solid ${details.urgency === "critical" || details.urgency === "high" ? "#ef4444" : "#f59e0b"}; }
-        .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px; }
-      </style>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>New Repair Request</h1>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f3f4f6; margin: 0; padding: 20px;">
+      <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+
+        <div style="background-color: ${urgencyColor}; color: white; padding: 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 600;">Repair Request ${displayId}</h1>
+          <p style="margin: 6px 0 0; font-size: 14px; opacity: 0.9;">${details.urgency.toUpperCase()} Priority</p>
         </div>
-        <div class="content">
-          <p>A new repair request has been submitted:</p>
-          
-          <div class="info-box">
-            <p><strong>Request ID:</strong> ${details.requestId}</p>
-            <p><strong>Driver:</strong> ${details.driverName}</p>
-            ${details.driverPhone ? `<p><strong>Phone:</strong> ${details.driverPhone}</p>` : ""}
-            ${details.driverEmail ? `<p><strong>Email:</strong> ${details.driverEmail}</p>` : ""}
-            <p><strong>Urgency:</strong> ${details.urgency}</p>
-            ${details.vehicleIdentifier ? `<p><strong>Vehicle:</strong> ${details.vehicleIdentifier}</p>` : ""}
-            <p><strong>Summary:</strong> ${details.summary}</p>
+
+        <div style="padding: 28px;">
+
+          <div style="background: ${urgencyBg}; border-left: 4px solid ${urgencyColor}; padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 15px; font-weight: 500; color: #111827;">${details.summary}</p>
           </div>
-          
-          <p>Please review and schedule as needed.</p>
+
+          ${details.description ? `
+          <div style="margin-bottom: 20px;">
+            <p style="font-weight: 600; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Driver Description</p>
+            <p style="margin: 0; font-size: 14px; color: #374151; background: #f9fafb; padding: 12px; border-radius: 6px;">${details.description}</p>
+          </div>` : ""}
+
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr style="border-bottom: 1px solid #f3f4f6;">
+              <td style="padding: 10px 0; color: #6b7280; width: 120px;">Driver</td>
+              <td style="padding: 10px 0; font-weight: 500;">${details.driverName}</td>
+            </tr>
+            ${details.driverPhone ? `<tr style="border-bottom: 1px solid #f3f4f6;">
+              <td style="padding: 10px 0; color: #6b7280;">Phone</td>
+              <td style="padding: 10px 0;"><a href="tel:${details.driverPhone}" style="color: #2563eb; text-decoration: none;">${details.driverPhone}</a></td>
+            </tr>` : ""}
+            ${details.driverEmail ? `<tr style="border-bottom: 1px solid #f3f4f6;">
+              <td style="padding: 10px 0; color: #6b7280;">Email</td>
+              <td style="padding: 10px 0;"><a href="mailto:${details.driverEmail}" style="color: #2563eb; text-decoration: none;">${details.driverEmail}</a></td>
+            </tr>` : ""}
+            ${details.vehicleIdentifier ? `<tr style="border-bottom: 1px solid #f3f4f6;">
+              <td style="padding: 10px 0; color: #6b7280;">Vehicle</td>
+              <td style="padding: 10px 0; font-weight: 500;">${details.vehicleIdentifier}</td>
+            </tr>` : ""}
+            ${details.division ? `<tr style="border-bottom: 1px solid #f3f4f6;">
+              <td style="padding: 10px 0; color: #6b7280;">Division</td>
+              <td style="padding: 10px 0;">${details.division}</td>
+            </tr>` : ""}
+            ${details.vehicleType ? `<tr style="border-bottom: 1px solid #f3f4f6;">
+              <td style="padding: 10px 0; color: #6b7280;">Type</td>
+              <td style="padding: 10px 0;">${details.vehicleType}</td>
+            </tr>` : ""}
+            ${details.incidentDate ? `<tr style="border-bottom: 1px solid #f3f4f6;">
+              <td style="padding: 10px 0; color: #6b7280;">Incident Date</td>
+              <td style="padding: 10px 0;">${details.incidentDate}</td>
+            </tr>` : ""}
+          </table>
+
+          ${photosHtml}
+
+          <div style="margin-top: 24px; text-align: center;">
+            <a href="https://agavefleet.com/admin/repair-requests" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 500; font-size: 14px;">View in Dashboard</a>
+          </div>
         </div>
-        <div class="footer">
-          <p>FleetPro Management System</p>
+
+        <div style="text-align: center; padding: 16px; border-top: 1px solid #f3f4f6; color: #9ca3af; font-size: 12px;">
+          Agave Fleet Management System
         </div>
       </div>
     </body>
@@ -450,7 +507,7 @@ export async function notifyAdminNewRepairRequest(
   `;
 
   const urgencyLabel = details.urgency.charAt(0).toUpperCase() + details.urgency.slice(1);
-  return sendEmail(adminEmail, `[${urgencyLabel}] New Repair Request: ${details.requestId}`, html);
+  return sendEmail(adminEmail, `[${urgencyLabel}] Repair Request ${displayId} — ${details.driverName}${details.vehicleIdentifier ? ` | ${details.vehicleIdentifier}` : ""}`, html);
 }
 
 // Mechanic Assignment Email
@@ -2407,4 +2464,179 @@ ${COMPANY_PHONE} • Flagstaff, Arizona
 © ${new Date().getFullYear()} Soil Seed and Water
   `;
   return sendEmail(email, "Vineyard Protocol: Elevate Your Grape Quality", html, text);
+}
+
+// ==================== DAILY BRIEF ====================
+
+/**
+ * Send daily brief email with today's bookings
+ * Professional, clean design - no emojis
+ */
+export async function sendDailyBriefEmail(
+  email: string,
+  details: {
+    recipientName: string;
+    date: string;
+    bookings: Array<{
+      time: string;
+      vehicleInfo: string;
+      serviceType: string;
+      customerName: string;
+      customerPhone: string;
+      notes?: string;
+    }>;
+  }
+): Promise<boolean> {
+  const bookingRows = details.bookings
+    .map(
+      (b) => `
+        <tr>
+          <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #1e293b;">${b.time}</td>
+          <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0;">
+            <div style="font-weight: 500; color: #1e293b;">${b.vehicleInfo || 'TBD'}</div>
+            <div style="color: #64748b; font-size: 13px; margin-top: 2px;">${b.serviceType}</div>
+          </td>
+          <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0;">
+            <div style="color: #1e293b;">${b.customerName}</div>
+            <div style="font-size: 13px; margin-top: 2px;">
+              <a href="tel:${b.customerPhone}" style="color: #0369a1; text-decoration: none;">${b.customerPhone}</a>
+            </div>
+          </td>
+          <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">${b.notes || '—'}</td>
+        </tr>
+      `
+    )
+    .join('');
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 40px 20px;">
+        <tr>
+          <td align="center">
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 640px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+
+              <!-- Header -->
+              <tr>
+                <td style="background-color: #0f172a; padding: 32px 40px;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td>
+                        <h1 style="margin: 0; font-size: 20px; font-weight: 600; color: #ffffff; letter-spacing: -0.025em;">AGAVEFLEET</h1>
+                        <p style="margin: 4px 0 0 0; font-size: 13px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Daily Operations Brief</p>
+                      </td>
+                      <td align="right" style="color: #94a3b8; font-size: 14px;">
+                        ${details.date}
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Summary Bar -->
+              <tr>
+                <td style="background-color: #0369a1; padding: 16px 40px;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="color: #ffffff; font-size: 15px;">
+                        <strong>${details.bookings.length}</strong> booking${details.bookings.length === 1 ? '' : 's'} scheduled
+                      </td>
+                      <td align="right">
+                        <a href="https://agavefleet.com/my-bookings" style="color: #ffffff; font-size: 13px; text-decoration: none;">View Schedule</a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Content -->
+              <tr>
+                <td style="padding: 32px 40px;">
+                  <p style="margin: 0 0 24px 0; font-size: 15px; color: #334155; line-height: 1.5;">
+                    ${details.recipientName},
+                  </p>
+                  <p style="margin: 0 0 24px 0; font-size: 15px; color: #334155; line-height: 1.5;">
+                    Below is your schedule for today. Contact information is included for each appointment.
+                  </p>
+
+                  <!-- Bookings Table -->
+                  <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden;">
+                    <thead>
+                      <tr style="background-color: #f8fafc;">
+                        <th style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0;">Time</th>
+                        <th style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0;">Vehicle</th>
+                        <th style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0;">Contact</th>
+                        <th style="padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0;">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${bookingRows}
+                    </tbody>
+                  </table>
+
+                  <!-- CTA -->
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 32px;">
+                    <tr>
+                      <td align="center">
+                        <a href="https://agavefleet.com/my-bookings" style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 14px 32px; font-size: 14px; font-weight: 500; text-decoration: none; border-radius: 6px;">View Full Schedule</a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f8fafc; padding: 24px 40px; border-top: 1px solid #e2e8f0;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="font-size: 13px; color: #64748b;">
+                        AgaveFleet<br>
+                        Agave Environmental Contracting, Inc.
+                      </td>
+                      <td align="right" style="font-size: 12px; color: #94a3b8;">
+                        agavefleet.com
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const bookingsText = details.bookings
+    .map(
+      (b, i) =>
+        `${i + 1}. ${b.time} - ${b.vehicleInfo || 'TBD'} - ${b.serviceType}\n   Contact: ${b.customerName} | ${b.customerPhone}${b.notes ? `\n   Notes: ${b.notes}` : ''}`
+    )
+    .join('\n\n');
+
+  const text = `AGAVEFLEET - DAILY OPERATIONS BRIEF
+${details.date}
+
+${details.recipientName},
+
+${details.bookings.length} booking${details.bookings.length === 1 ? '' : 's'} scheduled for today:
+
+${bookingsText}
+
+View full schedule: https://agavefleet.com/my-bookings
+
+---
+AgaveFleet
+Agave Environmental Contracting, Inc.
+  `;
+
+  return sendEmail(email, `Daily Brief - ${details.date}`, html, text);
 }

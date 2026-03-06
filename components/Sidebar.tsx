@@ -20,6 +20,7 @@ import {
   Bug,
   ClipboardCheck,
   ShieldCheck,
+  Gauge,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useMemo, useCallback } from 'react'
@@ -31,26 +32,37 @@ interface SidebarProps {
 }
 
 const unifiedLinks = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/vehicles', label: 'Vehicles', icon: Car },
-  { href: '/repairs', label: 'Repairs', icon: Wrench },
-  { href: '/admin/bookings', label: 'Bookings', icon: Calendar },
-  { href: '/service-records', label: 'Service Records', icon: FileText },
-  { href: '/admin/drivers', label: 'Members', icon: Users },
-  { href: '/admin/inspections', label: 'Inspections', icon: ClipboardCheck },
-  { href: '/admin/compliance', label: 'Compliance', icon: ShieldCheck },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Overview of fleet activity and stats' },
+  { href: '/admin/vehicles', label: 'Vehicles', icon: Car, description: 'Manage all vehicles, details, and assignments' },
+  { href: '/repairs', label: 'Repairs', icon: Wrench, description: 'View and manage repair requests from drivers' },
+  { href: '/admin/bookings', label: 'Bookings', icon: Calendar, description: 'Scheduled maintenance appointments' },
+  { href: '/service-records', label: 'Service Records', icon: FileText, description: 'History of all completed services' },
+  { href: '/admin/drivers', label: 'Members', icon: Users, description: 'Drivers, mechanics, and team members' },
+  { href: '/admin/inspections', label: 'Inspections', icon: ClipboardCheck, description: 'Vehicle inspection reports and checklists' },
+  { href: '/admin/compliance', label: 'Data Compliance', icon: ShieldCheck, description: 'Check for missing vehicle data and records' },
+  { href: '/admin/maintenance-tracker', label: 'Maintenance Tracker', icon: Gauge, description: 'Track vehicles overdue for service by mileage' },
 ]
 
 const adminOnlyLinks = [
-  { href: '/mechanic/notifications', label: 'Send SMS', icon: MessageSquare },
-  { href: '/admin/announcements', label: 'Announcements', icon: Megaphone },
-  { href: '/admin/bug-reports', label: 'Bug Reports', icon: Bug },
-  { href: '/admin/settings', label: 'Settings', icon: Settings },
+  { href: '/mechanic/notifications', label: 'Send SMS', icon: MessageSquare, description: 'Send text messages to drivers and mechanics' },
+  { href: '/admin/announcements', label: 'Announcements', icon: Megaphone, description: 'Post announcements visible to all users' },
+  { href: '/admin/bug-reports', label: 'Bug Reports', icon: Bug, description: 'View and manage submitted bug reports' },
+  { href: '/admin/settings', label: 'Settings', icon: Settings, description: 'System configuration and preferences' },
 ]
 
 export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sidebar-collapsed') === 'true'
+    }
+    return false
+  })
+
+  // Persist collapse state
+  useEffect(() => {
+    localStorage.setItem('sidebar-collapsed', String(collapsed))
+  }, [collapsed])
   
   // Memoize links to prevent recalculation on every render
   const links = useMemo(() =>
@@ -200,12 +212,16 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
                     <span className="truncate relative z-20">{link.label}</span>
                   )}
 
-                  {/* Tooltip for collapsed state */}
-                  {collapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 border border-slate-700 rounded-md text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
-                      {link.label}
-                    </div>
-                  )}
+                  {/* Tooltip — collapsed: label + description, expanded: description only */}
+                  <div className={cn(
+                    "absolute px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl z-50",
+                    collapsed
+                      ? "left-full ml-2 top-1/2 -translate-y-1/2 w-48"
+                      : "left-1/2 -translate-x-1/2 top-full mt-1 w-56"
+                  )}>
+                    {collapsed && <div className="font-semibold text-amber-400 mb-0.5">{link.label}</div>}
+                    <div className="text-slate-300 leading-snug">{link.description}</div>
+                  </div>
                 </Link>
               )
             })}
@@ -253,12 +269,16 @@ export default function Sidebar({ role, isOpen = true, onClose }: SidebarProps) 
                     <span className="truncate relative z-20">{link.label}</span>
                   )}
 
-                  {/* Tooltip for collapsed state */}
-                  {collapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 border border-slate-700 rounded-md text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50">
-                      {link.label}
-                    </div>
-                  )}
+                  {/* Tooltip — collapsed: label + description, expanded: description only */}
+                  <div className={cn(
+                    "absolute px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl z-50",
+                    collapsed
+                      ? "left-full ml-2 top-1/2 -translate-y-1/2 w-48"
+                      : "left-1/2 -translate-x-1/2 top-full mt-1 w-56"
+                  )}>
+                    {collapsed && <div className="font-semibold text-amber-400 mb-0.5">{link.label}</div>}
+                    <div className="text-slate-300 leading-snug">{link.description}</div>
+                  </div>
                 </Link>
               )
             })}
