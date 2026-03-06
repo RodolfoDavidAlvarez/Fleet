@@ -43,7 +43,7 @@ Fleet management system for Agave Environmental Contracting. Tracks 262 vehicles
 
 | Setting | Value |
 |---------|-------|
-| API Key | `See .env.local (AIRTABLE_API_KEY)` |
+| API Key | See `.env.local` (AIRTABLE_API_KEY) |
 | Base ID | `appms3yBT9I2DEGl3` |
 | Service Records | `tbluKRycfU6g0xufF` (field: "Repairs" = mechanic notes) |
 | Equipment | `tblP0QKVJNdaDpcrD` |
