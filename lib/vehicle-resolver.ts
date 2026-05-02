@@ -6,22 +6,17 @@ import { createServerClient } from "@/lib/supabase";
  *
  * Returns null if no match — caller should still persist the typed identifier
  * so the record isn't lost.
- *
- * Note: some vehicle_number values in the DB carry a trailing "*" (legacy Airtable
- * formatting). The resolver matches both bare and starred variants.
  */
 export async function resolveVehicleId(identifier: string | null | undefined): Promise<string | null> {
   if (!identifier) return null;
-  const trimmed = identifier.trim().replace(/^#+/, "");
+  const trimmed = identifier.trim().replace(/^#+/, "").replace(/\*+$/, "");
   if (!trimmed) return null;
 
   const supabase = createServerClient();
 
   const numericPart = trimmed.split(/\s+/)[0];
 
-  const candidates = Array.from(
-    new Set([numericPart, `${numericPart}*`, trimmed, `${trimmed}*`].filter(Boolean))
-  );
+  const candidates = Array.from(new Set([numericPart, trimmed].filter(Boolean)));
 
   const { data: byNumber } = await supabase
     .from("vehicles")

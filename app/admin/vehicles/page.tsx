@@ -62,7 +62,7 @@ export default function VehiclesPage() {
     mileage: 0,
     status: "operational" as any,
     vehicleNumber: "",
-    vehicleType: "Vehicle" as "Vehicle" | "Equipment" | "Trailer" | "Small Equipment",
+    vehicleType: "Vehicle" as "Vehicle" | "Equipment" | "Trailer",
     driverId: "" as string | undefined,
   });
   const activeCount = vehicles.filter((v) => v.status === "active" || v.status === "operational").length;
@@ -593,9 +593,23 @@ export default function VehiclesPage() {
         driverId: "",
       });
       showToast("Vehicle added successfully!", "success");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating vehicle:", error);
-      showToast("Failed to add vehicle. Please try again.", "error");
+      // Surface the actual server-side reason instead of a generic toast
+      const detail =
+        error?.response?.data?.details ||
+        error?.data?.details ||
+        error?.details;
+      let message = "Failed to add vehicle.";
+      if (detail && typeof detail === "object") {
+        const fields = Object.entries(detail)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+          .join("; ");
+        if (fields) message = `Validation failed — ${fields}`;
+      } else if (error?.message) {
+        message = `Failed to add vehicle: ${error.message}`;
+      }
+      showToast(message, "error");
     }
   };
 
@@ -1387,8 +1401,7 @@ export default function VehiclesPage() {
                           onChange={(e) => setFormData({ ...formData, vehicleType: e.target.value as any })}
                         >
                           <option value="Vehicle">Vehicle (Truck, Car, Van)</option>
-                          <option value="Equipment">Heavy Equipment (Loader, Mower, Gator)</option>
-                          <option value="Small Equipment">Small Equipment (Tools, Compactors)</option>
+                          <option value="Equipment">Equipment (Loader, Mower, Gator, Tools)</option>
                           <option value="Trailer">Trailer (Flatbed, Cargo)</option>
                         </select>
                       </label>

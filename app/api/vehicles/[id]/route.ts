@@ -33,7 +33,9 @@ const updateVehicleSchema = z.object({
   nextServiceDue: z.preprocess((val) => (val === "" ? null : val), z.string().nullable().optional()),
   lastUsedDate: z.preprocess((val) => (val === "" ? null : val), z.string().nullable().optional()),
   driverId: z.preprocess((val) => (val === "" ? null : val), z.string().uuid().nullable().optional()),
-  vehicleNumber: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),
+  vehicleNumber: z
+    .preprocess((val) => (val === "" ? undefined : val), z.string().optional())
+    .transform((v) => (v ? v.trim().replace(/\*+$/, "") : v)),
   vehicleType: z.enum(["Vehicle", "Equipment", "Trailer"]).optional(),
   department: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),
   supervisor: z.preprocess((val) => (val === "" ? undefined : val), z.string().optional()),

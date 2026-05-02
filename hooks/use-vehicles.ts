@@ -42,19 +42,18 @@ export function useCreateVehicle() {
 
   return useMutation({
     mutationFn: async (vehicleData: Omit<Vehicle, "id" | "createdAt">) => {
-      const formData = new FormData();
-      Object.entries(vehicleData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          formData.append(key, value.toString());
-        }
-      });
-
       const response = await fetch("/api/vehicles", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(vehicleData),
       });
 
-      if (!response.ok) throw new Error("Failed to create vehicle");
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        const err: any = new Error(body?.error || "Failed to create vehicle");
+        err.details = body?.details;
+        throw err;
+      }
       return response.json();
     },
     onMutate: async (newVehicle) => {

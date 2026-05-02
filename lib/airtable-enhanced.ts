@@ -20,7 +20,7 @@ export async function extractEnhancedVehicles() {
       year: fields['Vehicle year'] || new Date().getFullYear(),
       vin: fields.VIN || `AIRTABLE-${record.id}`, // Generate unique VIN if empty
       licensePlate: fields['License plate'] || '',
-      vehicleNumber: fields['Vehicle number'] || fields['Asset Number'] || '',
+      vehicleNumber: (fields['Vehicle number'] || fields['Asset Number'] || '').toString().trim().replace(/\*+$/, ''),
       assetNumber: fields['Asset Number'] || '',
       companyUniqueId: uniqueId,
       airtableVidNumber: fields['AIrtableVID#'] || fields['Airtable Vehicle ID'],
