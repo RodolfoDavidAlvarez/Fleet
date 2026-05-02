@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase";
 import { sendSMS } from "@/lib/twilio";
+import { resolveVehicleId } from "@/lib/vehicle-resolver";
 
 const createSchema = z.object({
   repairRequestId: z.string().uuid().optional(),
@@ -172,8 +173,22 @@ export async function POST(request: NextRequest) {
 
     let vehicleId = payload.vehicleId || null;
     if (!vehicleId && payload.repairRequestId) {
-      const { data: repair } = await supabase.from("repair_requests").select("vehicle_id").eq("id", payload.repairRequestId).maybeSingle();
-      if (repair?.vehicle_id) vehicleId = repair.vehicle_id;
+      const { data: repair } = await supabase
+        .from("repair_requests")
+        .select("vehicle_id, vehicle_identifier")
+        .eq("id", payload.repairRequestId)
+        .maybeSingle();
+      if (repair?.vehicle_id) {
+        vehicleId = repair.vehicle_id;
+      } else if (repair?.vehicle_identifier) {
+        // Repair request was orphaned (legacy data) — resolve from typed identifier
+        // and backfill the parent repair_request so subsequent lookups work.
+        const resolved = await resolveVehicleId(repair.vehicle_identifier);
+        if (resolved) {
+          vehicleId = resolved;
+          await supabase.from("repair_requests").update({ vehicle_id: resolved }).eq("id", payload.repairRequestId);
+        }
+      }
     }
 
     const status = payload.status === "open" ? "in_progress" : payload.status;

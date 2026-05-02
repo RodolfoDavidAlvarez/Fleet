@@ -7,6 +7,7 @@ import { notifyAdminOfRepair, sendRepairSubmissionNotice } from "@/lib/twilio";
 import { sendRepairSubmissionEmail, notifyAdminNewRepairRequest } from "@/lib/email";
 import { createServerClient } from "@/lib/supabase";
 import { normalizePhoneNumber } from "@/lib/airtable";
+import { resolveVehicleId } from "@/lib/vehicle-resolver";
 
 export const runtime = "nodejs";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB per image
@@ -138,8 +139,17 @@ export async function POST(request: NextRequest) {
       parsed.data.driverPhone = normalizePhoneNumber(parsed.data.driverPhone) || parsed.data.driverPhone;
     }
 
+    // Resolve vehicleIdentifier → vehicles.id when caller didn't pass a UUID directly.
+    // Without this, every record orphans (1,113 historical records had vehicle_id NULL).
+    let resolvedVehicleId = parsed.data.vehicleId;
+    if (!resolvedVehicleId && parsed.data.vehicleIdentifier) {
+      const match = await resolveVehicleId(parsed.data.vehicleIdentifier);
+      if (match) resolvedVehicleId = match;
+    }
+
     const record = await repairRequestDB.create({
       ...parsed.data,
+      vehicleId: resolvedVehicleId,
       odometer: parsed.data.odometer ?? undefined,
       status: "submitted",
       aiCategory: ai.category,
