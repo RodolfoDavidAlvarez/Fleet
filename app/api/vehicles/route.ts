@@ -32,7 +32,10 @@ const vehicleSchema = z.object({
   nextServiceDue: z.string().optional(),
   lastUsedDate: z.string().optional(),
   driverId: z.string().uuid().optional(),
-  vehicleNumber: z.string().optional(),
+  vehicleNumber: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v.trim().replace(/\*+$/, "") : v)),
   vehicleType: z.enum(["Vehicle", "Equipment", "Trailer"]).optional(),
   department: z.string().optional(),
 });
@@ -62,7 +65,11 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ vehicle }, { status: 201 });
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to create vehicle" }, { status: 500 });
+  } catch (error: any) {
+    console.error("POST /api/vehicles failed:", error);
+    return NextResponse.json(
+      { error: error?.message || "Failed to create vehicle" },
+      { status: 500 }
+    );
   }
 }

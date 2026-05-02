@@ -12,7 +12,7 @@ const dictionary = {
     driverName: "Name *",
     driverPhone: "Phone Number *",
     makeModel: "Make and Model",
-    vehicleIdentifier: "Vehicle Number",
+    vehicleIdentifier: "Vehicle Number *",
     odometer: "Current mileage (if vehicle)",
     division: "Division *",
     vehicleType: "Type of vehicle *",
@@ -36,7 +36,7 @@ const dictionary = {
     driverName: "Nombre *",
     driverPhone: "Número de telefono *",
     makeModel: "Marca y modelo",
-    vehicleIdentifier: "Numero del vehiculo",
+    vehicleIdentifier: "Numero del vehiculo *",
     odometer: "Millas actuales (si aplica)",
     division: "Division *",
     vehicleType: "Tipo de vehiculo *",
@@ -242,6 +242,13 @@ export default function RepairRequestPage() {
   const [showQuickSuccess, setShowQuickSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [vehicleMatch, setVehicleMatch] = useState<
+    | { state: "idle" }
+    | { state: "loading" }
+    | { state: "found"; label: string }
+    | { state: "missing" }
+    | { state: "skip" }
+  >({ state: "idle" });
 
   // Multi-stage loading: Loading → Title Screen → Form
   useEffect(() => {
@@ -273,6 +280,36 @@ export default function RepairRequestPage() {
       previews.forEach(url => URL.revokeObjectURL(url));
     };
   }, []);
+
+  // Live vehicle lookup as the driver types (debounced)
+  useEffect(() => {
+    const raw = form.vehicleIdentifier.trim().replace(/^#+/, "").replace(/\*+$/, "");
+    if (!raw) {
+      setVehicleMatch({ state: "idle" });
+      return;
+    }
+    if (raw === "0") {
+      setVehicleMatch({ state: "skip" });
+      return;
+    }
+    setVehicleMatch({ state: "loading" });
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/vehicles/lookup?number=${encodeURIComponent(raw)}`);
+        const data = await res.json();
+        if (data?.vehicle) {
+          const v = data.vehicle;
+          const label = `${v.year || ""} ${v.make || ""} ${v.model || ""}`.trim() || v.vehicle_number;
+          setVehicleMatch({ state: "found", label });
+        } else {
+          setVehicleMatch({ state: "missing" });
+        }
+      } catch {
+        setVehicleMatch({ state: "idle" });
+      }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [form.vehicleIdentifier]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newFiles = Array.from(e.target.files || []);
@@ -320,6 +357,12 @@ export default function RepairRequestPage() {
     }
     if (!form.driverPhone.trim()) {
       errors.driverPhone = "Phone number is required";
+    }
+    if (!form.vehicleIdentifier.trim()) {
+      errors.vehicleIdentifier =
+        language === "es"
+          ? 'Numero de vehiculo requerido (escriba "0" si no aplica)'
+          : 'Vehicle number is required (type "0" if not applicable)';
     }
     if (!form.division) {
       errors.division = "Division is required";
@@ -580,12 +623,43 @@ export default function RepairRequestPage() {
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-gray-700">{t.vehicleIdentifier}</span>
                 <input
-                  className="input"
+                  className={getInputClass("vehicleIdentifier")}
                   name="vehicleIdentifier"
                   value={form.vehicleIdentifier}
-                  onChange={(e) => setForm({ ...form, vehicleIdentifier: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, vehicleIdentifier: e.target.value });
+                    if (fieldErrors.vehicleIdentifier) {
+                      setFieldErrors({ ...fieldErrors, vehicleIdentifier: "" });
+                    }
+                  }}
+                  required
                   placeholder={language === "es" ? 'Entra number "0" si no aplica' : 'Enter number "0" if not applicable'}
                 />
+                {vehicleMatch.state === "loading" && (
+                  <span className="text-xs text-gray-500">
+                    {language === "es" ? "Buscando..." : "Looking up..."}
+                  </span>
+                )}
+                {vehicleMatch.state === "found" && (
+                  <span className="text-xs text-green-700">
+                    ✓ {vehicleMatch.label}
+                  </span>
+                )}
+                {vehicleMatch.state === "missing" && (
+                  <span className="text-xs text-amber-700">
+                    {language === "es"
+                      ? "No encontrado en el sistema (se guardara igual)"
+                      : "Not found in system (will still be saved)"}
+                  </span>
+                )}
+                {vehicleMatch.state === "skip" && (
+                  <span className="text-xs text-gray-500">
+                    {language === "es" ? "Sin vehiculo" : "No vehicle"}
+                  </span>
+                )}
+                {fieldErrors.vehicleIdentifier && (
+                  <span className="text-sm text-red-600 block">{fieldErrors.vehicleIdentifier}</span>
+                )}
               </label>
             </div>
 
