@@ -41,7 +41,8 @@ async function patch(p, body) {
 }
 
 function normalizeKey(s) {
-  return s ? s.toString().trim().toUpperCase() : "";
+  if (!s) return "";
+  return s.toString().trim().replace(/^#+/, "").replace(/\*+$/, "").toUpperCase();
 }
 
 (async () => {
