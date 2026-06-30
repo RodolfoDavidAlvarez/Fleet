@@ -30,7 +30,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { Booking } from '@/types'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { formatDate, formatDateInputLocal, formatDateTime, parseDateOnlyLocal } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { exportBookings } from '@/lib/export-utils'
 
@@ -121,10 +121,10 @@ export default function BookingsPage() {
     const dates = Object.keys(grouped).sort()
 
     dates.forEach(date => {
-      const dateObj = new Date(date)
+      const dateObj = parseDateOnlyLocal(date)
       const weekStart = new Date(dateObj)
       weekStart.setDate(dateObj.getDate() - dateObj.getDay()) // Start of week (Sunday)
-      const weekKey = weekStart.toISOString().split('T')[0]
+      const weekKey = formatDateInputLocal(weekStart)
 
       if (!weeks[weekKey]) {
         weeks[weekKey] = {}
@@ -156,13 +156,13 @@ export default function BookingsPage() {
 
   const formatDateString = (year: number, month: number, day: number) => {
     const date = new Date(year, month, day)
-    return date.toISOString().split('T')[0]
+    return formatDateInputLocal(date)
   }
 
   const getBookingsForDate = (dateString: string) => {
     return bookings.filter((booking) => {
       if (!booking.scheduledDate) return false
-      const bookingDate = new Date(booking.scheduledDate).toISOString().split('T')[0]
+      const bookingDate = formatDateInputLocal(parseDateOnlyLocal(booking.scheduledDate))
       return bookingDate === dateString
     })
   }
@@ -181,7 +181,7 @@ export default function BookingsPage() {
   }
 
   // Sort dates: upcoming first (soonest), then past (most recent)
-  const today = new Date().toISOString().split('T')[0]
+  const today = formatDateInputLocal(new Date())
   const dates = Object.keys(grouped).sort((a, b) => {
     const aIsFuture = a >= today
     const bIsFuture = b >= today
@@ -297,7 +297,7 @@ export default function BookingsPage() {
               // Weekly Calendar View - responsive for mobile
               <div className="space-y-4 sm:space-y-6">
                 {Object.keys(calendarData).sort().map((weekKey) => {
-                  const weekStart = new Date(weekKey)
+                  const weekStart = parseDateOnlyLocal(weekKey)
                   return (
                     <div key={weekKey} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                       <div className="bg-gradient-to-r from-primary-50 to-primary-100 px-4 sm:px-5 py-3 border-b border-primary-200">
@@ -311,9 +311,9 @@ export default function BookingsPage() {
                         {weekDays.map((day, dayIndex) => {
                           const currentDate = new Date(weekStart)
                           currentDate.setDate(weekStart.getDate() + dayIndex)
-                          const dateKey = currentDate.toISOString().split('T')[0]
+                          const dateKey = formatDateInputLocal(currentDate)
                           const dayBookings = calendarData[weekKey][dateKey] || []
-                          const isTodayDate = dateKey === new Date().toISOString().split('T')[0]
+                          const isTodayDate = dateKey === today
 
                           return (
                             <div key={day} className="bg-white min-h-[120px] p-3">
@@ -355,9 +355,9 @@ export default function BookingsPage() {
                         {weekDays.map((day, dayIndex) => {
                           const currentDate = new Date(weekStart)
                           currentDate.setDate(weekStart.getDate() + dayIndex)
-                          const dateKey = currentDate.toISOString().split('T')[0]
+                          const dateKey = formatDateInputLocal(currentDate)
                           const dayBookings = calendarData[weekKey][dateKey] || []
-                          const isTodayDate = dateKey === new Date().toISOString().split('T')[0]
+                          const isTodayDate = dateKey === today
 
                           if (dayBookings.length === 0) return null
 

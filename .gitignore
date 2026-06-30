@@ -31,6 +31,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# supabase local temp files
+supabase/.temp/
+
 # claude settings (contains API keys)
 .claude/settings.local.json
 

@@ -15,7 +15,7 @@ NEXT_PUBLIC_APP_URL=https://agavefleet.com
 ### Email Configuration
 
 ```bash
-RESEND_API_KEY=re_DQs789VC_FzMuq52t5CFK7e8tgtvnpLQ2
+RESEND_API_KEY=your-resend-api-key
 RESEND_FROM_EMAIL=ralvarez@bettersystems.ai
 ENABLE_EMAIL=true
 ```

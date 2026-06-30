@@ -15,7 +15,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 // BetterSystems.ai external tickets API for centralized ticket management
 const BETTERSYSTEMS_API_URL = "https://bettersystems.ai/api/external/tickets";
-const BETTERSYSTEMS_API_KEY = process.env.BETTERSYSTEMS_API_KEY || "0f1530e59bb62de3e75c6f4302d2f3b8492d5989ddb5e8172dd8605a647c4502";
+const BETTERSYSTEMS_API_KEY = process.env.BETTERSYSTEMS_API_KEY?.trim();
 
 // Constants for image optimization
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -333,31 +333,35 @@ export async function POST(request: NextRequest) {
     });
 
     // Sync to BetterSystems.ai for centralized ticket management (non-blocking)
-    try {
-      const betterSystemsResponse = await fetch(BETTERSYSTEMS_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          apiKey: BETTERSYSTEMS_API_KEY,
-          applicationSource: "agave-fleet",
-          externalTicketId: bugReport.id?.toString(),
-          submitterEmail: userEmail,
-          submitterName: userName,
-          title: sanitizedTitle,
-          description: sanitizedDescription,
-          screenshotUrl: screenshot_url,
-          priority: "medium",
-        }),
-      });
+    if (BETTERSYSTEMS_API_KEY) {
+      try {
+        const betterSystemsResponse = await fetch(BETTERSYSTEMS_API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            apiKey: BETTERSYSTEMS_API_KEY,
+            applicationSource: "agave-fleet",
+            externalTicketId: bugReport.id?.toString(),
+            submitterEmail: userEmail,
+            submitterName: userName,
+            title: sanitizedTitle,
+            description: sanitizedDescription,
+            screenshotUrl: screenshot_url,
+            priority: "medium",
+          }),
+        });
 
-      if (!betterSystemsResponse.ok) {
-        console.warn("BetterSystems ticket sync failed:", await betterSystemsResponse.text());
-      } else {
-        console.log("Ticket synced to BetterSystems successfully");
+        if (!betterSystemsResponse.ok) {
+          console.warn("BetterSystems ticket sync failed:", await betterSystemsResponse.text());
+        } else {
+          console.log("Ticket synced to BetterSystems successfully");
+        }
+      } catch (syncError) {
+        console.warn("BetterSystems ticket sync error:", syncError);
+        // Don't fail the request if BetterSystems sync fails
       }
-    } catch (syncError) {
-      console.warn("BetterSystems ticket sync error:", syncError);
-      // Don't fail the request if BetterSystems sync fails
+    } else {
+      console.warn("BETTERSYSTEMS_API_KEY is not set; skipping BetterSystems ticket sync.");
     }
 
     // Send email notification to developer (non-blocking)
@@ -453,7 +457,7 @@ export async function POST(request: NextRequest) {
             to: "rodolfo@bettersystems.ai",
             subject: `🐛 Bug Report: ${sanitizedTitle.substring(0, 50)}${sanitizedTitle.length > 50 ? "..." : ""}`,
             html: emailHtml,
-            reply_to: userEmail,
+            replyTo: userEmail,
           })
           .catch((emailError) => {
             console.error("Error sending bug report email (non-critical):", emailError);

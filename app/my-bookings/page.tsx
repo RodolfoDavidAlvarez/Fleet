@@ -109,7 +109,7 @@ export default function MyBookingsPage() {
   const todayBookings = validBookings.filter(b => b.scheduledDate === todayStr && b.status !== 'cancelled')
   const upcomingBookings = validBookings.filter(b => {
     return b.scheduledDate > todayStr && b.status !== 'cancelled'
-  }).sort((a, b) => (a.scheduled_date || '').localeCompare(b.scheduledDate || ''))
+  }).sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''))
 
   const tomorrowBookings = upcomingBookings.filter(b => b.scheduledDate === tomorrowStr)
   const thisWeekBookings = upcomingBookings.filter(b => {
@@ -256,7 +256,7 @@ export default function MyBookingsPage() {
               {todayBookings.length > 0 ? (
                 <div className="space-y-3">
                   {todayBookings
-                    .sort((a, b) => (a.scheduled_time || '').localeCompare(b.scheduled_time || ''))
+                    .sort((a, b) => (a.scheduledTime || '').localeCompare(b.scheduledTime || ''))
                     .map(booking => (
                       <BookingCard key={booking.id} booking={booking} highlight />
                     ))}

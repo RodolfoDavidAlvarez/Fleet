@@ -10,7 +10,7 @@ Add these variables to your `.env.local` file:
 
 ```env
 # Resend Email Configuration
-RESEND_API_KEY=re_gnAJmZCo_KVU3pd3a4WoG4LS2dQDWx21Y
+RESEND_API_KEY=your-resend-api-key
 RESEND_FROM_EMAIL=ralvarez@bettersystems.ai
 ADMIN_EMAIL=ralvarez@bettersystems.ai
 ENABLE_EMAIL=true
@@ -70,7 +70,7 @@ Repair-related emails support both English and Spanish based on the driver's `pr
 - **Used for**: Admin notifications (new bookings, repair requests)
 
 ### API Key
-- **Current**: `re_gnAJmZCo_KVU3pd3a4WoG4LS2dQDWx21Y`
+- **Current**: `your-resend-api-key`
 - **Location**: Set in `RESEND_API_KEY` environment variable
 - **Security**: Never commit API keys to version control
 

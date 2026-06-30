@@ -3,12 +3,12 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar, Clock, User, MessageSquare, CheckCircle, MapPin, Car, ChevronRight } from "lucide-react";
+import { formatDateInputLocal, parseDateOnlyLocal } from "@/lib/utils";
 
 // Helper to format date strings as local dates (avoids timezone bug where YYYY-MM-DD shows as previous day)
 function formatDateLocal(dateStr: string, options: Intl.DateTimeFormatOptions) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day).toLocaleDateString("en-US", options);
+    return parseDateOnlyLocal(dateStr).toLocaleDateString("en-US", options);
   }
   return new Date(dateStr).toLocaleDateString("en-US", options);
 }
@@ -94,7 +94,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
         const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
 
         const res = await fetch(
-          `/api/calendar/dates-availability?startDate=${start.toISOString().split("T")[0]}&endDate=${end.toISOString().split("T")[0]}`
+          `/api/calendar/dates-availability?startDate=${formatDateInputLocal(start)}&endDate=${formatDateInputLocal(end)}`
         );
         const data = await res.json();
         if (res.ok && data.dateAvailability) {
@@ -184,7 +184,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
     const dates: { date: string; dayName: string; dayNum: number; month: string; hasSlots: boolean; slotCount: number; isToday: boolean }[] = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split("T")[0];
+    const todayStr = formatDateInputLocal(today);
 
     // Calculate minimum booking date based on advance window
     const minBookingDate = new Date(today);
@@ -199,7 +199,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       const dayOfWeek = date.getDay();
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = formatDateInputLocal(date);
 
       // Check if working day and within advance booking window
       if (calendarSettings.workingDays.includes(dayOfWeek) && date >= minBookingDate) {
@@ -245,7 +245,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
 
   const formatDateString = (year: number, month: number, day: number) => {
     const date = new Date(year, month, day);
-    return date.toISOString().split("T")[0];
+    return formatDateInputLocal(date);
   };
 
   const isWorkingDay = (day: number | null) => {
@@ -265,7 +265,7 @@ export default function BookingLinkPage({ params }: { params: { id: string } }) 
     // Check advance booking window
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const checkDate = new Date(dateString);
+    const checkDate = parseDateOnlyLocal(dateString);
     checkDate.setHours(0, 0, 0, 0);
 
     const minBookingDate = new Date(today);

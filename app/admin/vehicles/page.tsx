@@ -250,7 +250,7 @@ export default function VehiclesPage() {
             onUpdate={async (value) => {
               await updateVehicle.mutateAsync({
                 id: vehicle.id,
-                updates: { department: value },
+                updates: { department: value || undefined },
               });
               showToast("Department updated successfully!", "success");
             }}

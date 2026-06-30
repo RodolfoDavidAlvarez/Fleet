@@ -338,7 +338,11 @@ export default function VehicleDetailPage() {
     try {
       // Build updates object - only include fields that can be updated
       // Merge vehicle data with formData to ensure we have all current values
-      const updates: Partial<Vehicle> = {};
+      const updates: Partial<Vehicle> & Record<string, unknown> = {};
+      const setUpdate = (field: keyof Vehicle, value: unknown) => {
+        const updateFields: Record<string, unknown> = updates;
+        updateFields[field] = value;
+      };
 
       // List of updatable fields
       const updatableFields: (keyof Vehicle)[] = [
@@ -366,9 +370,9 @@ export default function VehicleDetailPage() {
       // For each updatable field, use formData value if present, otherwise use vehicle value
       updatableFields.forEach((field) => {
         if (field in formData && formData[field] !== undefined) {
-          updates[field] = formData[field];
+          setUpdate(field, formData[field]);
         } else if (field in vehicle && vehicle[field] !== undefined) {
-          updates[field] = vehicle[field];
+          setUpdate(field, vehicle[field]);
         }
       });
 

@@ -5,18 +5,28 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function parseDateOnlyLocal(date: string | Date): Date {
+  if (date instanceof Date) return new Date(date);
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [year, month, day] = date.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  return new Date(date);
+}
+
+export function formatDateInputLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function formatDate(date: string | Date): string {
   // If it's a date-only string (YYYY-MM-DD), parse as local date to avoid timezone issues
   // JavaScript's Date() interprets "YYYY-MM-DD" as UTC midnight, which shows as previous day in US timezones
-  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    const [year, month, day] = date.split('-').map(Number);
-    return new Date(year, month - 1, day).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  }
-  return new Date(date).toLocaleDateString("en-US", {
+  return parseDateOnlyLocal(date).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",

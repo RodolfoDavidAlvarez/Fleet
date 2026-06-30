@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { vehicleDB } from "@/lib/db";
+import { Vehicle } from "@/types";
 
 const updateVehicleSchema = z.object({
   make: z.preprocess((val) => (val === "" ? undefined : val), z.string().min(1).optional()),
@@ -67,7 +68,15 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
     }
 
-    const vehicle = await vehicleDB.update(params.id, parsed.data);
+    const updates: Partial<Vehicle> = {
+      ...parsed.data,
+      lastServiceDate: parsed.data.lastServiceDate ?? undefined,
+      nextServiceDue: parsed.data.nextServiceDue ?? undefined,
+      lastUsedDate: parsed.data.lastUsedDate ?? undefined,
+      tagExpiry: parsed.data.tagExpiry ?? undefined,
+    };
+
+    const vehicle = await vehicleDB.update(params.id, updates);
 
     if (!vehicle) {
       return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });

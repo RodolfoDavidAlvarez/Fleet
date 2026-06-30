@@ -121,7 +121,7 @@ node scripts/verify-bug-reports.mjs
 
 ### Required
 ```env
-RESEND_API_KEY=re_DQs789VC_FzMuq52t5CFK7e8tgtvnpLQ2
+RESEND_API_KEY=your-resend-api-key
 NEXT_PUBLIC_SUPABASE_URL=https://kxcixjiafdohbpwijfmd.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=[your-service-role-key]
 ```

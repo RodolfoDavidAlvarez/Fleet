@@ -39,7 +39,7 @@ Copy and paste this checklist in Vercel:
     Environment: Production ✅
 
 [ ] RESEND_API_KEY
-    Value: re_DQs789VC_FzMuq52t5CFK7e8tgtvnpLQ2
+    Value: your-resend-api-key
     Environment: Production ✅
 
 [ ] RESEND_FROM_EMAIL

@@ -5,7 +5,8 @@ import { createServerClient } from "@/lib/supabase";
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const number = searchParams.get("number")?.trim();
+    const rawNumber = searchParams.get("number")?.trim();
+    const number = rawNumber?.replace(/^#+/, "").replace(/\*+$/, "").split(/\s+/)[0];
 
     if (!number) {
       return NextResponse.json({ vehicle: null });

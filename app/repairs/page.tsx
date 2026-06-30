@@ -667,7 +667,7 @@ export default function RepairsPage() {
                                   <div className="w-8 h-8 rounded-md bg-gray-100 text-gray-500 text-[11px] font-bold flex items-center justify-center flex-shrink-0">
                                     {req.driverName
                                       .split(" ")
-                                      .map((n) => n[0])
+                                      .map((n: string) => n[0])
                                       .join("")
                                       .toUpperCase()
                                       .slice(0, 2)}

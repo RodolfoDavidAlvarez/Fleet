@@ -4,6 +4,8 @@ import { bookingDB, repairRequestDB } from "@/lib/db";
 import { sendBookingConfirmation } from "@/lib/twilio";
 import { sendBookingConfirmationEmail, notifyAdminNewBooking } from "@/lib/email";
 import { createClient } from "@/lib/supabase/server";
+import { createServerClient as createServiceClient } from "@/lib/supabase";
+import { formatDateInputLocal, parseDateOnlyLocal } from "@/lib/utils";
 
 const bookingSchema = z.object({
   customerName: z.string().min(1, "customerName is required"),
@@ -19,6 +21,121 @@ const bookingSchema = z.object({
   vehicleId: z.string().optional(),
   repairRequestId: z.string().uuid().optional(),
 });
+
+const ACTIVE_BOOKING_STATUSES = ["pending", "confirmed", "in_progress"];
+
+function getWeekBounds(dateString: string) {
+  const checkDate = parseDateOnlyLocal(dateString);
+  const dayOfWeek = checkDate.getDay();
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const weekStart = new Date(checkDate);
+  weekStart.setDate(checkDate.getDate() + mondayOffset);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+
+  return {
+    weekStart: formatDateInputLocal(weekStart),
+    weekEnd: formatDateInputLocal(weekEnd),
+  };
+}
+
+function timeToMinutes(time: string): number | null {
+  const [hoursRaw, minutesRaw] = time.split(":");
+  const hours = Number(hoursRaw);
+  const minutes = Number(minutesRaw);
+
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return null;
+  }
+
+  return hours * 60 + minutes;
+}
+
+async function validateBookingAvailability(
+  supabase: ReturnType<typeof createServiceClient>,
+  scheduledDate: string,
+  scheduledTime: string
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  const requestedStartMinutes = timeToMinutes(scheduledTime);
+  if (requestedStartMinutes === null) {
+    return { ok: false, status: 400, error: "Invalid scheduled time." };
+  }
+
+  const { data: settings } = await supabase.from("calendar_settings").select("*").single();
+
+  const maxBookingsPerWeek = settings?.max_bookings_per_week || 5;
+  const startTime = settings?.start_time || "06:00";
+  const endTime = settings?.end_time || "14:00";
+  const slotDuration = settings?.slot_duration || 30;
+  const slotBufferTime = settings?.slot_buffer_time || 0;
+  const workingDays = settings?.working_days || [1, 2, 3, 4, 5];
+  const advanceBookingWindow = settings?.advance_booking_window || 0;
+  const advanceBookingUnit = settings?.advance_booking_unit || "days";
+
+  const requestedDate = parseDateOnlyLocal(scheduledDate);
+  const dayOfWeek = requestedDate.getDay();
+  if (!workingDays.includes(dayOfWeek)) {
+    return { ok: false, status: 409, error: "Selected date is not available for bookings." };
+  }
+
+  const now = new Date();
+  const minBookingDate = new Date(now);
+  if (advanceBookingUnit === "hours") {
+    minBookingDate.setHours(now.getHours() + advanceBookingWindow);
+  } else {
+    minBookingDate.setDate(now.getDate() + advanceBookingWindow);
+    minBookingDate.setHours(0, 0, 0, 0);
+  }
+  const requestedDateForCompare = parseDateOnlyLocal(scheduledDate);
+  requestedDateForCompare.setHours(0, 0, 0, 0);
+
+  if (requestedDateForCompare < minBookingDate) {
+    return { ok: false, status: 409, error: "Selected date is no longer available." };
+  }
+
+  const startMinutes = timeToMinutes(startTime);
+  const endMinutes = timeToMinutes(endTime);
+  if (startMinutes === null || endMinutes === null) {
+    return { ok: false, status: 500, error: "Calendar settings are invalid." };
+  }
+
+  if (requestedStartMinutes < startMinutes || requestedStartMinutes + slotDuration > endMinutes) {
+    return { ok: false, status: 409, error: "Selected time is outside booking hours." };
+  }
+
+  const { weekStart, weekEnd } = getWeekBounds(scheduledDate);
+  const { count: weeklyBookings } = await supabase
+    .from("bookings")
+    .select("*", { count: "exact", head: true })
+    .gte("scheduled_date", weekStart)
+    .lte("scheduled_date", weekEnd)
+    .in("status", ACTIVE_BOOKING_STATUSES);
+
+  if ((weeklyBookings || 0) >= maxBookingsPerWeek) {
+    return { ok: false, status: 409, error: "This week is fully booked." };
+  }
+
+  const { data: dateBookings } = await supabase
+    .from("bookings")
+    .select("scheduled_time")
+    .eq("scheduled_date", scheduledDate)
+    .in("status", ACTIVE_BOOKING_STATUSES);
+
+  const requestedEndMinutes = requestedStartMinutes + slotDuration + slotBufferTime;
+  const hasOverlap = (dateBookings || []).some((booking) => {
+    if (!booking.scheduled_time) return false;
+    const bookingStartMinutes = timeToMinutes(booking.scheduled_time);
+    if (bookingStartMinutes === null) return false;
+    const bookingEndMinutes = bookingStartMinutes + slotDuration + slotBufferTime;
+    return requestedStartMinutes < bookingEndMinutes && requestedEndMinutes > bookingStartMinutes;
+  });
+
+  if (hasOverlap) {
+    return { ok: false, status: 409, error: "Selected time is no longer available." };
+  }
+
+  return { ok: true };
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -96,6 +213,12 @@ export async function POST(request: NextRequest) {
           console.warn("Existing booking ID not found, allowing new booking creation");
         }
       }
+    }
+
+    const serviceSupabase = createServiceClient();
+    const availability = await validateBookingAvailability(serviceSupabase, parsed.data.scheduledDate, parsed.data.scheduledTime);
+    if (!availability.ok) {
+      return NextResponse.json({ error: availability.error }, { status: availability.status });
     }
 
     const { smsConsent, complianceAccepted, vehicleInfo, notes, ...bookingData } = parsed.data;

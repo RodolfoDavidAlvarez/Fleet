@@ -28,7 +28,7 @@ ENABLE_SMS=false
 
 ### Resend Email Configuration
 ```
-RESEND_API_KEY=re_gnAJmZCo_KVU3pd3a4WoG4LS2dQDWx21Y
+RESEND_API_KEY=your-resend-api-key
 RESEND_FROM_EMAIL=ralvarez@bettersystems.ai
 ADMIN_EMAIL=ralvarez@bettersystems.ai
 ENABLE_EMAIL=true

@@ -5,7 +5,7 @@ This document provides a comprehensive overview of all notifications implemented
 ## 📧 Email Notifications (Resend)
 
 ### Configuration
-- **API Key**: `RESEND_API_KEY` (configured: `re_gnAJmZCo_KVU3pd3a4WoG4LS2dQDWx21Y`)
+- **API Key**: `RESEND_API_KEY` (configured: `your-resend-api-key`)
 - **From Email**: `ralvarez@bettersystems.ai`
 - **Admin Email**: `ADMIN_EMAIL` environment variable (defaults to `ralvarez@bettersystems.ai`)
 
@@ -177,7 +177,7 @@ This document provides a comprehensive overview of all notifications implemented
 
 ```env
 # Resend Email Configuration
-RESEND_API_KEY=re_gnAJmZCo_KVU3pd3a4WoG4LS2dQDWx21Y
+RESEND_API_KEY=your-resend-api-key
 RESEND_FROM_EMAIL=ralvarez@bettersystems.ai
 ADMIN_EMAIL=ralvarez@bettersystems.ai
 ENABLE_EMAIL=true
