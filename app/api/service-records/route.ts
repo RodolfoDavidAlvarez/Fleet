@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
         v.id,
         {
           id: v.id,
-          label: [v.license_plate, v.vehicle_number, v.make, v.model].filter(Boolean).join(" โ�ข "),
+          label: [v.license_plate, v.vehicle_number, v.make, v.model].filter(Boolean).join(" • "),
           licensePlate: v.license_plate,
           make: v.make,
           model: v.model,
